@@ -152,9 +152,15 @@ export default function QuestaoForm({
     })();
   }, []);
 
+  const lastInjectedIdRef = React.useRef<number | null>(null);
+
   // injetar initialData (editar)
   useEffect(() => {
     if (mode !== "edit" || !initialData) return;
+
+    // evita reinjetar sem necessidade (isso é o que tava te travando na prática)
+    if (lastInjectedIdRef.current === initialData.id) return;
+    lastInjectedIdRef.current = initialData.id;
 
     setDisciplina(initialData.disciplina ?? 0);
     setSaberId(initialData.saber ?? "");
@@ -165,16 +171,14 @@ export default function QuestaoForm({
     setCurrentSuporteUrl(initialData.imagem_suporte || "");
     setRemoveSuporte(false);
     setSuporteFile(null);
-    if (suportePreview) URL.revokeObjectURL(suportePreview);
-    setSuportePreview("");
+    setSuportePreview(""); // sem revoke aqui
 
-    if (enunciadoEd.editor)
-      enunciadoEd.editor.commands.setContent(initialData.enunciado_html || "<p></p>");
-    if (comandoEd.editor)
-      comandoEd.editor.commands.setContent(initialData.comando_html || "<p></p>");
-    if (textoApoioEd.editor)
-      textoApoioEd.editor.commands.setContent(initialData.texto_suporte_html || "<p></p>");
+    // textos principais
+    enunciadoEd.editor?.commands.setContent(initialData.enunciado_html || "<p></p>");
+    comandoEd.editor?.commands.setContent(initialData.comando_html || "<p></p>");
+    textoApoioEd.editor?.commands.setContent(initialData.texto_suporte_html || "<p></p>");
 
+    // respostas
     const respostas = Array.isArray(initialData.respostas) ? initialData.respostas : [];
     const byOrdem = new Map<number, RespostaDTO>();
     for (const r of respostas) byOrdem.set(r.ordem, r);
@@ -185,15 +189,16 @@ export default function QuestaoForm({
     const r4 = byOrdem.get(4);
     const r5 = byOrdem.get(5);
 
-    if (altAEd.editor) altAEd.editor.commands.setContent(r1?.texto_html || "<p></p>");
-    if (altBEd.editor) altBEd.editor.commands.setContent(r2?.texto_html || "<p></p>");
-    if (altCEd.editor) altCEd.editor.commands.setContent(r3?.texto_html || "<p></p>");
-    if (altDEd.editor) altDEd.editor.commands.setContent(r4?.texto_html || "<p></p>");
-    if (altEEd.editor) altEEd.editor.commands.setContent(r5?.texto_html || "<p></p>");
+    altAEd.editor?.commands.setContent(r1?.texto_html || "<p></p>");
+    altBEd.editor?.commands.setContent(r2?.texto_html || "<p></p>");
+    altCEd.editor?.commands.setContent(r3?.texto_html || "<p></p>");
+    altDEd.editor?.commands.setContent(r4?.texto_html || "<p></p>");
+    altEEd.editor?.commands.setContent(r5?.texto_html || "<p></p>");
 
     const correta = respostas.find((r) => r.correta);
     setAltCorreta(correta ? (ordemToAlt(correta.ordem) as Alternativa) : "");
 
+    // imagens atuais vindas do backend
     setCurrentAltImgUrl({
       A: r1?.imagem || "",
       B: r2?.imagem || "",
@@ -202,13 +207,10 @@ export default function QuestaoForm({
       E: r5?.imagem || "",
     });
 
+    // reseta uploads/remover e previews locais
     setAltImg({ A: null, B: null, C: null, D: null, E: null });
     setRemoveAltImg({ A: false, B: false, C: false, D: false, E: false });
-
-    (["A", "B", "C", "D", "E"] as AltKey[]).forEach((k) => {
-      if (altPreview[k]) URL.revokeObjectURL(altPreview[k]);
-    });
-    setAltPreview({ A: "", B: "", C: "", D: "", E: "" });
+    setAltPreview({ A: "", B: "", C: "", D: "", E: "" }); // sem revoke aqui
   }, [
     mode,
     initialData,
@@ -220,8 +222,6 @@ export default function QuestaoForm({
     altCEd.editor,
     altDEd.editor,
     altEEd.editor,
-    suportePreview,
-    altPreview,
   ]);
 
   // saberes por disciplina

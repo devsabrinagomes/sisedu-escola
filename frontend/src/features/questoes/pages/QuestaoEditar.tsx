@@ -100,6 +100,7 @@ export default function QuestaoEditar() {
 
       {data && (
         <QuestaoForm
+          key={data.id} 
           mode="edit"
           initialData={data}
           onSubmitFormData={handleSubmit}

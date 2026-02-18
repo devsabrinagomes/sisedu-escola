@@ -423,13 +423,13 @@ export default function QuestoesList() {
             <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs text-slate-600 bg-slate-50 border-b border-slate-200">
               <Th
                 colSpan={1}
-                label="ID"
+                label="Código"
                 active={sortKey === "id"}
                 dir={sortDir}
                 onClick={() => toggleSort("id")}
               />
               <Th
-                colSpan={4}
+                colSpan={5}
                 label="Enunciado"
                 active={sortKey === "enunciado"}
                 dir={sortDir}
@@ -458,9 +458,9 @@ export default function QuestoesList() {
                 dir={sortDir}
                 onClick={() => toggleSort("criado_por")}
               />
-              <div className="col-span-1 flex items-center justify-center text-center">
+              {/* <div className="col-span-1 flex items-center justify-center text-center">
                 Ações
-              </div>
+              </div> */}
             </div>
 
             {loading ? (
@@ -486,7 +486,7 @@ export default function QuestoesList() {
                     <button
                       type="button"
                       onClick={() => openQuestao(it)}
-                      className="col-span-4 text-left text-slate-900 hover:underline"
+                      className="col-span-5 text-left text-slate-900 hover:underline"
                       title={isMine ? "Editar questão" : "Ver detalhes"}
                     >
                       {resumo || "(Sem enunciado)"}
@@ -512,7 +512,7 @@ export default function QuestoesList() {
                       {(it as any).criado_por ?? "-"}
                     </div>
 
-                    <div className="col-span-1 flex justify-center">
+                    {/* <div className="col-span-1 flex justify-center">
                       {isMine ? (
                         <button
                           type="button"
@@ -541,7 +541,7 @@ export default function QuestoesList() {
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
-                    </div>
+                    </div> */}
                   </div>
                 );
               })
