@@ -1,10 +1,18 @@
 from rest_framework.routers import DefaultRouter
-from .views import DisciplinaViewSet, SaberViewSet, HabilidadeViewSet, QuestaoViewSet
+
+from .views import (
+    SubjectViewSet,
+    TopicViewSet,
+    DescriptorViewSet,
+    SkillViewSet,
+    QuestionViewSet,
+)
 
 router = DefaultRouter()
-router.register(r"disciplinas", DisciplinaViewSet, basename="disciplina")
-router.register(r"saberes", SaberViewSet, basename="saber")
-router.register(r"habilidades", HabilidadeViewSet, basename="habilidade")
-router.register(r"questoes", QuestaoViewSet, basename="questao")
+router.register(r"subjects", SubjectViewSet, basename="subject")
+router.register(r"topics", TopicViewSet, basename="topic")
+router.register(r"descriptors", DescriptorViewSet, basename="descriptor")
+router.register(r"skills", SkillViewSet, basename="skill")
+router.register(r"questions", QuestionViewSet, basename="question")
 
 urlpatterns = router.urls

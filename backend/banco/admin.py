@@ -1,237 +1,287 @@
 from django.contrib import admin
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 from django.forms.models import BaseInlineFormSet
-from django.utils.html import strip_tags, format_html
+from django.utils.html import strip_tags
 
 from .models import (
-    Disciplina,
-    Saber,
-    Habilidade,
-    Questao,
-    Resposta,
-    Caderno,
-    Item,
+    Subject,
+    Topic,
+    Descriptor,
+    Skill,
+    LegacyMap,
+    Question,
+    QuestionVersion,
+    QuestionOption,
+    Booklet,
+    BookletItem,
+    Offer,
+    Application,
+    StudentAnswer,
 )
 
 
-@admin.register(Disciplina)
-class DisciplinaAdmin(admin.ModelAdmin):
-    list_display = ("id", "nome")
-    search_fields = ("nome",)
+# =========================
+# CURRÍCULO
+# =========================
+
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    search_fields = ("name",)
 
 
-@admin.register(Saber)
-class SaberAdmin(admin.ModelAdmin):
-    list_display = ("id", "codigo", "titulo", "disciplina")
-    list_filter = ("disciplina",)
-    search_fields = ("codigo", "titulo", "disciplina__nome")
-    ordering = ("disciplina__nome", "codigo", "titulo")
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
+    list_display = ("id", "subject", "description_short")
+    list_filter = ("subject",)
+    search_fields = ("description", "subject__name")
+
+    @admin.display(description="Description")
+    def description_short(self, obj):
+        txt = (obj.description or "").strip()
+        return (txt[:90] + "…") if len(txt) > 90 else txt
 
 
-@admin.register(Habilidade)
-class HabilidadeAdmin(admin.ModelAdmin):
-    list_display = ("id", "codigo", "titulo", "saber", "disciplina")
-    list_filter = ("saber__disciplina", "saber")
-    search_fields = ("codigo", "titulo", "saber__titulo", "saber__disciplina__nome")
-    ordering = ("saber__disciplina__nome", "saber__codigo", "codigo", "titulo")
+@admin.register(Descriptor)
+class DescriptorAdmin(admin.ModelAdmin):
+    list_display = ("id", "code", "name_short", "topic", "subject")
+    list_filter = ("topic__subject", "topic")
+    search_fields = ("code", "name", "topic__description", "topic__subject__name")
+    ordering = ("topic__subject__name", "topic__id", "code")
 
-    @admin.display(description="Disciplina")
-    def disciplina(self, obj):
-        return obj.saber.disciplina
-    
+    @admin.display(description="Subject")
+    def subject(self, obj):
+        return obj.topic.subject if obj.topic_id else None
 
-class RespostaInlineFormSet(BaseInlineFormSet):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    @admin.display(description="Name")
+    def name_short(self, obj):
+        txt = (obj.name or "").strip()
+        return (txt[:80] + "…") if len(txt) > 80 else txt
 
-        if not self.is_bound:
-            for i, form in enumerate(self.forms):
-                form.instance.ordem = i + 1
-                form.initial["ordem"] = i + 1
 
+@admin.register(Skill)
+class SkillAdmin(admin.ModelAdmin):
+    list_display = ("id", "code", "name_short", "descriptor", "subject")
+    list_filter = ("descriptor__topic__subject", "descriptor")
+    search_fields = ("code", "name", "descriptor__code", "descriptor__name")
+    ordering = ("descriptor__topic__subject__name", "descriptor__code", "code")
+
+    @admin.display(description="Subject")
+    def subject(self, obj):
+        return obj.descriptor.topic.subject if obj.descriptor_id and obj.descriptor.topic_id else None
+
+    @admin.display(description="Name")
+    def name_short(self, obj):
+        txt = (obj.name or "").strip()
+        return (txt[:80] + "…") if len(txt) > 80 else txt
+
+
+@admin.register(LegacyMap)
+class LegacyMapAdmin(admin.ModelAdmin):
+    list_display = ("id", "type", "legacy_id", "legacy_code", "legacy_name", "status", "created_at")
+    list_filter = ("type", "status", ("created_at", admin.DateFieldListFilter))
+    search_fields = ("legacy_raw", "legacy_code", "legacy_name")
+    ordering = ("-created_at",)
+
+
+# =========================
+# OPTIONS INLINE (QuestionOption)
+# =========================
+
+class QuestionOptionInlineFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
 
-        corretas = 0
-        total_preenchidas = 0
+        filled = 0
+        correct = 0
 
         for form in self.forms:
             if not getattr(form, "cleaned_data", None):
                 continue
+            if form.cleaned_data.get("DELETE"):
+                continue
 
-            texto = (form.cleaned_data.get("texto_html") or "").strip()
-            imagem = form.cleaned_data.get("imagem")
-            marcada_correta = form.cleaned_data.get("correta")
+            text = (form.cleaned_data.get("option_text") or "").strip()
+            img = form.cleaned_data.get("option_image")
+            is_correct = bool(form.cleaned_data.get("correct"))
 
-            preenchida = bool(texto) or bool(imagem)
-
-            if preenchida:
-                total_preenchidas += 1
-                if marcada_correta:
-                    corretas += 1
+            has_content = bool(text) or bool(img)
+            if has_content:
+                filled += 1
+                if is_correct:
+                    correct += 1
             else:
-                if marcada_correta:
+                if is_correct:
                     raise ValidationError("Não dá pra marcar como correta uma alternativa vazia.")
 
-        if total_preenchidas < 2:
+        if filled < 2:
             raise ValidationError("A questão precisa ter no mínimo 2 alternativas preenchidas.")
-        if total_preenchidas > 5:
+        if filled > 5:
             raise ValidationError("A questão pode ter no máximo 5 alternativas preenchidas.")
-        if corretas != 1:
+        if correct != 1:
             raise ValidationError("Marque exatamente 1 alternativa correta (entre as preenchidas).")
 
 
-class RespostaInline(admin.TabularInline):
-    model = Resposta
-    formset = RespostaInlineFormSet
-
-    can_delete = False
-
+class QuestionOptionInline(admin.TabularInline):
+    model = QuestionOption
+    formset = QuestionOptionInlineFormSet
     extra = 5
-    min_num = 5
+    min_num = 2
     max_num = 5
     validate_min = True
     validate_max = True
 
-    fields = ("alternativa_label", "texto_html", "imagem", "correta")
-    readonly_fields = ("alternativa_label",)
-    ordering = ("ordem",)
+    fields = ("letter", "option_text", "option_image", "correct")
+    ordering = ("letter",)
 
-    @admin.display(description="Alternativa")
-    def alternativa_label(self, obj):
-        # quando ainda não tem ordem (antes de salvar)
-        if getattr(obj, "ordem", None):
-            return chr(ord("A") + obj.ordem - 1)
-        return "-"
-    
-    
-@admin.register(Questao)
-class QuestaoAdmin(admin.ModelAdmin):
-    inlines = [RespostaInline]
+
+# =========================
+# QUESTION VERSION ADMIN
+# =========================
+
+@admin.register(QuestionVersion)
+class QuestionVersionAdmin(admin.ModelAdmin):
+    inlines = [QuestionOptionInline]
 
     list_display = (
         "id",
-        "enunciado_link",
-        "disciplina",
-        "saber",
-        "habilidade",
-        "is_private",
+        "question",
+        "version_number",
+        "title_short",
+        "subject",
+        "descriptor",
+        "skill",
+        "annulled",
+        "created_at",
+    )
+    list_filter = (
+        "subject",
+        "descriptor",
+        "skill",
+        "annulled",
+        ("created_at", admin.DateFieldListFilter),
+    )
+    search_fields = (
+        "title",
+        "command",
+        "support_text",
+        "question__id",
+        "subject__name",
+        "descriptor__code",
+        "skill__code",
+    )
+    ordering = ("-created_at",)
+
+    autocomplete_fields = ("question", "subject", "descriptor", "skill")
+
+    @admin.display(description="Title")
+    def title_short(self, obj):
+        txt = strip_tags(obj.title or "").replace("\n", " ").strip()
+        return (txt[:90] + "…") if len(txt) > 90 else txt
+
+
+# =========================
+# QUESTION ADMIN
+# =========================
+
+class QuestionVersionInline(admin.TabularInline):
+    model = QuestionVersion
+    extra = 0
+    fields = ("version_number", "subject", "descriptor", "skill", "annulled", "created_at")
+    readonly_fields = ("created_at",)
+    ordering = ("-version_number",)
+    show_change_link = True
+    autocomplete_fields = ("subject", "descriptor", "skill")
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    inlines = [QuestionVersionInline]
+
+    list_display = (
+        "id",
+        "private",
+        "deleted",
         "created_by",
         "created_at",
+        "latest_subject",
+        "latest_skill",
     )
 
     list_filter = (
-        "disciplina",
-        "saber",
-        "habilidade",
-        "is_private",
-        "created_by",
+        "private",
+        "deleted",
         ("created_at", admin.DateFieldListFilter),
     )
 
-    search_fields = (
-        "enunciado_html",
-        "texto_suporte_html",
-        "created_by__username",
-        "created_by__first_name",
-        "created_by__last_name",
-        "created_by__email",
-    )
-
+    search_fields = ("id", "created_by")
     ordering = ("-created_at",)
-    list_per_page = 25
-    list_display_links = ("id",)
-    exclude = ("excluida",)
 
-    @admin.display(description="Enunciado")
-    def enunciado_link(self, obj):
-        texto = strip_tags(obj.enunciado_html or "").replace("\n", " ").strip()
-        resumo = (texto[:90] + "…") if len(texto) > 90 else texto
-        return format_html('<a href="{}">{}</a>', f"{obj.id}/change/", resumo)
+    @admin.display(description="Latest subject")
+    def latest_subject(self, obj):
+        v = obj.versions.order_by("-version_number", "-created_at").first()
+        return v.subject if v else None
 
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        return qs.filter(Q(is_private=False) | Q(created_by=request.user))
-
-    def get_readonly_fields(self, request, obj=None):
-        if obj is None:
-            return ()
-        return ("created_at",)
-
-    def get_fields(self, request, obj=None):
-        fields = list(super().get_fields(request, obj))
-
-        for f in ("created_by", "created_at", "excluida"):
-            if f in fields:
-                fields.remove(f)
-        
-        if "is_private" in fields:
-            fields.remove("is_private")
-
-            anchor = None
-            for a in ("habilidade", "saber", "disciplina"):
-                if a in fields:
-                    anchor = a
-                    break
-
-            if anchor:
-                idx = fields.index(anchor) + 1
-                fields.insert(idx, "is_private")
-            else:
-                fields.insert(0, "is_private")
-                
-        if obj is not None:
-            fields.append("created_at")
-
-        return fields
-
-    def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
-
-    def save_formset(self, request, form, formset, change):
-        instances = formset.save(commit=False)
-
-        ordem = 1
-        for obj in instances:
-            texto = (obj.texto_html or "").strip()
-            preenchida = bool(texto) or bool(obj.imagem)
-
-            if not preenchida:
-                if obj.pk:
-                    obj.delete()
-                continue
-
-            obj.ordem = ordem
-            obj.save()
-            ordem += 1
-
-        formset.save_m2m()
+    @admin.display(description="Latest skill")
+    def latest_skill(self, obj):
+        v = obj.versions.order_by("-version_number", "-created_at").first()
+        return v.skill if v else None
 
 
-class ItemInline(admin.TabularInline):
-    model = Item
+# =========================
+# BOOKLET
+# =========================
+
+class BookletItemInline(admin.TabularInline):
+    model = BookletItem
     extra = 0
-    fields = ("ordem", "questao", "anulada")
-    ordering = ("ordem",)
-    autocomplete_fields = ("questao",)
+    fields = ("order", "question_version")
+    ordering = ("order",)
+    autocomplete_fields = ("question_version",)
 
 
-@admin.register(Caderno)
-class CadernoAdmin(admin.ModelAdmin):
-    inlines = [ItemInline]
-
-    list_display = ("id", "nome", "excluido", "created_by", "created_at")
-    list_filter = ("excluido", "created_by", ("created_at", admin.DateFieldListFilter))
-    search_fields = ("nome", "created_by__username", "created_by__email")
+@admin.register(Booklet)
+class BookletAdmin(admin.ModelAdmin):
+    inlines = [BookletItemInline]
+    list_display = ("id", "name", "deleted", "created_by", "created_at")
+    list_filter = ("deleted", ("created_at", admin.DateFieldListFilter))
+    search_fields = ("name", "created_by")
     ordering = ("-created_at",)
-    readonly_fields = ("created_by", "created_at")
 
-    def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
+
+@admin.register(BookletItem)
+class BookletItemAdmin(admin.ModelAdmin):
+    list_display = ("id", "booklet", "order", "question_version")
+    list_filter = ("booklet",)
+    search_fields = ("booklet__name", "question_version__id")
+    ordering = ("booklet_id", "order")
+    autocomplete_fields = ("booklet", "question_version")
+
+
+
+# =========================
+# OFFER / APPLICATION / ANSWERS (opcional)
+# =========================
+
+@admin.register(Offer)
+class OfferAdmin(admin.ModelAdmin):
+    list_display = ("id", "booklet", "start_date", "end_date", "deleted", "created_by", "created_at")
+    list_filter = ("deleted", ("start_date", admin.DateFieldListFilter), ("end_date", admin.DateFieldListFilter))
+    search_fields = ("id", "description", "created_by")
+    ordering = ("-created_at",)
+    autocomplete_fields = ("booklet",)
+
+
+@admin.register(Application)
+class ApplicationAdmin(admin.ModelAdmin):
+    list_display = ("id", "offer", "class_ref", "student_ref", "student_absent", "finalized_at")
+    list_filter = ("student_absent",)
+    search_fields = ("class_ref", "student_ref")
+    autocomplete_fields = ("offer",)
+
+
+@admin.register(StudentAnswer)
+class StudentAnswerAdmin(admin.ModelAdmin):
+    list_display = ("id", "application", "booklet_item", "selected_option", "is_correct", "created_at")
+    list_filter = ("is_correct", ("created_at", admin.DateFieldListFilter))
+    autocomplete_fields = ("application", "booklet_item")
