@@ -1,45 +1,43 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { Alternativa, Disciplina } from "@/types/core";
-import RichEditor, {
-  useRichEditor,
-  hasMeaningfulHtml,
-  normalizeHtml,
-} from "@/components/RichEditor";
-
+import RichEditor, { useRichEditor, hasMeaningfulHtml, normalizeHtml } from "@/components/RichEditor";
 import Accordion from "@/components/Accordion";
-import {
-  ALT_KEYS,
-  ALTS,
-  type AltKey,
-  buildRespostasPayload,
-  computeFilledCreate,
-  computeFilledEdit,
-  validateAlternatives,
-} from "../utils/questaoForm.utils";
 
-type Saber = { id: number; codigo: string; titulo: string; disciplina: number };
-type Habilidade = { id: number; codigo: string; titulo: string; saber: number };
+type Subject = { id: number; name: string };
+type Descriptor = { id: number; topic: number; code: string; name: string };
+type Skill = { id: number; descriptor: number; code: string; name: string };
 
-type RespostaDTO = {
-  ordem: number;
-  texto_html: string;
-  imagem?: string | null;
-  correta: boolean;
+type AltKey = "A" | "B" | "C" | "D" | "E";
+const ALT_KEYS: AltKey[] = ["A", "B", "C", "D", "E"];
+
+type OptionDTO = {
+  id?: number;
+  letter: AltKey;
+  option_text: string;
+  option_image?: string | null;
+  correct: boolean;
 };
 
-export type QuestaoDTO = {
+type QuestionVersionDTO = {
   id: number;
-  disciplina: number;
-  saber: number | null;
-  habilidade: number | null;
-  enunciado_html: string;
-  comando_html: string;
-  texto_suporte_html: string;
-  imagem_suporte?: string | null;
-  ref_imagem: string;
-  is_private: boolean;
-  respostas?: RespostaDTO[];
+  version_number: number;
+  title: string;
+  command: string;
+  support_text: string;
+  support_image?: string | null;
+  image_reference?: string;
+  subject: number;
+  descriptor: number | null;
+  skill: number | null;
+  options?: OptionDTO[];
+};
+
+export type QuestionDTO = {
+  id: number;
+  private: boolean;
+  created_by: number;
+  created_at: string;
+  versions?: QuestionVersionDTO[];
 };
 
 type Mode = "create" | "edit";
@@ -48,16 +46,9 @@ function ReqStar() {
   return <span className="text-red-600">*</span>;
 }
 
-function ordemToAlt(ordem: number): AltKey {
-  return ordem === 1
-    ? "A"
-    : ordem === 2
-      ? "B"
-      : ordem === 3
-        ? "C"
-        : ordem === 4
-          ? "D"
-          : "E";
+function pickLatestVersion(versions?: QuestionVersionDTO[]) {
+  if (!versions?.length) return null;
+  return [...versions].sort((a, b) => (b.version_number ?? 0) - (a.version_number ?? 0))[0];
 }
 
 export default function QuestaoForm({
@@ -67,47 +58,61 @@ export default function QuestaoForm({
   onCancel,
 }: {
   mode: Mode;
-  initialData?: QuestaoDTO;
+  initialData?: QuestionDTO;
   onSubmitFormData: (fd: FormData) => Promise<void>;
   onCancel: () => void;
 }) {
   const [triedSubmit, setTriedSubmit] = useState(false);
-
-  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
-  const [saberes, setSaberes] = useState<Saber[]>([]);
-  const [habilidades, setHabilidades] = useState<Habilidade[]>([]);
-
-  const [loadingDisc, setLoadingDisc] = useState(true);
-  const [loadingSab, setLoadingSab] = useState(false);
-  const [loadingHab, setLoadingHab] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
-  // campos
-  const [disciplina, setDisciplina] = useState<number>(0);
-  const [saberId, setSaberId] = useState<number | "">("");
-  const [habilidadeId, setHabilidadeId] = useState<number | "">("");
+  // combos
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [descriptors, setDescriptors] = useState<Descriptor[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [loadingDesc, setLoadingDesc] = useState(false);
+  const [loadingSkill, setLoadingSkill] = useState(false);
+
+  // campos de relação
+  const [subjectId, setSubjectId] = useState<number>(0);
+  const [descriptorId, setDescriptorId] = useState<number | "">("");
+  const [skillId, setSkillId] = useState<number | "">("");
+
+  // flags
   const [isPrivate, setIsPrivate] = useState(false);
 
-  const [altCorreta, setAltCorreta] = useState<Alternativa | "">("");
+  // suporte
+  const [supportFile, setSupportFile] = useState<File | null>(null);
+  const [supportPreview, setSupportPreview] = useState("");
+  const [removeSupport, setRemoveSupport] = useState(false);
+  const [currentSupportUrl, setCurrentSupportUrl] = useState("");
+  const [imageReference, setImageReference] = useState("");
+
+  // editores (novo schema)
+  const titleEd = useRichEditor("<p></p>");
+  const commandEd = useRichEditor("<p></p>");
+  const supportTextEd = useRichEditor("<p></p>");
+
+  // alternativas (texto + img + correta)
   const [altAtiva, setAltAtiva] = useState<AltKey>("A");
+  const [altCorreta, setAltCorreta] = useState<AltKey | "">("");
 
-  // apoio
-  const [currentSuporteUrl, setCurrentSuporteUrl] = useState("");
-  const [suporteFile, setSuporteFile] = useState<File | null>(null);
-  const [suportePreview, setSuportePreview] = useState("");
-  const [removeSuporte, setRemoveSuporte] = useState(false);
-  const [refImagem, setRefImagem] = useState("");
+  const altEditors = {
+    A: useRichEditor("<p></p>"),
+    B: useRichEditor("<p></p>"),
+    C: useRichEditor("<p></p>"),
+    D: useRichEditor("<p></p>"),
+    E: useRichEditor("<p></p>"),
+  };
 
-  // alternativas imagens
   const [altImg, setAltImg] = useState<Record<AltKey, File | null>>({
     A: null, B: null, C: null, D: null, E: null,
   });
   const [altPreview, setAltPreview] = useState<Record<AltKey, string>>({
     A: "", B: "", C: "", D: "", E: "",
   });
-
   const [currentAltImgUrl, setCurrentAltImgUrl] = useState<Record<AltKey, string>>({
     A: "", B: "", C: "", D: "", E: "",
   });
@@ -115,171 +120,134 @@ export default function QuestaoForm({
     A: false, B: false, C: false, D: false, E: false,
   });
 
-  // editores
-  const enunciadoEd = useRichEditor("<p></p>");
-  const comandoEd = useRichEditor("<p></p>");
-  const textoApoioEd = useRichEditor("<p></p>");
-
-  const altAEd = useRichEditor("<p></p>");
-  const altBEd = useRichEditor("<p></p>");
-  const altCEd = useRichEditor("<p></p>");
-  const altDEd = useRichEditor("<p></p>");
-  const altEEd = useRichEditor("<p></p>");
-
   // cleanup previews
   useEffect(() => {
     return () => {
-      if (suportePreview) URL.revokeObjectURL(suportePreview);
-      (["A", "B", "C", "D", "E"] as AltKey[]).forEach((k) => {
-        if (altPreview[k]) URL.revokeObjectURL(altPreview[k]);
-      });
+      if (supportPreview) URL.revokeObjectURL(supportPreview);
+      ALT_KEYS.forEach((k) => { if (altPreview[k]) URL.revokeObjectURL(altPreview[k]); });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // carregar disciplinas
+  // load subjects
   useEffect(() => {
     (async () => {
       try {
-        setLoadingDisc(true);
-        const { data } = await api.get<Disciplina[]>("/disciplinas/");
-        setDisciplinas(data);
+        setLoadingSubjects(true);
+        const { data } = await api.get<Subject[]>("/subjects/");
+        setSubjects(data);
       } catch {
-        setErr("Não foi possível carregar as disciplinas.");
+        setErr("Não foi possível carregar as disciplinas (subjects).");
       } finally {
-        setLoadingDisc(false);
+        setLoadingSubjects(false);
       }
     })();
   }, []);
 
-  const lastInjectedIdRef = React.useRef<number | null>(null);
+  // load descriptors by subject
+  useEffect(() => {
+    if (!subjectId) {
+      setDescriptors([]);
+      setDescriptorId("");
+      setSkills([]);
+      setSkillId("");
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingDesc(true);
+        const { data } = await api.get<Descriptor[]>("/descriptors/", { params: { subject: subjectId } });
+        setDescriptors(data);
+        if (mode === "create") {
+          setDescriptorId("");
+          setSkills([]);
+          setSkillId("");
+        }
+      } finally {
+        setLoadingDesc(false);
+      }
+    })();
+  }, [subjectId, mode]);
 
-  // injetar initialData (editar)
+  // load skills by descriptor
+  useEffect(() => {
+    if (!descriptorId) {
+      setSkills([]);
+      setSkillId("");
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingSkill(true);
+        const { data } = await api.get<Skill[]>("/skills/", { params: { descriptor: descriptorId } });
+        setSkills(data);
+        if (mode === "create") setSkillId("");
+      } finally {
+        setLoadingSkill(false);
+      }
+    })();
+  }, [descriptorId, mode]);
+
+  // inject initialData (edit)
+  const lastInjectedIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (mode !== "edit" || !initialData) return;
-
-    // evita reinjetar sem necessidade (isso é o que tava te travando na prática)
     if (lastInjectedIdRef.current === initialData.id) return;
     lastInjectedIdRef.current = initialData.id;
 
-    setDisciplina(initialData.disciplina ?? 0);
-    setSaberId(initialData.saber ?? "");
-    setHabilidadeId(initialData.habilidade ?? "");
-    setIsPrivate(!!initialData.is_private);
+    setIsPrivate(!!initialData.private);
 
-    setRefImagem(initialData.ref_imagem ?? "");
-    setCurrentSuporteUrl(initialData.imagem_suporte || "");
-    setRemoveSuporte(false);
-    setSuporteFile(null);
-    setSuportePreview(""); // sem revoke aqui
+    const v = pickLatestVersion(initialData.versions);
+    if (!v) return;
 
-    // textos principais
-    enunciadoEd.editor?.commands.setContent(initialData.enunciado_html || "<p></p>");
-    comandoEd.editor?.commands.setContent(initialData.comando_html || "<p></p>");
-    textoApoioEd.editor?.commands.setContent(initialData.texto_suporte_html || "<p></p>");
+    setSubjectId(v.subject ?? 0);
+    setDescriptorId(v.descriptor ?? "");
+    setSkillId(v.skill ?? "");
 
-    // respostas
-    const respostas = Array.isArray(initialData.respostas) ? initialData.respostas : [];
-    const byOrdem = new Map<number, RespostaDTO>();
-    for (const r of respostas) byOrdem.set(r.ordem, r);
+    titleEd.editor?.commands.setContent(v.title || "<p></p>");
+    commandEd.editor?.commands.setContent(v.command || "<p></p>");
+    supportTextEd.editor?.commands.setContent(v.support_text || "<p></p>");
 
-    const r1 = byOrdem.get(1);
-    const r2 = byOrdem.get(2);
-    const r3 = byOrdem.get(3);
-    const r4 = byOrdem.get(4);
-    const r5 = byOrdem.get(5);
+    setImageReference(v.image_reference || "");
+    setCurrentSupportUrl(v.support_image || "");
+    setRemoveSupport(false);
+    setSupportFile(null);
+    setSupportPreview("");
 
-    altAEd.editor?.commands.setContent(r1?.texto_html || "<p></p>");
-    altBEd.editor?.commands.setContent(r2?.texto_html || "<p></p>");
-    altCEd.editor?.commands.setContent(r3?.texto_html || "<p></p>");
-    altDEd.editor?.commands.setContent(r4?.texto_html || "<p></p>");
-    altEEd.editor?.commands.setContent(r5?.texto_html || "<p></p>");
+    const opts = Array.isArray(v.options) ? v.options : [];
+    const byLetter = new Map<AltKey, OptionDTO>();
+    opts.forEach((o) => byLetter.set(o.letter, o));
 
-    const correta = respostas.find((r) => r.correta);
-    setAltCorreta(correta ? (ordemToAlt(correta.ordem) as Alternativa) : "");
-
-    // imagens atuais vindas do backend
-    setCurrentAltImgUrl({
-      A: r1?.imagem || "",
-      B: r2?.imagem || "",
-      C: r3?.imagem || "",
-      D: r4?.imagem || "",
-      E: r5?.imagem || "",
+    ALT_KEYS.forEach((k) => {
+      altEditors[k].editor?.commands.setContent(byLetter.get(k)?.option_text || "<p></p>");
     });
 
-    // reseta uploads/remover e previews locais
+    const correct = opts.find((o) => o.correct);
+    setAltCorreta(correct ? correct.letter : "");
+
+    setCurrentAltImgUrl({
+      A: byLetter.get("A")?.option_image || "",
+      B: byLetter.get("B")?.option_image || "",
+      C: byLetter.get("C")?.option_image || "",
+      D: byLetter.get("D")?.option_image || "",
+      E: byLetter.get("E")?.option_image || "",
+    });
+
     setAltImg({ A: null, B: null, C: null, D: null, E: null });
     setRemoveAltImg({ A: false, B: false, C: false, D: false, E: false });
-    setAltPreview({ A: "", B: "", C: "", D: "", E: "" }); // sem revoke aqui
-  }, [
-    mode,
-    initialData,
-    enunciadoEd.editor,
-    comandoEd.editor,
-    textoApoioEd.editor,
-    altAEd.editor,
-    altBEd.editor,
-    altCEd.editor,
-    altDEd.editor,
-    altEEd.editor,
-  ]);
-
-  // saberes por disciplina
-  useEffect(() => {
-    if (!disciplina) {
-      setSaberes([]);
-      setSaberId("");
-      setHabilidades([]);
-      setHabilidadeId("");
-      return;
-    }
-    (async () => {
-      try {
-        setLoadingSab(true);
-        const { data } = await api.get<Saber[]>("/saberes/", { params: { disciplina } });
-        setSaberes(data);
-        // não zera saber/habilidade no edit (senão apaga seleção), só no create
-        if (mode === "create") {
-          setSaberId("");
-          setHabilidades([]);
-          setHabilidadeId("");
-        }
-      } finally {
-        setLoadingSab(false);
-      }
-    })();
-  }, [disciplina, mode]);
-
-  // habilidades por saber
-  useEffect(() => {
-    if (!saberId) {
-      setHabilidades([]);
-      setHabilidadeId("");
-      return;
-    }
-    (async () => {
-      try {
-        setLoadingHab(true);
-        const { data } = await api.get<Habilidade[]>("/habilidades/", { params: { saber: saberId } });
-        setHabilidades(data);
-        if (mode === "create") setHabilidadeId("");
-      } finally {
-        setLoadingHab(false);
-      }
-    })();
-  }, [saberId, mode]);
+    setAltPreview({ A: "", B: "", C: "", D: "", E: "" });
+  }, [mode, initialData, titleEd.editor, commandEd.editor, supportTextEd.editor, altEditors.A.editor, altEditors.B.editor, altEditors.C.editor, altEditors.D.editor, altEditors.E.editor]);
 
   function pickSupportFile(f: File | null) {
-    setSuporteFile(f);
-    setRemoveSuporte(false);
-    if (suportePreview) URL.revokeObjectURL(suportePreview);
-    setSuportePreview(f ? URL.createObjectURL(f) : "");
+    setSupportFile(f);
+    setRemoveSupport(false);
+    if (supportPreview) URL.revokeObjectURL(supportPreview);
+    setSupportPreview(f ? URL.createObjectURL(f) : "");
   }
 
   function pickAltFile(key: AltKey, file: File | null) {
     setAltImg((p) => ({ ...p, [key]: file }));
     setRemoveAltImg((p) => ({ ...p, [key]: false }));
-
     if (altPreview[key]) URL.revokeObjectURL(altPreview[key]);
     setAltPreview((p) => ({ ...p, [key]: file ? URL.createObjectURL(file) : "" }));
   }
@@ -291,91 +259,74 @@ export default function QuestaoForm({
     setAltPreview((p) => ({ ...p, [key]: "" }));
   }
 
-  const getHtml = useMemo(() => {
-    return {
-      A: () => altAEd.getHtml(),
-      B: () => altBEd.getHtml(),
-      C: () => altCEd.getHtml(),
-      D: () => altDEd.getHtml(),
-      E: () => altEEd.getHtml(),
-    } as Record<AltKey, () => string>;
-  }, [altAEd, altBEd, altCEd, altDEd, altEEd]);
-
-  const filled = useMemo(() => {
-    if (mode === "edit") {
-      return computeFilledEdit({ getHtml, img: altImg, currentUrl: currentAltImgUrl, remove: removeAltImg });
-    }
-    return computeFilledCreate({ getHtml, img: altImg });
-  }, [mode, getHtml, altImg, currentAltImgUrl, removeAltImg]);
-
   const canSave = useMemo(() => {
-    if (disciplina <= 0) return false;
-    if (!hasMeaningfulHtml(enunciadoEd.getHtml())) return false;
-    if (!hasMeaningfulHtml(comandoEd.getHtml())) return false;
+    if (subjectId <= 0) return false;
+    if (!hasMeaningfulHtml(titleEd.getHtml())) return false;
+    if (!hasMeaningfulHtml(commandEd.getHtml())) return false;
 
-    const altErr = validateAlternatives({
-      filled,
-      altCorreta: (altCorreta as AltKey) || "",
-    });
-    return !altErr;
-  }, [disciplina, enunciadoEd, comandoEd, filled, altCorreta]);
+    // valida alternativas: pelo menos 2 preenchidas + 1 correta
+    const filled = ALT_KEYS.filter((k) => hasMeaningfulHtml(altEditors[k].getHtml()));
+    if (filled.length < 2) return false;
+    if (!altCorreta) return false;
+    if (!filled.includes(altCorreta)) return false;
+
+    return true;
+  }, [subjectId, titleEd, commandEd, altEditors, altCorreta]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTriedSubmit(true);
     setErr("");
 
-    if (!hasMeaningfulHtml(comandoEd.getHtml())) {
+    if (!hasMeaningfulHtml(commandEd.getHtml())) {
       setErr("O comando é obrigatório.");
       return;
     }
 
-    const altErr = validateAlternatives({
-      filled,
-      altCorreta: (altCorreta as AltKey) || "",
-    });
-    if (altErr) {
-      setErr(altErr);
+    const filled = ALT_KEYS.filter((k) => hasMeaningfulHtml(altEditors[k].getHtml()));
+    if (filled.length < 2) {
+      setErr("Preencha pelo menos 2 alternativas.");
+      return;
+    }
+    if (!altCorreta || !filled.includes(altCorreta)) {
+      setErr("Escolha a alternativa correta (e ela precisa estar preenchida).");
       return;
     }
 
     try {
       setSaving(true);
 
-      const { used, respostas } = buildRespostasPayload({
-        getHtml,
-        filled,
-        altCorreta: altCorreta as AltKey,
-      });
+      // monta options_payload (somente alternativas preenchidas)
+      const options = filled.map((k) => ({
+        letter: k,
+        option_text: normalizeHtml(altEditors[k].getHtml()),
+        correct: k === altCorreta,
+      }));
 
       const fd = new FormData();
-      fd.append("disciplina", String(disciplina));
-      fd.append("enunciado_html", normalizeHtml(enunciadoEd.getHtml()));
-      fd.append("comando_html", normalizeHtml(comandoEd.getHtml()));
-      fd.append("texto_suporte_html", normalizeHtml(textoApoioEd.getHtml()));
-      fd.append("ref_imagem", refImagem || "");
-      fd.append("is_private", String(isPrivate));
-      fd.append("respostas_payload", JSON.stringify(respostas));
+      fd.append("private", String(isPrivate));
+      fd.append("subject", String(subjectId));
+      fd.append("title", normalizeHtml(titleEd.getHtml()));
+      fd.append("command", normalizeHtml(commandEd.getHtml()));
+      fd.append("support_text", normalizeHtml(supportTextEd.getHtml()));
+      fd.append("image_reference", imageReference || "");
+      fd.append("options_payload", JSON.stringify(options));
 
-      if (saberId) fd.append("saber", String(saberId));
-      else if (mode === "edit") fd.append("saber", "");
+      if (descriptorId) fd.append("descriptor", String(descriptorId));
+      else if (mode === "edit") fd.append("descriptor", "");
 
-      if (habilidadeId) fd.append("habilidade", String(habilidadeId));
-      else if (mode === "edit") fd.append("habilidade", "");
+      if (skillId) fd.append("skill", String(skillId));
+      else if (mode === "edit") fd.append("skill", "");
 
-      // suporte
-      if (mode === "edit" && removeSuporte) fd.append("remove_imagem_suporte", "1");
-      else if (suporteFile) fd.append("imagem_suporte", suporteFile);
+      // suporte imagem
+      if (mode === "edit" && removeSupport) fd.append("remove_support_image", "1");
+      else if (supportFile) fd.append("support_image", supportFile);
 
-      // imagens das alternativas (somente as usadas)
-      used.forEach((k, idx) => {
-        const ordem = idx + 1;
+      // imagens das alternativas (pelas letters)
+      filled.forEach((k) => {
         const file = altImg[k];
-        if (file) fd.append(`resposta_imagem_${ordem}`, file);
-
-        if (mode === "edit") {
-          if (removeAltImg[k]) fd.append(`remove_resposta_imagem_${ordem}`, "1");
-        }
+        if (file) fd.append(`option_image_${k}`, file);
+        if (mode === "edit" && removeAltImg[k]) fd.append(`remove_option_image_${k}`, "1");
       });
 
       await onSubmitFormData(fd);
@@ -442,11 +393,7 @@ export default function QuestaoForm({
         </div>
       )}
 
-      {/* CARD MASTER */}
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6"
-      >
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
         {/* Topo */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
@@ -454,35 +401,29 @@ export default function QuestaoForm({
               Disciplina <ReqStar />
             </label>
             <select
-              value={disciplina}
-              disabled={loadingDisc}
-              onChange={(e) => setDisciplina(Number(e.target.value))}
+              value={subjectId}
+              disabled={loadingSubjects}
+              onChange={(e) => setSubjectId(Number(e.target.value))}
               className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
             >
-              <option value={0} disabled>
-                Selecione…
-              </option>
-              {disciplinas.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nome}
-                </option>
+              <option value={0} disabled>Selecione…</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">Saber (opcional)</label>
+            <label className="text-xs font-medium text-slate-500">Descritor (opcional)</label>
             <select
-              value={saberId}
-              disabled={!disciplina || loadingSab}
-              onChange={(e) => setSaberId(e.target.value ? Number(e.target.value) : "")}
+              value={descriptorId}
+              disabled={!subjectId || loadingDesc}
+              onChange={(e) => setDescriptorId(e.target.value ? Number(e.target.value) : "")}
               className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
             >
               <option value="">Nenhum</option>
-              {saberes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.codigo} — {s.titulo}
-                </option>
+              {descriptors.map((d) => (
+                <option key={d.id} value={d.id}>{d.code} — {d.name}</option>
               ))}
             </select>
           </div>
@@ -490,99 +431,73 @@ export default function QuestaoForm({
           <div>
             <label className="text-xs font-medium text-slate-500">Habilidade (opcional)</label>
             <select
-              value={habilidadeId}
-              disabled={!saberId || loadingHab}
-              onChange={(e) => setHabilidadeId(e.target.value ? Number(e.target.value) : "")}
+              value={skillId}
+              disabled={!descriptorId || loadingSkill}
+              onChange={(e) => setSkillId(e.target.value ? Number(e.target.value) : "")}
               className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
             >
               <option value="">Nenhuma</option>
-              {habilidades.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.codigo} — {h.titulo}
-                </option>
+              {skills.map((h) => (
+                <option key={h.id} value={h.id}>{h.code} — {h.name}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Enunciado */}
+        {/* Enunciado (title) */}
         <div>
           <label className="text-xs font-medium text-slate-500">
             Enunciado <ReqStar />
           </label>
           <div className="mt-2">
-            <RichEditor editor={enunciadoEd.editor} placeholder="Digite o enunciado…" />
+            <RichEditor editor={titleEd.editor} placeholder="Digite o enunciado…" />
           </div>
         </div>
 
         {/* Apoio */}
-        <Accordion
-          title="Apoio"
-          subtitle="Texto de apoio + imagem de apoio (opcionais)"
-          defaultOpen={false}
-        >
+        <Accordion title="Apoio" subtitle="Texto de apoio + imagem (opcionais)" defaultOpen={false}>
           <div>
-            <label className="text-xs font-medium text-slate-500">
-              Texto de apoio (opcional)
-            </label>
+            <label className="text-xs font-medium text-slate-500">Texto de apoio (opcional)</label>
             <div className="mt-2">
-              <RichEditor
-                editor={textoApoioEd.editor}
-                placeholder="Se houver texto base, cole aqui…"
-              />
+              <RichEditor editor={supportTextEd.editor} placeholder="Se houver texto base, cole aqui…" />
             </div>
           </div>
 
           <div className="mt-5">
-            <label className="text-xs font-medium text-slate-500">
-              Imagem de apoio (opcional)
-            </label>
+            <label className="text-xs font-medium text-slate-500">Imagem de apoio (opcional)</label>
 
             <div className="mt-2 flex items-start gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => pickSupportFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm"
-              />
+              <input type="file" accept="image/*" onChange={(e) => pickSupportFile(e.target.files?.[0] || null)} className="block w-full text-sm" />
 
-              {(suportePreview || (mode === "edit" ? currentSuporteUrl : "")) && !removeSuporte && (
-                <img
-                  src={suportePreview || currentSuporteUrl}
-                  alt="Imagem de apoio"
-                  className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
-                />
+              {(supportPreview || (mode === "edit" ? currentSupportUrl : "")) && !removeSupport && (
+                <img src={supportPreview || currentSupportUrl} alt="Imagem de apoio" className="h-20 w-20 rounded-lg border border-slate-200 object-cover" />
               )}
             </div>
 
-            {mode === "edit" && !!currentSuporteUrl && (
+            {mode === "edit" && !!currentSupportUrl && (
               <div className="mt-2 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setRemoveSuporte(true);
-                    setSuporteFile(null);
-                    if (suportePreview) URL.revokeObjectURL(suportePreview);
-                    setSuportePreview("");
+                    setRemoveSupport(true);
+                    setSupportFile(null);
+                    if (supportPreview) URL.revokeObjectURL(supportPreview);
+                    setSupportPreview("");
                   }}
                   className="text-sm text-red-600 hover:underline"
                 >
                   Remover imagem de apoio
                 </button>
-                {removeSuporte && (
-                  <span className="text-xs text-slate-500">(vai remover ao salvar)</span>
-                )}
+                {removeSupport && <span className="text-xs text-slate-500">(vai remover ao salvar)</span>}
               </div>
             )}
           </div>
 
           <div className="mt-4">
-            <label className="text-xs font-medium text-slate-500">
-              Referência da imagem (opcional)
-            </label>
+            <label className="text-xs font-medium text-slate-500">Referência da imagem (opcional)</label>
             <input
-              value={refImagem}
-              onChange={(e) => setRefImagem(e.target.value)}
+              value={imageReference}
+              onChange={(e) => setImageReference(e.target.value)}
               className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
               placeholder="Ex: fonte/autor/link…"
             />
@@ -595,26 +510,15 @@ export default function QuestaoForm({
             Comando <ReqStar />
           </label>
           <div className="mt-2">
-            <RichEditor
-              editor={comandoEd.editor}
-              placeholder="Ex: Assinale a alternativa correta…"
-            />
+            <RichEditor editor={commandEd.editor} placeholder="Ex: Assinale a alternativa correta…" />
           </div>
-
-          {triedSubmit && !hasMeaningfulHtml(comandoEd.getHtml()) && (
+          {triedSubmit && !hasMeaningfulHtml(commandEd.getHtml()) && (
             <p className="mt-2 text-xs text-red-600">O comando é obrigatório.</p>
           )}
         </div>
 
         {/* Alternativas */}
-        <Accordion
-          title={
-            <span>
-              Alternativas <ReqStar />
-            </span>
-          }
-          defaultOpen={true}
-        >
+        <Accordion title={<span>Alternativas <ReqStar /></span>} defaultOpen={true}>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3">
               {ALT_KEYS.map((k) => {
@@ -637,36 +541,14 @@ export default function QuestaoForm({
               })}
             </div>
 
-            {altAtiva === "A" && (
-              <div>
-                <RichEditor editor={altAEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="A" />
-              </div>
-            )}
-            {altAtiva === "B" && (
-              <div>
-                <RichEditor editor={altBEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="B" />
-              </div>
-            )}
-            {altAtiva === "C" && (
-              <div>
-                <RichEditor editor={altCEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="C" />
-              </div>
-            )}
-            {altAtiva === "D" && (
-              <div>
-                <RichEditor editor={altDEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="D" />
-              </div>
-            )}
-            {altAtiva === "E" && (
-              <div>
-                <RichEditor editor={altEEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="E" />
-              </div>
-            )}
+            {ALT_KEYS.map((k) => (
+              altAtiva === k ? (
+                <div key={k}>
+                  <RichEditor editor={altEditors[k].editor} placeholder="Digite a alternativa…" />
+                  <AltImagemUI keyAlt={k} />
+                </div>
+              ) : null
+            ))}
 
             <div className="mt-5 flex items-center gap-3">
               <label className="text-xs font-medium text-slate-500">
@@ -675,20 +557,14 @@ export default function QuestaoForm({
               <select
                 value={altCorreta}
                 onChange={(e) => {
-                  const v = e.target.value as Alternativa | "";
+                  const v = e.target.value as AltKey | "";
                   setAltCorreta(v);
-                  if (v) setAltAtiva(v as AltKey);
+                  if (v) setAltAtiva(v);
                 }}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
               >
-                <option value="" disabled>
-                  Selecione…
-                </option>
-                {ALTS.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
+                <option value="" disabled>Selecione…</option>
+                {ALT_KEYS.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </div>
           </div>
