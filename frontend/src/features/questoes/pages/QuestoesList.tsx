@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/auth/AuthContext";
@@ -10,7 +10,7 @@ function stripHtml(html: string) {
 }
 
 type CreatedAtPreset = "qualquer" | "hoje" | "7dias" | "mes" | "ano";
-type SortKey = "id" | "disciplina" | "privacidade" | "criado_por" | "created_at";
+type SortKey = "id" | "privacidade" | "criado_por" | "created_at";
 type SortDir = "asc" | "desc";
 
 const COLSPAN: Record<number, string> = {
@@ -22,49 +22,85 @@ const COLSPAN: Record<number, string> = {
   6: "col-span-6",
 };
 
-// ===== DTOs NOVOS =====
+// ===== DTOs =====
 type SubjectDTO = { id: number; name: string };
+
+type QuestionOptionDTO = {
+  id: number;
+  letter: "A" | "B" | "C" | "D" | "E";
+  option_text: string;
+  option_image: string | null;
+  correct: boolean;
+};
 
 type QuestionVersionDTO = {
   id: number;
-  version_number?: number;
-  // pode vir com nomes diferentes dependendo do serializer
-  statement_html?: string;
-  title?: string;
-  command?: string;
-  support_text?: string;
-  created_at?: string;
-  subject?: number;
-  descriptor?: number | null;
-  skill?: number | null;
+  question: number;
+  version_number: number;
+  title: string;
+  command: string;
+  support_text: string;
+  support_image: string | null;
+  image_reference: string | null;
+  subject: number;
+  descriptor: number | null;
+  skill: number | null;
+  annulled: boolean;
+  created_at: string;
+  options?: QuestionOptionDTO[];
 };
 
 type QuestionDTO = {
   id: number;
   private: boolean;
-  created_by: number; // id
-  created_by_username?: string; // se serializer expor
+  deleted: boolean;
+  created_by: number; // BigInteger id
   created_at: string;
-  subject?: number; // id do subject, se serializer expor
-  subject_name?: string | null; // se serializer expor
+  subject_name?: string | null;
   versions?: QuestionVersionDTO[];
+};
+
+type Paginated<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 };
 
 function pickLatestVersion(versions?: QuestionVersionDTO[]) {
   if (!versions?.length) return null;
-  return [...versions].sort((a, b) => (b.version_number ?? 0) - (a.version_number ?? 0))[0];
+  return [...versions].sort((a, b) => {
+    const an = a.version_number ?? 0;
+    const bn = b.version_number ?? 0;
+    if (bn !== an) return bn - an;
+    return String(b.created_at).localeCompare(String(a.created_at));
+  })[0];
+}
+
+function toOrdering(key: SortKey, dir: SortDir) {
+  const field =
+    key === "id"
+      ? "id"
+      : key === "privacidade"
+        ? "private"
+        : key === "criado_por"
+          ? "created_by"
+          : "created_at";
+
+  return dir === "desc" ? `-${field}` : field;
 }
 
 export default function QuestoesList() {
   const nav = useNavigate();
   const auth = useAuth() as any;
 
-  // se teu AuthContext tiver id, usamos; se não tiver, não libera editar/excluir
+  // se teu AuthContext não tiver id ainda, beleza: libera editar/abrir como antes
   const meId: number | undefined = auth?.id;
 
   const [items, setItems] = useState<QuestionDTO[]>([]);
   const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
   // busca
   const [q, setQ] = useState("");
@@ -130,29 +166,40 @@ export default function QuestoesList() {
   async function load(searchText: string) {
     const reqId = ++reqIdRef.current;
     setLoading(true);
+    setErr("");
 
     try {
-      const { data } = await api.get("/questions/", {
-        params: buildParams(searchText),
-      });
+      const { data } = await api.get<Paginated<QuestionDTO> | QuestionDTO[]>(
+        "/questions/",
+        { params: buildParams(searchText) },
+      );
 
       if (reqId !== reqIdRef.current) return;
 
-      const list = Array.isArray(data) ? data : (data.results ?? []);
+      const list = Array.isArray(data) ? data : (data?.results ?? []);
       setItems(list);
+    } catch (e: any) {
+      if (reqId !== reqIdRef.current) return;
+      setItems([]);
+      setErr(
+        e?.response?.data?.detail || "Não foi possível carregar as questões.",
+      );
     } finally {
       if (reqId === reqIdRef.current) setLoading(false);
     }
   }
 
-  // carrega subjects
+  // carrega subjects (suporta paginado OU array)
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get<SubjectDTO[]>("/subjects/");
-        setSubjects(data);
+        const { data } = await api.get<Paginated<SubjectDTO> | SubjectDTO[]>(
+          "/subjects/",
+        );
+        const list = Array.isArray(data) ? data : (data?.results ?? []);
+        setSubjects(list);
       } catch {
-        // ok
+        setSubjects([]);
       }
     })();
   }, []);
@@ -187,10 +234,7 @@ export default function QuestoesList() {
   }
 
   function openQuestao(it: QuestionDTO) {
-    // só permite editar se souber quem é o usuário logado
-    const isMine = typeof meId === "number" ? it.created_by === meId : false;
-    if (isMine) nav(`/questoes/${it.id}/editar`);
-    else nav(`/questoes/${it.id}`);
+    nav(`/questoes/${it.id}`);
   }
 
   function toggleSort(key: SortKey) {
@@ -203,11 +247,11 @@ export default function QuestoesList() {
   }
 
   async function onDelete(it: QuestionDTO) {
-    const isMine = typeof meId === "number" ? it.created_by === meId : false;
+    const isMine = typeof meId === "number" ? it.created_by === meId : true;
     if (!isMine) return;
 
     const ok = window.confirm(
-      `Tem certeza que deseja excluir a questão #${it.id}? Essa ação não pode ser desfeita.`
+      `Tem certeza que deseja excluir a questão #${it.id}? Essa ação não pode ser desfeita.`,
     );
     if (!ok) return;
 
@@ -218,6 +262,12 @@ export default function QuestoesList() {
       window.alert(e?.response?.data?.detail || "Não foi possível excluir.");
     }
   }
+
+  const subjectNameById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of subjects) m.set(s.id, s.name);
+    return m;
+  }, [subjects]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -231,8 +281,19 @@ export default function QuestoesList() {
           <div className="mt-2 flex items-center gap-2">
             <div className="relative flex-1 min-w-0">
               <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.6-4.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35m1.6-4.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </span>
 
@@ -240,7 +301,7 @@ export default function QuestoesList() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onEnter}
-                placeholder="Enunciado (texto da versão)"
+                placeholder="Enunciado"
                 className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-200"
               />
 
@@ -263,8 +324,19 @@ export default function QuestoesList() {
               aria-label="Buscar"
               title="Buscar"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.6-4.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-4.35-4.35m1.6-4.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </button>
           </div>
@@ -275,8 +347,19 @@ export default function QuestoesList() {
               onClick={() => setFiltersOpen(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 5h18M6 12h12M10 19h4"
+                />
               </svg>
               <span>Filtros</span>
 
@@ -297,7 +380,9 @@ export default function QuestoesList() {
 
           <div className="mt-3 hidden lg:flex items-center justify-between">
             <div className="text-xs text-slate-500">
-              {loading ? "Carregando…" : `${items.length} ${items.length === 1 ? "questão" : "questões"}`}
+              {loading
+                ? "Carregando…"
+                : `${items.length} ${items.length === 1 ? "questão" : "questões"}`}
             </div>
 
             <Link
@@ -309,9 +394,17 @@ export default function QuestoesList() {
           </div>
 
           <div className="mt-3 text-xs text-slate-500 lg:hidden">
-            {loading ? "Carregando…" : `${items.length} ${items.length === 1 ? "questão" : "questões"}`}
+            {loading
+              ? "Carregando…"
+              : `${items.length} ${items.length === 1 ? "questão" : "questões"}`}
           </div>
         </div>
+
+        {err && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {err}
+          </div>
+        )}
 
         {/* MOBILE: cards */}
         <div className="space-y-3 lg:hidden">
@@ -326,15 +419,27 @@ export default function QuestoesList() {
           ) : (
             items.map((it) => {
               const v = pickLatestVersion(it.versions);
-              const resumo = stripHtml(v?.statement_html || v?.title || "");
-              const isMine = typeof meId === "number" ? it.created_by === meId : false;
+              const resumo = stripHtml(v?.title || "");
+              const isMine =
+                typeof meId === "number" ? it.created_by === meId : true;
+
+              const subjectLabel =
+                it.subject_name ||
+                (v?.subject ? subjectNameById.get(v.subject) : null) ||
+                (v?.subject ? `Disciplina #${v.subject}` : "-");
 
               return (
-                <div key={it.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div
+                  key={it.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-slate-500">
-                        ID <span className="text-slate-800 font-semibold">#{it.id}</span>
+                        ID{" "}
+                        <span className="text-slate-800 font-semibold">
+                          #{it.id}
+                        </span>
                       </div>
 
                       <button
@@ -343,7 +448,7 @@ export default function QuestoesList() {
                         className="mt-1 text-left text-sm font-semibold text-slate-900 hover:underline line-clamp-2"
                         title={isMine ? "Editar questão" : "Ver detalhes"}
                       >
-                        {resumo || "(Sem enunciado na versão)"}
+                        {resumo || "(Sem enunciado)"}
                       </button>
                     </div>
 
@@ -355,7 +460,16 @@ export default function QuestoesList() {
                         title="Excluir questão"
                         aria-label="Excluir questão"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M3 6h18" />
                           <path d="M8 6V4h8v2" />
                           <path d="M19 6l-1 14H6L5 6" />
@@ -368,7 +482,7 @@ export default function QuestoesList() {
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
-                      {it.subject_name ?? "-"}
+                      {subjectLabel}
                     </span>
 
                     {it.private ? (
@@ -384,7 +498,7 @@ export default function QuestoesList() {
                     <span className="text-xs text-slate-500">
                       por{" "}
                       <span className="text-slate-700">
-                        {it.created_by_username ?? it.created_by ?? "-"}
+                        {it.created_by ?? "-"}
                       </span>
                     </span>
                   </div>
@@ -396,18 +510,43 @@ export default function QuestoesList() {
 
         {/* DESKTOP: tabela */}
         <div className="hidden lg:block rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
-          <div className="min-w-[780px]">
+          <div className="min-w-[600px]">
             <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs text-slate-600 bg-slate-50 border-b border-slate-200">
-              <Th colSpan={1} label="Código" active={sortKey === "id"} dir={sortDir} onClick={() => toggleSort("id")} />
-              <div className="col-span-5 flex items-center">Enunciado (última versão)</div>
-
-              <Th colSpan={2} label="Disciplina" active={sortKey === "disciplina"} dir={sortDir} onClick={() => toggleSort("disciplina")} />
-              <Th colSpan={2} label="Visibilidade" align="center" active={sortKey === "privacidade"} dir={sortDir} onClick={() => toggleSort("privacidade")} />
-              <Th colSpan={2} label="Criado por" align="left" active={sortKey === "criado_por"} dir={sortDir} onClick={() => toggleSort("criado_por")} />
+              <Th
+                colSpan={1}
+                label="Código"
+                active={sortKey === "id"}
+                dir={sortDir}
+                onClick={() => toggleSort("id")}
+              />
+              <div className="col-span-5 flex items-center text-left">
+                Enunciado
+              </div>
+              <div className="col-span-2 flex items-center text-left">
+                Disciplina
+              </div>
+              <Th
+                colSpan={2}
+                label="Visibilidade"
+                align="center"
+                active={sortKey === "privacidade"}
+                dir={sortDir}
+                onClick={() => toggleSort("privacidade")}
+              />
+              <Th
+                colSpan={2}
+                label="Criado por"
+                align="left"
+                active={sortKey === "criado_por"}
+                dir={sortDir}
+                onClick={() => toggleSort("criado_por")}
+              />
             </div>
 
             {loading ? (
-              <div className="px-4 py-8 text-sm text-slate-500">Carregando…</div>
+              <div className="px-4 py-8 text-sm text-slate-500">
+                Carregando…
+              </div>
             ) : items.length === 0 ? (
               <div className="px-4 py-10 text-sm text-slate-500 text-center">
                 Nenhuma questão encontrada.
@@ -415,11 +554,20 @@ export default function QuestoesList() {
             ) : (
               items.map((it) => {
                 const v = pickLatestVersion(it.versions);
-                const resumo = stripHtml(v?.statement_html || v?.title || "");
-                const isMine = typeof meId === "number" ? it.created_by === meId : false;
+                const resumo = stripHtml(v?.title || "");
+                const isMine =
+                  typeof meId === "number" ? it.created_by === meId : true;
+
+                const subjectLabel =
+                  it.subject_name ||
+                  (v?.subject ? subjectNameById.get(v.subject) : null) ||
+                  (v?.subject ? `Disciplina #${v.subject}` : "-");
 
                 return (
-                  <div key={it.id} className="grid grid-cols-12 gap-2 px-4 py-3 border-t border-slate-200 text-sm items-center hover:bg-slate-50 transition">
+                  <div
+                    key={it.id}
+                    className="grid grid-cols-12 gap-2 px-4 py-3 border-t border-slate-200 text-sm items-center hover:bg-slate-50 transition"
+                  >
                     <div className="col-span-1 text-slate-700">{it.id}</div>
 
                     <button
@@ -428,11 +576,11 @@ export default function QuestoesList() {
                       className="col-span-5 text-left text-slate-900 hover:underline"
                       title={isMine ? "Editar questão" : "Ver detalhes"}
                     >
-                      {resumo || "(Sem enunciado na versão)"}
+                      {resumo || "(Sem enunciado)"}
                     </button>
 
                     <div className="col-span-2 text-slate-700 truncate">
-                      {it.subject_name ?? "-"}
+                      {subjectLabel}
                     </div>
 
                     <div className="col-span-2 flex justify-center">
@@ -448,7 +596,7 @@ export default function QuestoesList() {
                     </div>
 
                     <div className="col-span-2 text-left text-slate-700 truncate">
-                      {it.created_by_username ?? it.created_by ?? "-"}
+                      {it.created_by ?? "-"}
                     </div>
                   </div>
                 );
@@ -467,35 +615,53 @@ export default function QuestoesList() {
 
           <div className="mt-4 space-y-5 text-sm">
             <FilterGroup title="Por disciplina">
-              <FilterLink active={subjectId === "todos"} onClick={() => setSubjectId("todos")}>
+              <FilterLink
+                active={subjectId === "todos"}
+                onClick={() => setSubjectId("todos")}
+              >
                 Todos
               </FilterLink>
 
-              {subjects.map((d) => (
+              {subjects.map((s) => (
                 <FilterLink
-                  key={d.id}
-                  active={subjectId === d.id}
-                  onClick={() => setSubjectId(d.id)}
+                  key={s.id}
+                  active={subjectId === s.id}
+                  onClick={() => setSubjectId(s.id)}
                 >
-                  {d.name}
+                  {s.name}
                 </FilterLink>
               ))}
             </FilterGroup>
 
             <FilterGroup title="Por criado em">
-              <FilterLink active={criadoEm === "qualquer"} onClick={() => setCriadoEm("qualquer")}>
+              <FilterLink
+                active={criadoEm === "qualquer"}
+                onClick={() => setCriadoEm("qualquer")}
+              >
                 Qualquer data
               </FilterLink>
-              <FilterLink active={criadoEm === "hoje"} onClick={() => setCriadoEm("hoje")}>
+              <FilterLink
+                active={criadoEm === "hoje"}
+                onClick={() => setCriadoEm("hoje")}
+              >
                 Hoje
               </FilterLink>
-              <FilterLink active={criadoEm === "7dias"} onClick={() => setCriadoEm("7dias")}>
+              <FilterLink
+                active={criadoEm === "7dias"}
+                onClick={() => setCriadoEm("7dias")}
+              >
                 Últimos 7 dias
               </FilterLink>
-              <FilterLink active={criadoEm === "mes"} onClick={() => setCriadoEm("mes")}>
+              <FilterLink
+                active={criadoEm === "mes"}
+                onClick={() => setCriadoEm("mes")}
+              >
                 Este mês
               </FilterLink>
-              <FilterLink active={criadoEm === "ano"} onClick={() => setCriadoEm("ano")}>
+              <FilterLink
+                active={criadoEm === "ano"}
+                onClick={() => setCriadoEm("ano")}
+              >
                 Este ano
               </FilterLink>
             </FilterGroup>
@@ -518,7 +684,12 @@ export default function QuestoesList() {
       {/* BOTTOM SHEET FILTROS (mobile) */}
       {filtersOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/30" onClick={() => setFiltersOpen(false)} aria-label="Fechar filtros" />
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setFiltersOpen(false)}
+            aria-label="Fechar filtros"
+          />
 
           <div className="absolute inset-x-0 bottom-0">
             <div className="rounded-t-2xl bg-white shadow-2xl border-t border-slate-200">
@@ -536,7 +707,12 @@ export default function QuestoesList() {
                   )}
                 </div>
 
-                <button type="button" onClick={() => setFiltersOpen(false)} className="text-slate-500 hover:text-slate-700" aria-label="Fechar">
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="text-slate-500 hover:text-slate-700"
+                  aria-label="Fechar"
+                >
                   ✕
                 </button>
               </div>
@@ -544,23 +720,55 @@ export default function QuestoesList() {
               <div className="px-5 pb-24 max-h-[70vh] overflow-auto">
                 <div className="space-y-5 text-sm">
                   <FilterGroup title="Por disciplina">
-                    <FilterLink active={subjectId === "todos"} onClick={() => setSubjectId("todos")}>
+                    <FilterLink
+                      active={subjectId === "todos"}
+                      onClick={() => setSubjectId("todos")}
+                    >
                       Todos
                     </FilterLink>
 
-                    {subjects.map((d) => (
-                      <FilterLink key={d.id} active={subjectId === d.id} onClick={() => setSubjectId(d.id)}>
-                        {d.name}
+                    {subjects.map((s) => (
+                      <FilterLink
+                        key={s.id}
+                        active={subjectId === s.id}
+                        onClick={() => setSubjectId(s.id)}
+                      >
+                        {s.name}
                       </FilterLink>
                     ))}
                   </FilterGroup>
 
                   <FilterGroup title="Por criado em">
-                    <FilterLink active={criadoEm === "qualquer"} onClick={() => setCriadoEm("qualquer")}>Qualquer data</FilterLink>
-                    <FilterLink active={criadoEm === "hoje"} onClick={() => setCriadoEm("hoje")}>Hoje</FilterLink>
-                    <FilterLink active={criadoEm === "7dias"} onClick={() => setCriadoEm("7dias")}>Últimos 7 dias</FilterLink>
-                    <FilterLink active={criadoEm === "mes"} onClick={() => setCriadoEm("mes")}>Este mês</FilterLink>
-                    <FilterLink active={criadoEm === "ano"} onClick={() => setCriadoEm("ano")}>Este ano</FilterLink>
+                    <FilterLink
+                      active={criadoEm === "qualquer"}
+                      onClick={() => setCriadoEm("qualquer")}
+                    >
+                      Qualquer data
+                    </FilterLink>
+                    <FilterLink
+                      active={criadoEm === "hoje"}
+                      onClick={() => setCriadoEm("hoje")}
+                    >
+                      Hoje
+                    </FilterLink>
+                    <FilterLink
+                      active={criadoEm === "7dias"}
+                      onClick={() => setCriadoEm("7dias")}
+                    >
+                      Últimos 7 dias
+                    </FilterLink>
+                    <FilterLink
+                      active={criadoEm === "mes"}
+                      onClick={() => setCriadoEm("mes")}
+                    >
+                      Este mês
+                    </FilterLink>
+                    <FilterLink
+                      active={criadoEm === "ano"}
+                      onClick={() => setCriadoEm("ano")}
+                    >
+                      Este ano
+                    </FilterLink>
                   </FilterGroup>
                 </div>
               </div>
@@ -589,29 +797,12 @@ export default function QuestoesList() {
                   </button>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function toOrdering(key: SortKey, dir: SortDir) {
-  // ⚠️ ordering precisa ser campo do MODEL Question (não da version)
-  const field =
-    key === "id"
-      ? "id"
-      : key === "disciplina"
-        ? "subject__name"
-        : key === "privacidade"
-          ? "private"
-          : key === "criado_por"
-            ? "created_by"
-            : "created_at";
-
-  return dir === "desc" ? `-${field}` : field;
 }
 
 function Th({
@@ -644,12 +835,22 @@ function Th({
       title="Ordenar"
     >
       <span>{label}</span>
-      {active && <span className="text-[10px] opacity-70">{dir === "asc" ? "▲" : "▼"}</span>}
+      {active && (
+        <span className="text-[10px] opacity-70">
+          {dir === "asc" ? "▲" : "▼"}
+        </span>
+      )}
     </button>
   );
 }
 
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <div className="text-xs font-semibold text-slate-700 mb-2">{title}</div>
@@ -672,7 +873,9 @@ function FilterLink({
       type="button"
       onClick={onClick}
       className={`block w-full text-left rounded px-2 py-1 ${
-        active ? "text-slate-900 font-semibold bg-slate-100" : "text-slate-600 hover:bg-slate-50"
+        active
+          ? "text-slate-900 font-semibold bg-slate-100"
+          : "text-slate-600 hover:bg-slate-50"
       }`}
     >
       {children}
