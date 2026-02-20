@@ -1,4 +1,5 @@
 import json
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import (
@@ -43,6 +44,30 @@ class SkillSerializer(serializers.ModelSerializer):
 # =====================
 
 class QuestionOptionSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        option_text = attrs.get("option_text")
+        option_image = attrs.get("option_image")
+
+        has_text = bool(str(option_text or "").strip())
+        has_image = bool(option_image)
+
+        if has_text and has_image:
+            raise serializers.ValidationError(
+                {"option": "Cada alternativa deve ter somente texto ou imagem, nunca ambos."}
+            )
+        if not has_text and not has_image:
+            raise serializers.ValidationError(
+                {"option": "Cada alternativa deve ter conteúdo: texto ou imagem."}
+            )
+
+        if has_text:
+            attrs["option_text"] = str(option_text).strip()
+            attrs["option_image"] = None
+        else:
+            attrs["option_text"] = None
+
+        return attrs
+
     class Meta:
         model = QuestionOption
         fields = ["id", "letter", "option_text", "option_image", "correct"]
@@ -106,7 +131,7 @@ class QuestionSerializer(serializers.ModelSerializer):
             "subject_name",
             "options_payload",
         ]
-        read_only_fields = ["deleted", "created_at", "versions", "subject_name"]
+        read_only_fields = ["created_by", "deleted", "created_at", "versions", "subject_name"]
 
     def get_subject_name(self, obj):
         v = obj.versions.order_by("-version_number", "-created_at").first()
@@ -133,31 +158,74 @@ class QuestionSerializer(serializers.ModelSerializer):
         if not isinstance(data, list):
             raise serializers.ValidationError("options_payload deve ser uma lista.")
 
-        if not (2 <= len(data) <= 5):
-            raise serializers.ValidationError("Envie 2 a 5 alternativas.")
+        if not (4 <= len(data) <= 5):
+            raise serializers.ValidationError("A questão deve ter de 4 a 5 alternativas.")
 
         # valida 1 correta
         correct_count = sum(1 for o in data if bool(o.get("correct")))
         if correct_count != 1:
             raise serializers.ValidationError("Marque exatamente 1 alternativa correta.")
 
-        # valida letters únicas
-        letters = [str(o.get("letter", "")).upper() for o in data]
-        if any(l not in ["A", "B", "C", "D", "E"] for l in letters):
-            raise serializers.ValidationError("Cada alternativa deve ter letter A-E.")
-        if len(set(letters)) != len(letters):
+        expected_letters = ["A", "B", "C", "D"] if len(data) == 4 else ["A", "B", "C", "D", "E"]
+        normalized_data = []
+        informed_letters = []
+
+        for index, opt in enumerate(data):
+            if not isinstance(opt, dict):
+                raise serializers.ValidationError("Cada alternativa deve ser um objeto.")
+
+            informed_letter = str(opt.get("letter", "") or "").strip().upper()
+            if informed_letter:
+                informed_letters.append(informed_letter)
+
+            normalized = dict(opt)
+            normalized["letter"] = informed_letter or expected_letters[index]
+            normalized_data.append(normalized)
+
+        if informed_letters and len(set(informed_letters)) != len(informed_letters):
             raise serializers.ValidationError("Não repita a mesma letter nas alternativas.")
 
-        return data
+        normalized_letters = [opt["letter"] for opt in normalized_data]
+        if normalized_letters != expected_letters:
+            letters_text = ", ".join(expected_letters)
+            raise serializers.ValidationError(
+                f"As alternativas devem seguir a ordem {letters_text}."
+            )
+
+        return normalized_data
 
     def _create_version_and_options(self, question: Question, req):
         # campos da versão vêm do FormData
         subject_id = req.data.get("subject")
         if not subject_id:
             raise serializers.ValidationError({"subject": "Obrigatório."})
+        title = req.data.get("title")
+        if title is None or str(title).strip() == "":
+            raise serializers.ValidationError({"title": "Obrigatório."})
+        command = req.data.get("command")
+        if command is None or str(command).strip() == "":
+            raise serializers.ValidationError({"command": "Obrigatório."})
 
         descriptor_id = req.data.get("descriptor") or None
         skill_id = req.data.get("skill") or None
+        raw = req.data.get("options_payload")
+        options = self._parse_options_payload(raw)
+
+        for opt in options:
+            letter = str(opt.get("letter")).upper()
+            text_value = str(opt.get("option_text", "") or "").strip()
+            file_key = f"option_image_{letter}"
+            has_text = bool(text_value)
+            has_image = file_key in req.FILES
+
+            if has_text and has_image:
+                raise serializers.ValidationError(
+                    {"options_payload": f"Alternativa {letter}: envie texto ou imagem, não os dois."}
+                )
+            if not has_text and not has_image:
+                raise serializers.ValidationError(
+                    {"options_payload": f"Alternativa {letter}: informe texto ou imagem."}
+                )
 
         # versão: pega maior e soma 1
         last = question.versions.order_by("-version_number", "-created_at").first()
@@ -166,8 +234,8 @@ class QuestionSerializer(serializers.ModelSerializer):
         version = QuestionVersion.objects.create(
             question=question,
             version_number=next_version,
-            title=req.data.get("title", "") or "",
-            command=req.data.get("command", "") or "",
+            title=title,
+            command=command,
             support_text=req.data.get("support_text", "") or "",
             image_reference=req.data.get("image_reference", "") or "",
             subject_id=int(subject_id),
@@ -181,15 +249,13 @@ class QuestionSerializer(serializers.ModelSerializer):
             version.support_image = req.FILES["support_image"]
             version.save(update_fields=["support_image"])
 
-        raw = req.data.get("options_payload")
-        options = self._parse_options_payload(raw)
-
         for opt in options:
             letter = str(opt.get("letter")).upper()
+            text_value = str(opt.get("option_text", "") or "").strip()
             option = QuestionOption.objects.create(
                 question_version=version,
                 letter=letter,
-                option_text=opt.get("option_text", "") or "",
+                option_text=text_value or None,
                 correct=bool(opt.get("correct")),
             )
 
@@ -214,15 +280,16 @@ class QuestionSerializer(serializers.ModelSerializer):
             if getattr(req, "user", None) and req.user.is_authenticated:
                 validated_data["created_by"] = req.user.id
 
-        question = Question.objects.create(
-            private=bool(req.data.get("private", False) in ["true", "True", "1", True]),
-            deleted=False,
-            created_by=validated_data.get("created_by", 1),
-        )
+        with transaction.atomic():
+            question = Question.objects.create(
+                private=bool(req.data.get("private", False) in ["true", "True", "1", True]),
+                deleted=False,
+                created_by=validated_data.get("created_by", 1),
+            )
 
-        # primeira versão + opções
-        self._create_version_and_options(question, req)
-        return question
+            # primeira versão + opções
+            self._create_version_and_options(question, req)
+            return question
 
     # ---------------------
     # UPDATE (cria NOVA versão)
@@ -231,28 +298,29 @@ class QuestionSerializer(serializers.ModelSerializer):
     def update(self, instance: Question, validated_data):
         req = self._get_request()
 
-        # permite mudar private
-        if "private" in req.data:
-            instance.private = bool(req.data.get("private") in ["true", "True", "1", True])
-            instance.save(update_fields=["private"])
+        with transaction.atomic():
+            # permite mudar private
+            if "private" in req.data:
+                instance.private = bool(req.data.get("private") in ["true", "True", "1", True])
+                instance.save(update_fields=["private"])
 
-        # sempre cria uma nova versão (modelo versionado)
-        new_version = self._create_version_and_options(instance, req)
+            # sempre cria uma nova versão (modelo versionado)
+            new_version = self._create_version_and_options(instance, req)
 
-        # remoção de suporte (só afeta a nova versão, normalmente é isso que vc quer)
-        if req.data.get("remove_support_image") in ["1", 1, True, "true", "True"]:
-            if new_version.support_image:
-                new_version.support_image.delete(save=False)
-            new_version.support_image = None
-            new_version.save(update_fields=["support_image"])
+            # remoção de suporte (só afeta a nova versão, normalmente é isso que vc quer)
+            if req.data.get("remove_support_image") in ["1", 1, True, "true", "True"]:
+                if new_version.support_image:
+                    new_version.support_image.delete(save=False)
+                new_version.support_image = None
+                new_version.save(update_fields=["support_image"])
 
-        # remoção de imagem de alternativa por letra (na nova versão)
-        for letter in ["A", "B", "C", "D", "E"]:
-            if req.data.get(f"remove_option_image_{letter}") in ["1", 1, True, "true", "True"]:
-                opt = new_version.options.filter(letter=letter).first()
-                if opt and opt.option_image:
-                    opt.option_image.delete(save=False)
-                    opt.option_image = None
-                    opt.save(update_fields=["option_image"])
+            # remoção de imagem de alternativa por letra (na nova versão)
+            for letter in ["A", "B", "C", "D", "E"]:
+                if req.data.get(f"remove_option_image_{letter}") in ["1", 1, True, "true", "True"]:
+                    opt = new_version.options.filter(letter=letter).first()
+                    if opt and opt.option_image:
+                        opt.option_image.delete(save=False)
+                        opt.option_image = None
+                        opt.save(update_fields=["option_image"])
 
-        return instance
+            return instance

@@ -2,10 +2,12 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
+
 from .filters import QuestionFilter
 
-from .models import Subject, Topic, Descriptor, Skill, Question
+from .models import Subject, Topic, Descriptor, Skill, Question, BookletItem
 from .serializers import (
     SubjectSerializer,
     TopicSerializer,
@@ -13,7 +15,7 @@ from .serializers import (
     SkillSerializer,
     QuestionSerializer,
 )
-from .permissions import IsOwnerOrReadOnly
+# from .permissions import IsOwnerOrReadOnly
 
 
 class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
@@ -27,7 +29,7 @@ class TopicViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Topic.objects.select_related("subject")
+        qs = Topic.objects.select_related("subject").order_by("description", "id")
         subject_id = self.request.query_params.get("subject")
         return qs.filter(subject_id=subject_id) if subject_id else qs
 
@@ -59,7 +61,7 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
             "descriptor",
             "descriptor__topic",
             "descriptor__topic__subject",
-        )
+        ).order_by("code", "id")
 
         subject_id = self.request.query_params.get("subject")
         if subject_id:
@@ -70,32 +72,52 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
 
 class QuestionViewSet(viewsets.ModelViewSet):
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated]  # depois vc volta com IsOwnerOrReadOnly ajustado
     parser_classes = [MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend]
     filterset_class = QuestionFilter
 
-
     def get_queryset(self):
         user = self.request.user
-        qs = Question.objects.select_related(
-            "subject",
-            "skill",
-            "created_by",
-        ).prefetch_related("versions", "options")
 
+        qs = (
+            Question.objects
+            .filter(deleted=False)  # se você usa soft delete
+            .prefetch_related(
+                "versions",
+                "versions__options",
+            )
+        )
+
+        # como created_by é BigInteger (id), compare com user.id
         if not user.is_superuser:
-            qs = qs.filter(Q(is_private=False) | Q(created_by=user))
+            qs = qs.filter(Q(private=False) | Q(created_by=user.id))
 
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(
-                Q(versions__statement_html__icontains=search)
-                | Q(subject__name__icontains=search)
-                | Q(skill__code__icontains=search)
+                Q(versions__title__icontains=search)
+                | Q(versions__command__icontains=search)
+                | Q(versions__support_text__icontains=search)
+                | Q(versions__subject__name__icontains=search)
+                | Q(versions__skill__code__icontains=search)
+                | Q(versions__skill__name__icontains=search)
             ).distinct()
 
         return qs.order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # created_by é BigInteger, então salva o id do user
+        serializer.save(created_by=self.request.user.id)
+
+    def perform_destroy(self, instance):
+        if instance.created_by != self.request.user.id:
+            raise PermissionDenied("Você só pode remover questões criadas por você.")
+
+        in_use = BookletItem.objects.filter(question_version__question=instance).exists()
+        if in_use:
+            raise ValidationError({"detail": "Esta questão está vinculada a um caderno e não pode ser removida."})
+
+        # Soft delete para manter histórico e evitar deleção física
+        instance.deleted = True
+        instance.save(update_fields=["deleted"])
