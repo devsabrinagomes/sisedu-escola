@@ -3,17 +3,30 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    # auth jwt
+    # ========================
+    # JWT AUTH
+    # ========================
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
-    # api do sistema
+    # ========================
+    # API SISTEMA
+    # ========================
     path("api/", include("banco.urls")),
+]
 
-    ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Servir MEDIA apenas em desenvolvimento
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT
+    )

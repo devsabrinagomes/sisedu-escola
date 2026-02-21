@@ -1,299 +1,269 @@
-import re
-from django.conf import settings
-from django.core.exceptions import ValidationError
+import os
+import uuid
 from django.db import models
-from django.db.models import Q
+from django.db.models import UniqueConstraint, Index
+from django.utils import timezone
 
+def rename_upload_question(self, filename):
+    file_name, file_extension = os.path.splitext(filename)
+    filename = "%s%s" % (uuid.uuid4(), file_extension)
 
-COD_SABER_RE = re.compile(r"^[A-Z]{2,5}\.S\d{2}$")          # MAT.S01
-COD_HABIL_RE = re.compile(r"^[A-Z]{2,5}\.S\d{2}\.H\d{2}$")  # MAT.S01.H01
+    return os.path.join('upload/', filename)
 
+def rename_upload_answer(self, filename):
+    file_name, file_extension = os.path.splitext(filename)
+    filename = "%s%s" % (uuid.uuid4(), file_extension)
 
+    return os.path.join('upload_answer/', filename)
 
-def next_code(model_cls, prefix: str, width: int = 4) -> str:
-    last = (
-        model_cls.objects
-        .filter(codigo__startswith=f"{prefix}-")
-        .order_by("-codigo")
-        .values_list("codigo", flat=True)
-        .first()
-    )
-    n = int(last.split("-")[1]) + 1 if last else 1
-    return f"{prefix}-{n:0{width}d}"
-
-
-class Disciplina(models.Model):
-    sigla = models.CharField(max_length=5, unique=True)
-    nome = models.CharField("Nome", max_length=120, unique=True)
-
-    class Meta:
-        verbose_name = "Disciplina"
-        verbose_name_plural = "Disciplinas"
-        ordering = ["nome"]
+class Subject(models.Model):
+    """
+    Model para Disciplina
+    """
+    name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
-        return self.nome
+        return self.name
 
-
-class Saber(models.Model):
-    disciplina = models.ForeignKey(
-        Disciplina,
-        on_delete=models.PROTECT,
-        related_name="saberes",
-        verbose_name="Disciplina",
-    )
-    codigo = models.CharField("Código", max_length=20, blank=True, default="")
-    titulo = models.CharField("Título", max_length=200)
+class Topic(models.Model):
+    """
+    Model para Tópico
+    """
+    description = models.TextField()
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, null=True)
 
     class Meta:
-        verbose_name = "Saber"
-        verbose_name_plural = "Saberes"
-        ordering = ["disciplina__nome", "codigo", "titulo"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["disciplina", "codigo"],
-                name="uniq_saber_codigo_por_disciplina",
+            UniqueConstraint(
+                fields=["subject", "description"],
+                name="uq_topic_subject_description"
             )
         ]
 
-    def clean(self):
-        if self.codigo and not COD_SABER_RE.match(self.codigo):
-            raise ValidationError({"codigo": "Use o padrão MAT.S01 (sigla + .S + 2 dígitos)."})
-        super().clean()
-
-    def save(self, *args, **kwargs):
-        if not self.codigo:
-            sigla = (self.disciplina.sigla or "").upper().strip()
-            ultimo = (
-                Saber.objects.filter(disciplina=self.disciplina, codigo__startswith=f"{sigla}.S")
-                .order_by("-codigo")
-                .values_list("codigo", flat=True)
-                .first()
-            )
-            n = int(ultimo.split(".S")[1]) + 1 if ultimo else 1
-            self.codigo = f"{sigla}.S{n:02d}"
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"{self.codigo} - {self.titulo}"
+        return self.description
 
-
-class Habilidade(models.Model):
-    saber = models.ForeignKey(
-        Saber,
-        on_delete=models.PROTECT,
-        related_name="habilidades",
-        verbose_name="Saber",
-    )
-    codigo = models.CharField("Código", max_length=30, blank=True, default="")
-    titulo = models.CharField("Título", max_length=200)
+class Descriptor(models.Model):
+    """
+    Model para Saber(antigo Descritor)
+    """
+    name = models.TextField(unique=True)
+    code = models.CharField(max_length=10, unique=True)
+    topic = models.ForeignKey(Topic, on_delete=models.PROTECT, null=True)
 
     class Meta:
-        verbose_name = "Habilidade"
-        verbose_name_plural = "Habilidades"
-        ordering = ["saber__disciplina__nome", "saber__codigo", "codigo", "titulo"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["saber", "codigo"],
-                name="uniq_habilidade_codigo_por_saber",
+            UniqueConstraint(
+                fields=["topic", "code"],
+                name="uq_descriptor_topic_code"
+            )
+        ]
+    
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+    
+class Skill(models.Model):
+    """
+    Model para Habilidade
+    """
+    name = models.TextField(unique=True)
+    code = models.CharField(max_length=10, unique=True)
+    descriptor = models.ForeignKey(Descriptor, on_delete=models.PROTECT, related_name="skills")
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["descriptor", "code"],
+                name="uq_skill_descriptor_code"
             )
         ]
 
-    def clean(self):
-        if self.codigo and not COD_HABIL_RE.match(self.codigo):
-            raise ValidationError({"codigo": "Use o padrão MAT.S01.H01 (sigla + .S + 2 dígitos + .H + 2 dígitos)."})
-        # se digitarem manualmente, garante que começa com o saber certo
-        if self.codigo and self.saber_id and not self.codigo.startswith(self.saber.codigo + ".H"):
-            raise ValidationError({"codigo": "O código da habilidade precisa começar com o código do saber (ex: MAT.S01.H01)."})
-        super().clean()
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+    
+class LegacyMap(models.Model):
+    """
+    Tabela de importação de scripts do SISEDU para o SISEDU_ESCOLA
+    """
 
-    def save(self, *args, **kwargs):
-        if not self.codigo:
-            prefix = f"{self.saber.codigo}.H"  # ex: MAT.S01.H
-            ultimo = (
-                Habilidade.objects.filter(saber=self.saber, codigo__startswith=prefix)
-                .order_by("-codigo")
-                .values_list("codigo", flat=True)
-                .first()
+    TYPE_CHOICES = [
+        ("SUBJECT", "Subject"),
+        ("TOPIC", "Topic"),
+        ("DESCRIPTOR", "Descriptor"),
+        ("SKILL", "Skill"),
+    ]
+
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    legacy_id = models.BigIntegerField(null=True, blank=True)
+    legacy_raw = models.CharField(max_length=400)
+
+    legacy_code = models.CharField(max_length=30, blank=True, default="")
+    legacy_name = models.CharField(max_length=255, blank=True, default="")
+
+    status = models.CharField(max_length=20, default="OK")
+
+    subject = models.ForeignKey(Subject, null=True, blank=True, on_delete=models.CASCADE)
+    topic = models.ForeignKey(Topic, null=True, blank=True, on_delete=models.CASCADE)
+    descriptor = models.ForeignKey(Descriptor, null=True, blank=True, on_delete=models.CASCADE)
+    skill = models.ForeignKey(Skill, null=True, blank=True, on_delete=models.CASCADE)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["type", "legacy_raw"],
+                name="uq_legacy_type_raw"
             )
-            n = int(ultimo.split(".H")[1]) + 1 if ultimo else 1
-            self.codigo = f"{self.saber.codigo}.H{n:02d}"
-        super().save(*args, **kwargs)
+        ]
 
     def __str__(self):
-        return f"{self.codigo} - {self.titulo}"
+        return f"{self.type} - {self.legacy_raw}"
 
+class Question(models.Model):
+    """
+    Model para Perguntas
+    """
+    private = models.BooleanField(default=False)
+    deleted = models.BooleanField(default=False)
+    created_by = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
-class Questao(models.Model):
-    disciplina = models.ForeignKey(
-        Disciplina,
-        on_delete=models.PROTECT,
-        related_name="questoes",
-        verbose_name="Disciplina",
-    )
+    def __str__(self):
+        return f"Questão {self.id}"
+    
+class QuestionVersion(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="versions")
+    version_number = models.PositiveIntegerField()
 
-    saber = models.ForeignKey(
-        Saber,
-        on_delete=models.PROTECT,
-        related_name="questoes",
-        verbose_name="Saber",
-        blank=True,
-        null=True,
-    )
+    title = models.TextField()
+    support_text = models.TextField(null=True)
+    support_image = models.FileField(upload_to=rename_upload_question, null=True)
+    image_reference = models.CharField(max_length=500, null=True)
+    command = models.TextField()
 
-    habilidade = models.ForeignKey(
-        Habilidade,
-        on_delete=models.PROTECT,
-        related_name="questoes",
-        verbose_name="Habilidade",
-        blank=True,
-        null=True,
-    )
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="subjects")
+    descriptor = models.ForeignKey(Descriptor, on_delete=models.PROTECT, null=True, related_name="sages")
+    skill = models.ForeignKey(Skill, on_delete=models.PROTECT, null=True, related_name="skills")
+    annulled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    enunciado_html = models.TextField("Enunciado")
-    texto_suporte_html = models.TextField("Texto de apoio", blank=True, default="")
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["question", "version_number"],
+                name="uq_question_version"
+            )
+        ]
 
-    imagem_suporte = models.ImageField(
-        "Imagem de apoio",
-        upload_to="questoes/suporte/",
-        blank=True,
-        null=True,
-    )
-    ref_imagem = models.CharField(
+    def __str__(self):
+        return f"Q{self.question_id}.v{self.version_number}"
         
-        "Referência da imagem",
-        max_length=500,
-        blank=True,
-        default="",
-    )
-    comando_html = models.TextField("Comando")
-    excluida = models.BooleanField("Excluída", default=False)
-    is_private = models.BooleanField("Privada", default=False)
-
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="questoes_criadas",
-        verbose_name="Criado por",
-    )
-    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+class QuestionOption(models.Model):
+    """
+    Model para Respostas
+    """
+    question_version = models.ForeignKey(QuestionVersion, on_delete=models.PROTECT, related_name="options")
+    letter = models.CharField(max_length=1)
+    option_text = models.TextField(null=True)
+    option_image = models.FileField(upload_to=rename_upload_answer, null=True)
+    correct = models.BooleanField(null=True)
 
     class Meta:
-        verbose_name = "Questão"
-        verbose_name_plural = "Questões"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        texto = (self.enunciado_html or "").strip()
-        return (texto[:60] + "…") if len(texto) > 60 else (texto or f"Questão {self.pk}")
-
-    def clean(self):
-        if self.saber and self.saber.disciplina_id != self.disciplina_id:
-            raise ValidationError({"saber": "O saber precisa ser da mesma disciplina da questão."})
-
-        if self.habilidade:
-            if self.saber and self.habilidade.saber_id != self.saber_id:
-                raise ValidationError({"habilidade": "A habilidade precisa pertencer ao saber selecionado."})
-            if self.habilidade.saber.disciplina_id != self.disciplina_id:
-                raise ValidationError({"habilidade": "A habilidade precisa ser da mesma disciplina da questão."})
-
-        super().clean()
-
-    @property
-    def resposta_correta(self):
-        return self.respostas.filter(correta=True).first()
-
-
-class Resposta(models.Model):
-    questao = models.ForeignKey(
-        "Questao",
-        on_delete=models.CASCADE,
-        related_name="respostas",
-        verbose_name="Questão",
-    )
-
-    ordem = models.PositiveSmallIntegerField("Ordem")  # 1..5
-    texto_html = models.TextField("Texto da alternativa", blank=True, default="")
-    imagem = models.ImageField(
-        "Imagem da alternativa",
-        upload_to="questoes/respostas/",
-        blank=True,
-        null=True,
-    )
-    correta = models.BooleanField("Correta?", default=False)
-
-    class Meta:
-        verbose_name = "Alternativa"
-        verbose_name_plural = "Alternativas"
-        ordering = ["questao_id", "ordem"]
         constraints = [
-            models.UniqueConstraint(fields=["questao", "ordem"], name="uniq_ordem_por_questao"),
-            models.UniqueConstraint(
-                fields=["questao"],
-                condition=Q(correta=True),
-                name="uniq_uma_correta_por_questao",
-            ),
+            UniqueConstraint(
+                fields=["question_version", "letter"],
+                name="uq_version_letter"
+            )
         ]
 
-    def clean(self):
-        if not (self.texto_html or "").strip() and not self.imagem:
-            raise ValidationError("A alternativa precisa ter texto ou imagem.")
-        super().clean()
+    def get_option(self):
+        return f"{self.letter} -  {self.option_text}"
+    
+    def __str__(self):
+        # return f"{self.option_text}"
+        return f"{self.letter} ({'✔' if self.correct else ''})"
 
-    @property
-    def opcao(self):
-        # 1->A, 2->B, 3->C...
-        return chr(ord("A") + (self.ordem - 1))
+class Booklet(models.Model):
+    """
+    Model para Caderno
+    """
+    name = models.CharField(max_length=150)
+    deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.BigIntegerField()
 
     def __str__(self):
-        return f"{self.questao_id} - {self.opcao}"
-
-
-class Caderno(models.Model):
-    nome = models.CharField("Nome", max_length=200)
-    excluido = models.BooleanField("Excluído?", default=False)
-
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="cadernos_criados",
-        verbose_name="Criado por",
-    )
-    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+        return self.name
+    
+class BookletItem(models.Model):
+    booklet = models.ForeignKey(Booklet, on_delete=models.PROTECT, related_name="items")
+    question_version = models.ForeignKey(QuestionVersion, on_delete=models.PROTECT)
+    order = models.PositiveIntegerField()
 
     class Meta:
-        verbose_name = "Caderno"
-        verbose_name_plural = "Cadernos"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return self.nome
-
-
-class Item(models.Model):
-    caderno = models.ForeignKey(
-        Caderno,
-        on_delete=models.CASCADE,
-        related_name="itens",
-        verbose_name="Caderno",
-    )
-    questao = models.ForeignKey(
-        Questao,
-        on_delete=models.PROTECT,
-        related_name="itens",
-        verbose_name="Questão",
-    )
-    ordem = models.PositiveIntegerField("Ordem")
-    anulada = models.BooleanField("Anulada?", default=False)
-
-    class Meta:
-        verbose_name = "Item"
-        verbose_name_plural = "Itens"
-        ordering = ["ordem"]
         constraints = [
-            models.UniqueConstraint(fields=["caderno", "ordem"], name="uniq_ordem_por_caderno"),
-            models.UniqueConstraint(fields=["caderno", "questao"], name="uniq_questao_por_caderno"),
+            UniqueConstraint(fields=["booklet", "order"], name="uq_booklet_order"),
+            UniqueConstraint(fields=["booklet", "question_version"], name="uq_booklet_version"),
         ]
 
     def __str__(self):
-        return f"{self.caderno} — #{self.ordem}"
+        return f"{self.booklet} #{self.order}"
+    
+class Offer(models.Model):
+    booklet = models.ForeignKey(Booklet, on_delete=models.PROTECT)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    description = models.CharField(max_length=500, null=True, blank=True)
+    deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.BigIntegerField()
+
+    def __str__(self):
+        return f"Oferta {self.id}"
+
+
+class Application(models.Model):
+    """
+    Model para Aplicação(antigo ALuno SISEDU)
+    """
+    offer = models.ForeignKey(Offer, on_delete=models.PROTECT)
+    class_ref = models.BigIntegerField() # id da Turma no SIGE
+    student_ref = models.BigIntegerField() # id do Aluno no SIGE
+    student_absent = models.BooleanField(default=False) # Ausencia do aluno
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    finalized_by = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["offer", "class_ref", "student_ref"],
+                name="uq_application_unique"
+            )
+        ]
+
+    def __str__(self):
+        return f"Aplicação {self.id}"
+
+class StudentAnswer(models.Model):
+    application = models.ForeignKey(Application, on_delete=models.PROTECT, related_name="answers")
+    booklet_item = models.ForeignKey(BookletItem, on_delete=models.PROTECT)
+    selected_option = models.CharField(max_length=1, null=True, blank=True)
+    is_correct = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["application", "booklet_item"],
+                name="uq_answer_unique"
+            )
+        ]
+        indexes = [
+            Index(fields=["application"]),
+            Index(fields=["booklet_item"]),
+            Index(fields=["is_correct"]),
+        ]
+
+    def __str__(self):
+        return f"Resposta {self.application_id} - Item {self.item_id}"

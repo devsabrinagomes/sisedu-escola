@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import type { Disciplina, Questao } from "@/types/core";
 import { useAuth } from "@/auth/AuthContext";
 
 function stripHtml(html: string) {
@@ -11,13 +10,7 @@ function stripHtml(html: string) {
 }
 
 type CreatedAtPreset = "qualquer" | "hoje" | "7dias" | "mes" | "ano";
-type SortKey =
-  | "id"
-  | "enunciado"
-  | "disciplina"
-  | "privacidade"
-  | "criado_por"
-  | "created_at";
+type SortKey = "id" | "privacidade" | "criado_por" | "created_at";
 type SortDir = "asc" | "desc";
 
 const COLSPAN: Record<number, string> = {
@@ -29,19 +22,91 @@ const COLSPAN: Record<number, string> = {
   6: "col-span-6",
 };
 
+// ===== DTOs =====
+type SubjectDTO = { id: number; name: string };
+
+type QuestionOptionDTO = {
+  id: number;
+  letter: "A" | "B" | "C" | "D" | "E";
+  option_text: string;
+  option_image: string | null;
+  correct: boolean;
+};
+
+type QuestionVersionDTO = {
+  id: number;
+  question: number;
+  version_number: number;
+  title: string;
+  command: string;
+  support_text: string;
+  support_image: string | null;
+  image_reference: string | null;
+  subject: number;
+  descriptor: number | null;
+  skill: number | null;
+  annulled: boolean;
+  created_at: string;
+  options?: QuestionOptionDTO[];
+};
+
+type QuestionDTO = {
+  id: number;
+  private: boolean;
+  deleted: boolean;
+  created_by: number; // BigInteger id
+  created_at: string;
+  subject_name?: string | null;
+  versions?: QuestionVersionDTO[];
+};
+
+type Paginated<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+};
+
+function pickLatestVersion(versions?: QuestionVersionDTO[]) {
+  if (!versions?.length) return null;
+  return [...versions].sort((a, b) => {
+    const an = a.version_number ?? 0;
+    const bn = b.version_number ?? 0;
+    if (bn !== an) return bn - an;
+    return String(b.created_at).localeCompare(String(a.created_at));
+  })[0];
+}
+
+function toOrdering(key: SortKey, dir: SortDir) {
+  const field =
+    key === "id"
+      ? "id"
+      : key === "privacidade"
+        ? "private"
+        : key === "criado_por"
+          ? "created_by"
+          : "created_at";
+
+  return dir === "desc" ? `-${field}` : field;
+}
+
 export default function QuestoesList() {
   const nav = useNavigate();
-  const { username: me } = useAuth();
+  const auth = useAuth() as any;
 
-  const [items, setItems] = useState<Questao[]>([]);
-  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
+  // se teu AuthContext não tiver id ainda, beleza: libera editar/abrir como antes
+  const meId: number | undefined = auth?.id;
+
+  const [items, setItems] = useState<QuestionDTO[]>([]);
+  const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
   // busca
   const [q, setQ] = useState("");
 
   // filtros
-  const [disciplinaId, setDisciplinaId] = useState<number | "todos">("todos");
+  const [subjectId, setSubjectId] = useState<number | "todos">("todos");
   const [criadoEm, setCriadoEm] = useState<CreatedAtPreset>("qualquer");
 
   // bottom sheet (mobile)
@@ -57,7 +122,7 @@ export default function QuestoesList() {
   }, [filtersOpen]);
 
   const activeFiltersCount =
-    (disciplinaId !== "todos" ? 1 : 0) + (criadoEm !== "qualquer" ? 1 : 0);
+    (subjectId !== "todos" ? 1 : 0) + (criadoEm !== "qualquer" ? 1 : 0);
 
   // ordenação
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
@@ -70,7 +135,7 @@ export default function QuestoesList() {
     const params: Record<string, any> = {};
 
     if (searchText.trim()) params.search = searchText.trim();
-    if (disciplinaId !== "todos") params.disciplina = disciplinaId;
+    if (subjectId !== "todos") params.subject = subjectId;
 
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -101,29 +166,40 @@ export default function QuestoesList() {
   async function load(searchText: string) {
     const reqId = ++reqIdRef.current;
     setLoading(true);
+    setErr("");
 
     try {
-      const { data } = await api.get("/questoes/", {
-        params: buildParams(searchText),
-      });
+      const { data } = await api.get<Paginated<QuestionDTO> | QuestionDTO[]>(
+        "/questions/",
+        { params: buildParams(searchText) },
+      );
 
       if (reqId !== reqIdRef.current) return;
 
-      const list = Array.isArray(data) ? data : (data.results ?? []);
+      const list = Array.isArray(data) ? data : (data?.results ?? []);
       setItems(list);
+    } catch (e: any) {
+      if (reqId !== reqIdRef.current) return;
+      setItems([]);
+      setErr(
+        e?.response?.data?.detail || "Não foi possível carregar as questões.",
+      );
     } finally {
       if (reqId === reqIdRef.current) setLoading(false);
     }
   }
 
-  // carrega disciplinas
+  // carrega subjects (suporta paginado OU array)
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get<Disciplina[]>("/disciplinas/");
-        setDisciplinas(data);
+        const { data } = await api.get<Paginated<SubjectDTO> | SubjectDTO[]>(
+          "/subjects/",
+        );
+        const list = Array.isArray(data) ? data : (data?.results ?? []);
+        setSubjects(list);
       } catch {
-        // ok
+        setSubjects([]);
       }
     })();
   }, []);
@@ -148,7 +224,7 @@ export default function QuestoesList() {
   useEffect(() => {
     load(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disciplinaId, criadoEm, sortKey, sortDir]);
+  }, [subjectId, criadoEm, sortKey, sortDir]);
 
   function onEnter(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
@@ -157,11 +233,8 @@ export default function QuestoesList() {
     }
   }
 
-  function openQuestao(it: Questao) {
-    const isMine =
-      (it.criado_por || "").toLowerCase() === (me || "").toLowerCase();
-    if (isMine) nav(`/questoes/${it.id}/editar`);
-    else nav(`/questoes/${it.id}`);
+  function openQuestao(it: QuestionDTO) {
+    nav(`/questoes/${it.id}`);
   }
 
   function toggleSort(key: SortKey) {
@@ -173,26 +246,28 @@ export default function QuestoesList() {
     }
   }
 
-  async function onDelete(it: Questao) {
-    const isMine =
-      (it.criado_por || "").toLowerCase() === (me || "").toLowerCase();
+  async function onDelete(it: QuestionDTO) {
+    const isMine = typeof meId === "number" ? it.created_by === meId : true;
     if (!isMine) return;
 
     const ok = window.confirm(
-      `Tem certeza que deseja excluir a questão #${it.id}? Essa ação não pode ser desfeita.`
+      `Tem certeza que deseja excluir a questão #${it.id}? Essa ação não pode ser desfeita.`,
     );
     if (!ok) return;
 
     try {
-      await api.delete(`/questoes/${it.id}/`);
+      await api.delete(`/questions/${it.id}/`);
       setItems((prev) => prev.filter((x) => x.id !== it.id));
     } catch (e: any) {
-      window.alert(
-        e?.response?.data?.detail ||
-          "Não foi possível excluir. (Talvez não seja sua questão.)"
-      );
+      window.alert(e?.response?.data?.detail || "Não foi possível excluir.");
     }
   }
+
+  const subjectNameById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const s of subjects) m.set(s.id, s.name);
+    return m;
+  }, [subjects]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -226,7 +301,7 @@ export default function QuestoesList() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onEnter}
-                placeholder="Enunciado ou autor da questão"
+                placeholder="Enunciado"
                 className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-200"
               />
 
@@ -325,6 +400,12 @@ export default function QuestoesList() {
           </div>
         </div>
 
+        {err && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {err}
+          </div>
+        )}
+
         {/* MOBILE: cards */}
         <div className="space-y-3 lg:hidden">
           {loading ? (
@@ -337,10 +418,15 @@ export default function QuestoesList() {
             </div>
           ) : (
             items.map((it) => {
-              const resumo = stripHtml(it.enunciado_html || "");
+              const v = pickLatestVersion(it.versions);
+              const resumo = stripHtml(v?.title || "");
               const isMine =
-                (it.criado_por || "").toLowerCase() ===
-                (me || "").toLowerCase();
+                typeof meId === "number" ? it.created_by === meId : true;
+
+              const subjectLabel =
+                it.subject_name ||
+                (v?.subject ? subjectNameById.get(v.subject) : null) ||
+                (v?.subject ? `Disciplina #${v.subject}` : "-");
 
               return (
                 <div
@@ -350,7 +436,10 @@ export default function QuestoesList() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-slate-500">
-                        ID <span className="text-slate-800 font-semibold">#{it.id}</span>
+                        ID{" "}
+                        <span className="text-slate-800 font-semibold">
+                          #{it.id}
+                        </span>
                       </div>
 
                       <button
@@ -393,10 +482,10 @@ export default function QuestoesList() {
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
-                      {(it as any).disciplina_nome ?? (it as any).disciplina}
+                      {subjectLabel}
                     </span>
 
-                    {(it as any).is_private ? (
+                    {it.private ? (
                       <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
                         Privada
                       </span>
@@ -407,7 +496,10 @@ export default function QuestoesList() {
                     )}
 
                     <span className="text-xs text-slate-500">
-                      por <span className="text-slate-700">{(it as any).criado_por ?? "-"}</span>
+                      por{" "}
+                      <span className="text-slate-700">
+                        {it.created_by ?? "-"}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -419,7 +511,6 @@ export default function QuestoesList() {
         {/* DESKTOP: tabela */}
         <div className="hidden lg:block rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">
           <div className="min-w-[600px]">
-            {/* 12 colunas certinhas: 1 + 5 + 2 + 2 + 1 + 1 = 12 */}
             <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs text-slate-600 bg-slate-50 border-b border-slate-200">
               <Th
                 colSpan={1}
@@ -428,20 +519,12 @@ export default function QuestoesList() {
                 dir={sortDir}
                 onClick={() => toggleSort("id")}
               />
-              <Th
-                colSpan={5}
-                label="Enunciado"
-                active={sortKey === "enunciado"}
-                dir={sortDir}
-                onClick={() => toggleSort("enunciado")}
-              />
-              <Th
-                colSpan={2}
-                label="Disciplina"
-                active={sortKey === "disciplina"}
-                dir={sortDir}
-                onClick={() => toggleSort("disciplina")}
-              />
+              <div className="col-span-5 flex items-center text-left">
+                Enunciado
+              </div>
+              <div className="col-span-2 flex items-center text-left">
+                Disciplina
+              </div>
               <Th
                 colSpan={2}
                 label="Visibilidade"
@@ -458,23 +541,27 @@ export default function QuestoesList() {
                 dir={sortDir}
                 onClick={() => toggleSort("criado_por")}
               />
-              {/* <div className="col-span-1 flex items-center justify-center text-center">
-                Ações
-              </div> */}
             </div>
 
             {loading ? (
-              <div className="px-4 py-8 text-sm text-slate-500">Carregando…</div>
+              <div className="px-4 py-8 text-sm text-slate-500">
+                Carregando…
+              </div>
             ) : items.length === 0 ? (
               <div className="px-4 py-10 text-sm text-slate-500 text-center">
                 Nenhuma questão encontrada.
               </div>
             ) : (
               items.map((it) => {
-                const resumo = stripHtml(it.enunciado_html || "");
+                const v = pickLatestVersion(it.versions);
+                const resumo = stripHtml(v?.title || "");
                 const isMine =
-                  (it.criado_por || "").toLowerCase() ===
-                  (me || "").toLowerCase();
+                  typeof meId === "number" ? it.created_by === meId : true;
+
+                const subjectLabel =
+                  it.subject_name ||
+                  (v?.subject ? subjectNameById.get(v.subject) : null) ||
+                  (v?.subject ? `Disciplina #${v.subject}` : "-");
 
                 return (
                   <div
@@ -493,11 +580,11 @@ export default function QuestoesList() {
                     </button>
 
                     <div className="col-span-2 text-slate-700 truncate">
-                      {(it as any).disciplina_nome ?? (it as any).disciplina}
+                      {subjectLabel}
                     </div>
 
                     <div className="col-span-2 flex justify-center">
-                      {(it as any).is_private ? (
+                      {it.private ? (
                         <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
                           Privada
                         </span>
@@ -509,39 +596,8 @@ export default function QuestoesList() {
                     </div>
 
                     <div className="col-span-2 text-left text-slate-700 truncate">
-                      {(it as any).criado_por ?? "-"}
+                      {it.created_by ?? "-"}
                     </div>
-
-                    {/* <div className="col-span-1 flex justify-center">
-                      {isMine ? (
-                        <button
-                          type="button"
-                          onClick={() => onDelete(it)}
-                          className="rounded-md p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 transition"
-                          title="Excluir questão"
-                          aria-label="Excluir questão"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4h8v2" />
-                            <path d="M19 6l-1 14H6L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                          </svg>
-                        </button>
-                      ) : (
-                        <span className="text-slate-300">—</span>
-                      )}
-                    </div> */}
                   </div>
                 );
               })
@@ -560,19 +616,19 @@ export default function QuestoesList() {
           <div className="mt-4 space-y-5 text-sm">
             <FilterGroup title="Por disciplina">
               <FilterLink
-                active={disciplinaId === "todos"}
-                onClick={() => setDisciplinaId("todos")}
+                active={subjectId === "todos"}
+                onClick={() => setSubjectId("todos")}
               >
                 Todos
               </FilterLink>
 
-              {disciplinas.map((d) => (
+              {subjects.map((s) => (
                 <FilterLink
-                  key={d.id}
-                  active={disciplinaId === d.id}
-                  onClick={() => setDisciplinaId(d.id)}
+                  key={s.id}
+                  active={subjectId === s.id}
+                  onClick={() => setSubjectId(s.id)}
                 >
-                  {d.nome}
+                  {s.name}
                 </FilterLink>
               ))}
             </FilterGroup>
@@ -613,7 +669,7 @@ export default function QuestoesList() {
             <button
               type="button"
               onClick={() => {
-                setDisciplinaId("todos");
+                setSubjectId("todos");
                 setCriadoEm("qualquer");
                 setQ("");
               }}
@@ -665,19 +721,19 @@ export default function QuestoesList() {
                 <div className="space-y-5 text-sm">
                   <FilterGroup title="Por disciplina">
                     <FilterLink
-                      active={disciplinaId === "todos"}
-                      onClick={() => setDisciplinaId("todos")}
+                      active={subjectId === "todos"}
+                      onClick={() => setSubjectId("todos")}
                     >
                       Todos
                     </FilterLink>
 
-                    {disciplinas.map((d) => (
+                    {subjects.map((s) => (
                       <FilterLink
-                        key={d.id}
-                        active={disciplinaId === d.id}
-                        onClick={() => setDisciplinaId(d.id)}
+                        key={s.id}
+                        active={subjectId === s.id}
+                        onClick={() => setSubjectId(s.id)}
                       >
-                        {d.nome}
+                        {s.name}
                       </FilterLink>
                     ))}
                   </FilterGroup>
@@ -722,7 +778,7 @@ export default function QuestoesList() {
                   <button
                     type="button"
                     onClick={() => {
-                      setDisciplinaId("todos");
+                      setSubjectId("todos");
                       setCriadoEm("qualquer");
                       setQ("");
                       setFiltersOpen(false);
@@ -747,23 +803,6 @@ export default function QuestoesList() {
       )}
     </div>
   );
-}
-
-function toOrdering(key: SortKey, dir: SortDir) {
-  const field =
-    key === "id"
-      ? "id"
-      : key === "enunciado"
-        ? "enunciado_html"
-        : key === "disciplina"
-          ? "disciplina__nome"
-          : key === "privacidade"
-            ? "is_private"
-            : key === "criado_por"
-              ? "created_by__username"
-              : "created_at";
-
-  return dir === "desc" ? `-${field}` : field;
 }
 
 function Th({
@@ -797,7 +836,9 @@ function Th({
     >
       <span>{label}</span>
       {active && (
-        <span className="text-[10px] opacity-70">{dir === "asc" ? "▲" : "▼"}</span>
+        <span className="text-[10px] opacity-70">
+          {dir === "asc" ? "▲" : "▼"}
+        </span>
       )}
     </button>
   );

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
-import QuestaoForm, { type QuestaoDTO } from "@/features/questoes/components/QuestaoForm";
+import QuestaoForm, { type QuestionDTO } from "@/features/questoes/components/QuestaoForm";
 import { useAuth } from "@/auth/AuthContext";
 
 export default function QuestaoEditar() {
@@ -10,7 +10,7 @@ export default function QuestaoEditar() {
   const { username: me } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<QuestaoDTO | null>(null);
+  const [data, setData] = useState<QuestionDTO | null>(null);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -18,8 +18,8 @@ export default function QuestaoEditar() {
       try {
         setLoading(true);
         setErr("");
-        const res = await api.get<QuestaoDTO>(`/questoes/${id}/`);
-        setData(res.data as any);
+        const res = await api.get<QuestionDTO>(`/questions/${id}/`);
+        setData(res.data);
       } catch (e: any) {
         setErr(e?.response?.data?.detail || "Não foi possível carregar a questão.");
       } finally {
@@ -28,13 +28,30 @@ export default function QuestaoEditar() {
     })();
   }, [id]);
 
+  // Se o backend mandar "created_by_username" em algum lugar (raiz ou dentro de versions), usamos.
+  // Se não mandar, a gente não inventa: só não mostra o botão de excluir.
+  const ownerUsername = useMemo(() => {
+    const root = (data as any)?.created_by_username;
+    if (root) return String(root);
+
+    const versions = (data as any)?.versions;
+    if (Array.isArray(versions) && versions.length) {
+      // às vezes o serializer coloca infos do owner na version
+      const vOwner = versions?.[0]?.created_by_username;
+      if (vOwner) return String(vOwner);
+    }
+    return "";
+  }, [data]);
+
+  const canConfirmOwnership = !!ownerUsername && !!me;
+
   const isMine = useMemo(() => {
-    const owner = (data as any)?.criado_por || (data as any)?.created_by_username || "";
-    return (owner || "").toLowerCase() === (me || "").toLowerCase();
-  }, [data, me]);
+    if (!canConfirmOwnership) return false;
+    return ownerUsername.toLowerCase() === me.toLowerCase();
+  }, [canConfirmOwnership, ownerUsername, me]);
 
   async function handleSubmit(fd: FormData) {
-    await api.patch(`/questoes/${id}/`, fd, {
+    await api.patch(`/questions/${id}/`, fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     nav("/questoes");
@@ -42,7 +59,12 @@ export default function QuestaoEditar() {
 
   async function onDelete() {
     if (!data) return;
-    if (!isMine) return;
+
+    // só deixa excluir quando dá pra confirmar autoria
+    if (!canConfirmOwnership || !isMine) {
+      window.alert("Você só pode excluir questões criadas por você.");
+      return;
+    }
 
     const ok = window.confirm(
       `Tem certeza que deseja excluir a questão #${data.id}? Essa ação não pode ser desfeita.`
@@ -50,7 +72,7 @@ export default function QuestaoEditar() {
     if (!ok) return;
 
     try {
-      await api.delete(`/questoes/${id}/`);
+      await api.delete(`/questions/${id}/`);
       nav("/questoes");
     } catch (e: any) {
       window.alert(
@@ -68,12 +90,12 @@ export default function QuestaoEditar() {
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Editar questão</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Você pode editar e também excluir se for o criador.
+            Você pode editar. Excluir só aparece quando dá pra confirmar que foi você quem criou.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {isMine && (
+          {canConfirmOwnership && isMine && (
             <button
               type="button"
               onClick={onDelete}
@@ -100,7 +122,7 @@ export default function QuestaoEditar() {
 
       {data && (
         <QuestaoForm
-          key={data.id} 
+          key={data.id}
           mode="edit"
           initialData={data}
           onSubmitFormData={handleSubmit}

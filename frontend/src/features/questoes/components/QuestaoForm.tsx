@@ -1,63 +1,79 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
-import type { Alternativa, Disciplina } from "@/types/core";
-import RichEditor, {
-  useRichEditor,
-  hasMeaningfulHtml,
-  normalizeHtml,
-} from "@/components/RichEditor";
 
-import Accordion from "@/components/Accordion";
-import {
-  ALT_KEYS,
-  ALTS,
-  type AltKey,
-  buildRespostasPayload,
-  computeFilledCreate,
-  computeFilledEdit,
-  validateAlternatives,
-} from "../utils/questaoForm.utils";
+export type Alternativa = "A" | "B" | "C" | "D" | "E";
 
-type Saber = { id: number; codigo: string; titulo: string; disciplina: number };
-type Habilidade = { id: number; codigo: string; titulo: string; saber: number };
+type SubjectDTO = { id: number; name: string };
+type TopicDTO = { id: number; subject: number; description: string };
+type DescriptorDTO = { id: number; topic: number; code: string; name: string };
+type SkillDTO = { id: number; descriptor: number; code: string; name: string };
 
-type RespostaDTO = {
-  ordem: number;
-  texto_html: string;
-  imagem?: string | null;
-  correta: boolean;
+type QuestionOptionDTO = {
+  id: number;
+  letter: Alternativa;
+  option_text: string;
+  option_image: string | null;
+  correct: boolean;
+};
+
+type QuestionVersionDTO = {
+  id: number;
+  question: number;
+  version_number: number;
+  title: string;
+  command: string;
+  support_text: string;
+  support_image: string | null;
+  image_reference: string | null;
+  subject: number;
+  descriptor: number | null;
+  skill: number | null;
+  annulled: boolean;
+  created_at: string;
+  options: QuestionOptionDTO[];
 };
 
 export type QuestaoDTO = {
   id: number;
-  disciplina: number;
-  saber: number | null;
-  habilidade: number | null;
-  enunciado_html: string;
-  comando_html: string;
-  texto_suporte_html: string;
-  imagem_suporte?: string | null;
-  ref_imagem: string;
-  is_private: boolean;
-  respostas?: RespostaDTO[];
+  private: boolean;
+  deleted: boolean;
+  created_by: number;
+  created_at: string;
+  subject_name?: string | null;
+  versions: QuestionVersionDTO[];
 };
 
 type Mode = "create" | "edit";
 
-function ReqStar() {
-  return <span className="text-red-600">*</span>;
+type Props = {
+  mode: Mode;
+  initialData?: QuestaoDTO | null;
+  onSubmitFormData: (fd: FormData) => Promise<void>;
+  onCancel?: () => void;
+};
+
+const LETTERS: Alternativa[] = ["A", "B", "C", "D", "E"];
+
+function pickLatestVersion(versions?: QuestionVersionDTO[]) {
+  if (!versions?.length) return null;
+  return [...versions].sort((a, b) => {
+    const av = a.version_number ?? 0;
+    const bv = b.version_number ?? 0;
+    if (bv !== av) return bv - av;
+    return String(b.created_at).localeCompare(String(a.created_at));
+  })[0];
 }
 
-function ordemToAlt(ordem: number): AltKey {
-  return ordem === 1
-    ? "A"
-    : ordem === 2
-      ? "B"
-      : ordem === 3
-        ? "C"
-        : ordem === 4
-          ? "D"
-          : "E";
+function hasMeaningfulText(value: string) {
+  return value.trim().length > 0;
+}
+
+async function fetchList<T>(url: string): Promise<T[]> {
+  const { data } = await api.get(url);
+  if (Array.isArray(data)) return data as T[];
+  if (data && Array.isArray(data.results)) return data.results as T[];
+  return [];
 }
 
 export default function QuestaoForm({
@@ -65,667 +81,787 @@ export default function QuestaoForm({
   initialData,
   onSubmitFormData,
   onCancel,
-}: {
-  mode: Mode;
-  initialData?: QuestaoDTO;
-  onSubmitFormData: (fd: FormData) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [triedSubmit, setTriedSubmit] = useState(false);
+}: Props) {
+  const latest = useMemo(
+    () => pickLatestVersion(initialData?.versions),
+    [initialData]
+  );
 
-  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
-  const [saberes, setSaberes] = useState<Saber[]>([]);
-  const [habilidades, setHabilidades] = useState<Habilidade[]>([]);
+  // ====== catálogo ======
+  const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
+  const [topics, setTopics] = useState<TopicDTO[]>([]);
+  const [descriptors, setDescriptors] = useState<DescriptorDTO[]>([]);
+  const [skills, setSkills] = useState<SkillDTO[]>([]);
 
-  const [loadingDisc, setLoadingDisc] = useState(true);
-  const [loadingSab, setLoadingSab] = useState(false);
-  const [loadingHab, setLoadingHab] = useState(false);
+  // ====== form fields ======
+  const [isPrivate, setIsPrivate] = useState<boolean>(
+    mode === "edit" ? !!initialData?.private : false
+  );
+
+  const [subjectId, setSubjectId] = useState<number | "">(
+    latest?.subject ?? ""
+  );
+  const [topicId, setTopicId] = useState<number | "">("");
+  const [descriptorId, setDescriptorId] = useState<number | "">(
+    latest?.descriptor ?? ""
+  );
+  const [skillId, setSkillId] = useState<number | "">(
+    latest?.skill ?? ""
+  );
+
+  const [title, setTitle] = useState<string>(latest?.title ?? "");
+  const [command, setCommand] = useState<string>(latest?.command ?? "");
+  const [supportText, setSupportText] = useState<string>(latest?.support_text ?? "");
+  const [imageReference, setImageReference] = useState<string>(latest?.image_reference ?? "");
+
+  const [supportImageFile, setSupportImageFile] = useState<File | null>(null);
+  const [removeSupportImage, setRemoveSupportImage] = useState(false);
+
+  type OptionState = {
+    letter: Alternativa;
+    option_text: string;
+    correct: boolean;
+    input_mode: "text" | "image";
+    // arquivo novo
+    file: File | null;
+    // url atual (edit)
+    currentUrl?: string | null;
+    // remover imagem (edit)
+    remove?: boolean;
+  };
+
+  const [options, setOptions] = useState<OptionState[]>(() => {
+    const byLetter = new Map((latest?.options ?? []).map((o) => [o.letter, o]));
+
+    const makeOption = (letter: Alternativa): OptionState => {
+      const server = byLetter.get(letter);
+      const optionText = server?.option_text ?? "";
+      const currentUrl = server?.option_image ?? null;
+      const hasText = hasMeaningfulText(optionText);
+      const hasImage = !!currentUrl;
+      const removeImageByDefault = hasText && hasImage;
+
+      return {
+        letter,
+        option_text: optionText,
+        correct: !!server?.correct || (!server && letter === "A"),
+        input_mode: hasText ? "text" : hasImage ? "image" : "text",
+        file: null,
+        currentUrl,
+        remove: removeImageByDefault,
+      };
+    };
+
+    const base = (["A", "B", "C", "D"] as Alternativa[]).map(makeOption);
+    const hasE = byLetter.has("E");
+    if (hasE) base.push(makeOption("E"));
+
+    // fallback defensivo para garantir uma correta
+    if (!base.some((o) => o.correct)) base[0].correct = true;
+    return base;
+  });
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
-  // campos
-  const [disciplina, setDisciplina] = useState<number>(0);
-  const [saberId, setSaberId] = useState<number | "">("");
-  const [habilidadeId, setHabilidadeId] = useState<number | "">("");
-  const [isPrivate, setIsPrivate] = useState(false);
-
-  const [altCorreta, setAltCorreta] = useState<Alternativa | "">("");
-  const [altAtiva, setAltAtiva] = useState<AltKey>("A");
-
-  // apoio
-  const [currentSuporteUrl, setCurrentSuporteUrl] = useState("");
-  const [suporteFile, setSuporteFile] = useState<File | null>(null);
-  const [suportePreview, setSuportePreview] = useState("");
-  const [removeSuporte, setRemoveSuporte] = useState(false);
-  const [refImagem, setRefImagem] = useState("");
-
-  // alternativas imagens
-  const [altImg, setAltImg] = useState<Record<AltKey, File | null>>({
-    A: null, B: null, C: null, D: null, E: null,
-  });
-  const [altPreview, setAltPreview] = useState<Record<AltKey, string>>({
-    A: "", B: "", C: "", D: "", E: "",
-  });
-
-  const [currentAltImgUrl, setCurrentAltImgUrl] = useState<Record<AltKey, string>>({
-    A: "", B: "", C: "", D: "", E: "",
-  });
-  const [removeAltImg, setRemoveAltImg] = useState<Record<AltKey, boolean>>({
-    A: false, B: false, C: false, D: false, E: false,
-  });
-
-  // editores
-  const enunciadoEd = useRichEditor("<p></p>");
-  const comandoEd = useRichEditor("<p></p>");
-  const textoApoioEd = useRichEditor("<p></p>");
-
-  const altAEd = useRichEditor("<p></p>");
-  const altBEd = useRichEditor("<p></p>");
-  const altCEd = useRichEditor("<p></p>");
-  const altDEd = useRichEditor("<p></p>");
-  const altEEd = useRichEditor("<p></p>");
-
-  // cleanup previews
-  useEffect(() => {
-    return () => {
-      if (suportePreview) URL.revokeObjectURL(suportePreview);
-      (["A", "B", "C", "D", "E"] as AltKey[]).forEach((k) => {
-        if (altPreview[k]) URL.revokeObjectURL(altPreview[k]);
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // carregar disciplinas
+  // ====== load subjects ======
   useEffect(() => {
     (async () => {
       try {
-        setLoadingDisc(true);
-        const { data } = await api.get<Disciplina[]>("/disciplinas/");
-        setDisciplinas(data);
+        const list = await fetchList<SubjectDTO>("/subjects/");
+        setSubjects(list);
       } catch {
-        setErr("Não foi possível carregar as disciplinas.");
-      } finally {
-        setLoadingDisc(false);
+        setSubjects([]);
       }
     })();
   }, []);
 
-  const lastInjectedIdRef = React.useRef<number | null>(null);
-
-  // injetar initialData (editar)
+  // ====== load topics when subject changes ======
   useEffect(() => {
-    if (mode !== "edit" || !initialData) return;
-
-    // evita reinjetar sem necessidade (isso é o que tava te travando na prática)
-    if (lastInjectedIdRef.current === initialData.id) return;
-    lastInjectedIdRef.current = initialData.id;
-
-    setDisciplina(initialData.disciplina ?? 0);
-    setSaberId(initialData.saber ?? "");
-    setHabilidadeId(initialData.habilidade ?? "");
-    setIsPrivate(!!initialData.is_private);
-
-    setRefImagem(initialData.ref_imagem ?? "");
-    setCurrentSuporteUrl(initialData.imagem_suporte || "");
-    setRemoveSuporte(false);
-    setSuporteFile(null);
-    setSuportePreview(""); // sem revoke aqui
-
-    // textos principais
-    enunciadoEd.editor?.commands.setContent(initialData.enunciado_html || "<p></p>");
-    comandoEd.editor?.commands.setContent(initialData.comando_html || "<p></p>");
-    textoApoioEd.editor?.commands.setContent(initialData.texto_suporte_html || "<p></p>");
-
-    // respostas
-    const respostas = Array.isArray(initialData.respostas) ? initialData.respostas : [];
-    const byOrdem = new Map<number, RespostaDTO>();
-    for (const r of respostas) byOrdem.set(r.ordem, r);
-
-    const r1 = byOrdem.get(1);
-    const r2 = byOrdem.get(2);
-    const r3 = byOrdem.get(3);
-    const r4 = byOrdem.get(4);
-    const r5 = byOrdem.get(5);
-
-    altAEd.editor?.commands.setContent(r1?.texto_html || "<p></p>");
-    altBEd.editor?.commands.setContent(r2?.texto_html || "<p></p>");
-    altCEd.editor?.commands.setContent(r3?.texto_html || "<p></p>");
-    altDEd.editor?.commands.setContent(r4?.texto_html || "<p></p>");
-    altEEd.editor?.commands.setContent(r5?.texto_html || "<p></p>");
-
-    const correta = respostas.find((r) => r.correta);
-    setAltCorreta(correta ? (ordemToAlt(correta.ordem) as Alternativa) : "");
-
-    // imagens atuais vindas do backend
-    setCurrentAltImgUrl({
-      A: r1?.imagem || "",
-      B: r2?.imagem || "",
-      C: r3?.imagem || "",
-      D: r4?.imagem || "",
-      E: r5?.imagem || "",
-    });
-
-    // reseta uploads/remover e previews locais
-    setAltImg({ A: null, B: null, C: null, D: null, E: null });
-    setRemoveAltImg({ A: false, B: false, C: false, D: false, E: false });
-    setAltPreview({ A: "", B: "", C: "", D: "", E: "" }); // sem revoke aqui
-  }, [
-    mode,
-    initialData,
-    enunciadoEd.editor,
-    comandoEd.editor,
-    textoApoioEd.editor,
-    altAEd.editor,
-    altBEd.editor,
-    altCEd.editor,
-    altDEd.editor,
-    altEEd.editor,
-  ]);
-
-  // saberes por disciplina
-  useEffect(() => {
-    if (!disciplina) {
-      setSaberes([]);
-      setSaberId("");
-      setHabilidades([]);
-      setHabilidadeId("");
-      return;
-    }
     (async () => {
+      if (!subjectId) {
+        setTopics([]);
+        setTopicId("");
+        return;
+      }
       try {
-        setLoadingSab(true);
-        const { data } = await api.get<Saber[]>("/saberes/", { params: { disciplina } });
-        setSaberes(data);
-        // não zera saber/habilidade no edit (senão apaga seleção), só no create
-        if (mode === "create") {
-          setSaberId("");
-          setHabilidades([]);
-          setHabilidadeId("");
+        const list = await fetchList<TopicDTO>("/topics/");
+        const filtered = list.filter((t) => t.subject === Number(subjectId));
+        setTopics(filtered);
+
+        // se tá edit e já tem descriptor, tenta achar o topic dele
+        if (mode === "edit" && latest?.descriptor && filtered.length) {
+          // deixa pro efeito de descriptors ajustar depois
+        } else {
+          setTopicId(filtered[0]?.id ?? "");
         }
-      } finally {
-        setLoadingSab(false);
+      } catch {
+        setTopics([]);
+        setTopicId("");
       }
     })();
-  }, [disciplina, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId]);
 
-  // habilidades por saber
+  // ====== load descriptors when topic changes ======
   useEffect(() => {
-    if (!saberId) {
-      setHabilidades([]);
-      setHabilidadeId("");
-      return;
-    }
     (async () => {
+      if (!topicId) {
+        setDescriptors([]);
+        if (mode === "create") setDescriptorId("");
+        return;
+      }
       try {
-        setLoadingHab(true);
-        const { data } = await api.get<Habilidade[]>("/habilidades/", { params: { saber: saberId } });
-        setHabilidades(data);
-        if (mode === "create") setHabilidadeId("");
-      } finally {
-        setLoadingHab(false);
+        const list = await fetchList<DescriptorDTO>("/descriptors/");
+        const filtered = list.filter((d) => d.topic === Number(topicId));
+        setDescriptors(filtered);
+
+        // se current descriptor não pertence a esse topic, reseta
+        const current = Number(descriptorId || 0);
+        if (!filtered.some((d) => d.id === current)) {
+          setDescriptorId(filtered[0]?.id ?? "");
+        }
+      } catch {
+        setDescriptors([]);
+        if (mode === "create") setDescriptorId("");
       }
     })();
-  }, [saberId, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicId]);
 
-  function pickSupportFile(f: File | null) {
-    setSuporteFile(f);
-    setRemoveSuporte(false);
-    if (suportePreview) URL.revokeObjectURL(suportePreview);
-    setSuportePreview(f ? URL.createObjectURL(f) : "");
+  // ====== load skills when descriptor changes ======
+  useEffect(() => {
+    (async () => {
+      if (!descriptorId) {
+        setSkills([]);
+        if (mode === "create") setSkillId("");
+        return;
+      }
+      try {
+        const list = await fetchList<SkillDTO>("/skills/");
+        const filtered = list.filter((s) => s.descriptor === Number(descriptorId));
+        setSkills(filtered);
+
+        const current = Number(skillId || 0);
+        if (!filtered.some((s) => s.id === current)) {
+          setSkillId(filtered[0]?.id ?? "");
+        }
+      } catch {
+        setSkills([]);
+        if (mode === "create") setSkillId("");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [descriptorId]);
+
+  // ====== se edit e tem descriptor, tenta deduzir o topic ======
+  useEffect(() => {
+    (async () => {
+      if (mode !== "edit") return;
+      if (!subjectId) return;
+
+      // se já tem topic escolhido, não mexe
+      if (topicId) return;
+
+      // baixa tudo e acha o topic do descriptor atual
+      if (!latest?.descriptor) return;
+
+      try {
+        const allDesc = await fetchList<DescriptorDTO>("/descriptors/");
+        const d = allDesc.find((x) => x.id === Number(latest.descriptor));
+        if (d) setTopicId(d.topic);
+      } catch {
+        // ignora
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, subjectId, latest?.descriptor]);
+
+  // ====== options helpers ======
+  function setCorrect(letter: Alternativa) {
+    setOptions((prev) =>
+      prev.map((o) => ({ ...o, correct: o.letter === letter }))
+    );
   }
 
-  function pickAltFile(key: AltKey, file: File | null) {
-    setAltImg((p) => ({ ...p, [key]: file }));
-    setRemoveAltImg((p) => ({ ...p, [key]: false }));
-
-    if (altPreview[key]) URL.revokeObjectURL(altPreview[key]);
-    setAltPreview((p) => ({ ...p, [key]: file ? URL.createObjectURL(file) : "" }));
-  }
-
-  function removeAltImage(key: AltKey) {
-    setRemoveAltImg((p) => ({ ...p, [key]: true }));
-    setAltImg((p) => ({ ...p, [key]: null }));
-    if (altPreview[key]) URL.revokeObjectURL(altPreview[key]);
-    setAltPreview((p) => ({ ...p, [key]: "" }));
-  }
-
-  const getHtml = useMemo(() => {
-    return {
-      A: () => altAEd.getHtml(),
-      B: () => altBEd.getHtml(),
-      C: () => altCEd.getHtml(),
-      D: () => altDEd.getHtml(),
-      E: () => altEEd.getHtml(),
-    } as Record<AltKey, () => string>;
-  }, [altAEd, altBEd, altCEd, altDEd, altEEd]);
-
-  const filled = useMemo(() => {
-    if (mode === "edit") {
-      return computeFilledEdit({ getHtml, img: altImg, currentUrl: currentAltImgUrl, remove: removeAltImg });
-    }
-    return computeFilledCreate({ getHtml, img: altImg });
-  }, [mode, getHtml, altImg, currentAltImgUrl, removeAltImg]);
-
-  const canSave = useMemo(() => {
-    if (disciplina <= 0) return false;
-    if (!hasMeaningfulHtml(enunciadoEd.getHtml())) return false;
-    if (!hasMeaningfulHtml(comandoEd.getHtml())) return false;
-
-    const altErr = validateAlternatives({
-      filled,
-      altCorreta: (altCorreta as AltKey) || "",
+  function addOption() {
+    setOptions((prev) => {
+      if (prev.length >= 5) return prev;
+      const nextLetter = "E" as Alternativa;
+      return [
+        ...prev,
+        {
+          letter: nextLetter,
+          option_text: "",
+          correct: false,
+          input_mode: "text",
+          file: null,
+          currentUrl: null,
+          remove: false,
+        },
+      ];
     });
-    return !altErr;
-  }, [disciplina, enunciadoEd, comandoEd, filled, altCorreta]);
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function removeLastOption() {
+    setOptions((prev) => {
+      if (prev.length <= 4) return prev;
+      const trimmed = prev.slice(0, prev.length - 1);
+      // se removeu a correta, marca a primeira como correta
+      if (!trimmed.some((o) => o.correct)) {
+        trimmed[0] = { ...trimmed[0], correct: true };
+      }
+      return trimmed;
+    });
+  }
+
+  function optionHasImage(opt: OptionState) {
+    return !!opt.file || (!!opt.currentUrl && !opt.remove);
+  }
+
+  function optionHasText(opt: OptionState) {
+    return hasMeaningfulText(opt.option_text || "");
+  }
+
+  function optionIsEmpty(opt: OptionState) {
+    return !optionHasText(opt) && !optionHasImage(opt);
+  }
+
+  function optionHasBoth(opt: OptionState) {
+    return optionHasText(opt) && optionHasImage(opt);
+  }
+
+  function validateOptions(): string | null {
+    if (options.length < 4 || options.length > 5) {
+      return "Cadastre entre 4 e 5 alternativas.";
+    }
+
+    if (options.some(optionIsEmpty)) {
+      return "Cada alternativa deve ter texto ou imagem.";
+    }
+
+    if (options.some(optionHasBoth)) {
+      return "Cada alternativa deve ter somente texto ou somente imagem.";
+    }
+
+    return null;
+  }
+
+  function buildFormData(): FormData {
+    const fd = new FormData();
+
+    fd.set("private", String(isPrivate ? "true" : "false"));
+    fd.set("title", title ?? "");
+    fd.set("command", command ?? "");
+    fd.set("support_text", supportText ?? "");
+    fd.set("image_reference", imageReference ?? "");
+
+    if (!subjectId) throw new Error("Selecione a disciplina (subject).");
+    fd.set("subject", String(subjectId));
+
+    if (descriptorId) fd.set("descriptor", String(descriptorId));
+    if (skillId) fd.set("skill", String(skillId));
+
+    if (supportImageFile) fd.set("support_image", supportImageFile);
+    if (removeSupportImage) fd.set("remove_support_image", "1");
+
+    // options_payload (JSON)
+    const payload = options.map((o) => ({
+      letter: o.letter,
+      option_text: o.input_mode === "image" ? "" : (o.option_text ?? ""),
+      correct: !!o.correct,
+    }));
+    fd.set("options_payload", JSON.stringify(payload));
+
+    // imagens por letra
+    for (const opt of options) {
+      if (opt.input_mode === "image" && opt.file) {
+        fd.set(`option_image_${opt.letter}`, opt.file);
+      }
+      if (opt.input_mode === "text" || opt.remove) {
+        fd.set(`remove_option_image_${opt.letter}`, "1");
+      }
+    }
+
+    return fd;
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setTriedSubmit(true);
     setErr("");
 
-    if (!hasMeaningfulHtml(comandoEd.getHtml())) {
+    if (!hasMeaningfulText(command)) {
       setErr("O comando é obrigatório.");
       return;
     }
 
-    const altErr = validateAlternatives({
-      filled,
-      altCorreta: (altCorreta as AltKey) || "",
-    });
-    if (altErr) {
-      setErr(altErr);
+    const optionsError = validateOptions();
+    if (optionsError) {
+      setErr(optionsError);
       return;
     }
 
     try {
       setSaving(true);
-
-      const { used, respostas } = buildRespostasPayload({
-        getHtml,
-        filled,
-        altCorreta: altCorreta as AltKey,
-      });
-
-      const fd = new FormData();
-      fd.append("disciplina", String(disciplina));
-      fd.append("enunciado_html", normalizeHtml(enunciadoEd.getHtml()));
-      fd.append("comando_html", normalizeHtml(comandoEd.getHtml()));
-      fd.append("texto_suporte_html", normalizeHtml(textoApoioEd.getHtml()));
-      fd.append("ref_imagem", refImagem || "");
-      fd.append("is_private", String(isPrivate));
-      fd.append("respostas_payload", JSON.stringify(respostas));
-
-      if (saberId) fd.append("saber", String(saberId));
-      else if (mode === "edit") fd.append("saber", "");
-
-      if (habilidadeId) fd.append("habilidade", String(habilidadeId));
-      else if (mode === "edit") fd.append("habilidade", "");
-
-      // suporte
-      if (mode === "edit" && removeSuporte) fd.append("remove_imagem_suporte", "1");
-      else if (suporteFile) fd.append("imagem_suporte", suporteFile);
-
-      // imagens das alternativas (somente as usadas)
-      used.forEach((k, idx) => {
-        const ordem = idx + 1;
-        const file = altImg[k];
-        if (file) fd.append(`resposta_imagem_${ordem}`, file);
-
-        if (mode === "edit") {
-          if (removeAltImg[k]) fd.append(`remove_resposta_imagem_${ordem}`, "1");
-        }
-      });
-
+      const fd = buildFormData();
       await onSubmitFormData(fd);
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || "Erro ao salvar.");
+      const msg =
+        e?.response?.data?.detail ||
+        (typeof e?.message === "string" ? e.message : "") ||
+        "Não foi possível salvar.";
+      setErr(msg);
     } finally {
       setSaving(false);
     }
   }
 
-  const AltImagemUI = ({ keyAlt }: { keyAlt: AltKey }) => {
-    const showUrl =
-      altPreview[keyAlt] ||
-      (mode === "edit" && !removeAltImg[keyAlt] && currentAltImgUrl[keyAlt]
-        ? currentAltImgUrl[keyAlt]
-        : "");
-
-    return (
-      <div className="mt-3">
-        <label className="text-xs font-medium text-slate-500">
-          Imagem da alternativa {keyAlt} (opcional)
-        </label>
-
-        <div className="mt-2 flex items-start gap-4">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => pickAltFile(keyAlt, e.target.files?.[0] || null)}
-            className="block w-full text-sm"
-          />
-
-          {showUrl && (
-            <img
-              src={showUrl}
-              alt={`Imagem alternativa ${keyAlt}`}
-              className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
-            />
-          )}
-        </div>
-
-        {mode === "edit" && !!currentAltImgUrl[keyAlt] && (
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => removeAltImage(keyAlt)}
-              className="text-sm text-red-600 hover:underline"
-            >
-              Remover imagem da alternativa {keyAlt}
-            </button>
-            {removeAltImg[keyAlt] && (
-              <span className="text-xs text-slate-500">(vai remover ao salvar)</span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <div className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4">
       {err && (
         <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
           {err}
         </div>
       )}
 
-      {/* CARD MASTER */}
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6"
-      >
-        {/* Topo */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {/* PRIVACIDADE */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <label className="text-xs font-medium text-slate-500">
-              Disciplina <ReqStar />
-            </label>
-            <select
-              value={disciplina}
-              disabled={loadingDisc}
-              onChange={(e) => setDisciplina(Number(e.target.value))}
-              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-            >
-              <option value={0} disabled>
-                Selecione…
-              </option>
-              {disciplinas.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-500">Saber (opcional)</label>
-            <select
-              value={saberId}
-              disabled={!disciplina || loadingSab}
-              onChange={(e) => setSaberId(e.target.value ? Number(e.target.value) : "")}
-              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-            >
-              <option value="">Nenhum</option>
-              {saberes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.codigo} — {s.titulo}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-500">Habilidade (opcional)</label>
-            <select
-              value={habilidadeId}
-              disabled={!saberId || loadingHab}
-              onChange={(e) => setHabilidadeId(e.target.value ? Number(e.target.value) : "")}
-              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-            >
-              <option value="">Nenhuma</option>
-              {habilidades.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.codigo} — {h.titulo}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Enunciado */}
-        <div>
-          <label className="text-xs font-medium text-slate-500">
-            Enunciado <ReqStar />
-          </label>
-          <div className="mt-2">
-            <RichEditor editor={enunciadoEd.editor} placeholder="Digite o enunciado…" />
-          </div>
-        </div>
-
-        {/* Apoio */}
-        <Accordion
-          title="Apoio"
-          subtitle="Texto de apoio + imagem de apoio (opcionais)"
-          defaultOpen={false}
-        >
-          <div>
-            <label className="text-xs font-medium text-slate-500">
-              Texto de apoio (opcional)
-            </label>
-            <div className="mt-2">
-              <RichEditor
-                editor={textoApoioEd.editor}
-                placeholder="Se houver texto base, cole aqui…"
-              />
+            <div className="text-sm font-semibold text-slate-900">Visibilidade</div>
+            <div className="text-xs text-slate-500">
+              Pública aparece pra todos; privada só pra você.
             </div>
           </div>
 
-          <div className="mt-5">
-            <label className="text-xs font-medium text-slate-500">
-              Imagem de apoio (opcional)
-            </label>
-
-            <div className="mt-2 flex items-start gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => pickSupportFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm"
-              />
-
-              {(suportePreview || (mode === "edit" ? currentSuporteUrl : "")) && !removeSuporte && (
-                <img
-                  src={suportePreview || currentSuporteUrl}
-                  alt="Imagem de apoio"
-                  className="h-20 w-20 rounded-lg border border-slate-200 object-cover"
-                />
-              )}
-            </div>
-
-            {mode === "edit" && !!currentSuporteUrl && (
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRemoveSuporte(true);
-                    setSuporteFile(null);
-                    if (suportePreview) URL.revokeObjectURL(suportePreview);
-                    setSuportePreview("");
-                  }}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Remover imagem de apoio
-                </button>
-                {removeSuporte && (
-                  <span className="text-xs text-slate-500">(vai remover ao salvar)</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <label className="text-xs font-medium text-slate-500">
-              Referência da imagem (opcional)
-            </label>
-            <input
-              value={refImagem}
-              onChange={(e) => setRefImagem(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-              placeholder="Ex: fonte/autor/link…"
-            />
-          </div>
-        </Accordion>
-
-        {/* Comando */}
-        <div>
-          <label className="text-xs font-medium text-slate-500">
-            Comando <ReqStar />
-          </label>
-          <div className="mt-2">
-            <RichEditor
-              editor={comandoEd.editor}
-              placeholder="Ex: Assinale a alternativa correta…"
-            />
-          </div>
-
-          {triedSubmit && !hasMeaningfulHtml(comandoEd.getHtml()) && (
-            <p className="mt-2 text-xs text-red-600">O comando é obrigatório.</p>
-          )}
-        </div>
-
-        {/* Alternativas */}
-        <Accordion
-          title={
-            <span>
-              Alternativas <ReqStar />
-            </span>
-          }
-          defaultOpen={true}
-        >
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              {ALT_KEYS.map((k) => {
-                const active = altAtiva === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setAltAtiva(k)}
-                    className={[
-                      "px-5 py-2.5 text-sm rounded-lg transition font-medium border",
-                      active
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
-                    ].join(" ")}
-                  >
-                    Alternativa {k}
-                  </button>
-                );
-              })}
-            </div>
-
-            {altAtiva === "A" && (
-              <div>
-                <RichEditor editor={altAEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="A" />
-              </div>
-            )}
-            {altAtiva === "B" && (
-              <div>
-                <RichEditor editor={altBEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="B" />
-              </div>
-            )}
-            {altAtiva === "C" && (
-              <div>
-                <RichEditor editor={altCEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="C" />
-              </div>
-            )}
-            {altAtiva === "D" && (
-              <div>
-                <RichEditor editor={altDEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="D" />
-              </div>
-            )}
-            {altAtiva === "E" && (
-              <div>
-                <RichEditor editor={altEEd.editor} placeholder="Digite a alternativa…" />
-                <AltImagemUI keyAlt="E" />
-              </div>
-            )}
-
-            <div className="mt-5 flex items-center gap-3">
-              <label className="text-xs font-medium text-slate-500">
-                Alternativa correta <ReqStar />
-              </label>
-              <select
-                value={altCorreta}
-                onChange={(e) => {
-                  const v = e.target.value as Alternativa | "";
-                  setAltCorreta(v);
-                  if (v) setAltAtiva(v as AltKey);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-              >
-                <option value="" disabled>
-                  Selecione…
-                </option>
-                {ALTS.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </Accordion>
-
-        {/* Rodapé */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-slate-200 pt-4">
-          <label className="flex items-center gap-2 text-sm text-slate-700 select-none">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={isPrivate}
               onChange={(e) => setIsPrivate(e.target.checked)}
-              className="h-4 w-4 accent-emerald-600"
+              className="h-4 w-4"
             />
-            <span className="font-medium">Questão privada</span>
-            <span className="text-xs text-slate-500">(somente você consegue usar)</span>
+            Privada
           </label>
+        </div>
+      </div>
 
-          <div className="flex gap-2 justify-end">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancelar
-            </button>
+      {/* CURRÍCULO */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="text-sm font-semibold text-slate-900">Classificação</div>
 
-            <button
-              type="submit"
-              disabled={!canSave || saving}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* SUBJECT */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Disciplina (Subject)</label>
+            <select
+              value={subjectId}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : "";
+                setSubjectId(v as any);
+                setTopicId("");
+                setDescriptorId("");
+                setSkillId("");
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
             >
-              {saving ? "Salvando…" : mode === "edit" ? "Salvar alterações" : "Salvar questão"}
-            </button>
+              <option value="">Selecione…</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* TOPIC */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Tópico (Topic)</label>
+            <select
+              value={topicId}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : "";
+                setTopicId(v as any);
+                setDescriptorId("");
+                setSkillId("");
+              }}
+              disabled={!subjectId}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+            >
+              <option value="">Selecione…</option>
+              {topics.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.description}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* DESCRIPTOR */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Descritor (Descriptor)</label>
+            <select
+              value={descriptorId}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : "";
+                setDescriptorId(v as any);
+                setSkillId("");
+              }}
+              disabled={!topicId}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+            >
+              <option value="">(Opcional) Selecione…</option>
+              {descriptors.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.code} — {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* SKILL */}
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Habilidade (Skill)</label>
+            <select
+              value={skillId}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : "";
+                setSkillId(v as any);
+              }}
+              disabled={!descriptorId}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+            >
+              <option value="">(Opcional) Selecione…</option>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.code} — {s.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* CONTEÚDO */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="text-sm font-semibold text-slate-900">Conteúdo</div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Enunciado (title)</label>
+          <textarea
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            rows={3}
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            placeholder="Digite o enunciado…"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-700">Comando (command)</label>
+          <textarea
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            rows={2}
+            required
+            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            placeholder="Ex: Marque a alternativa correta."
+          />
+        </div>
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+            Apoio (opcional)
+          </summary>
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Texto de apoio</label>
+              <textarea
+                value={supportText}
+                onChange={(e) => setSupportText(e.target.value)}
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                placeholder="Texto de apoio…"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Imagem de apoio</label>
+
+              {mode === "edit" && latest?.support_image && !removeSupportImage && (
+                <div className="mt-2 flex items-center gap-3">
+                  <img
+                    src={latest.support_image}
+                    alt="Imagem atual"
+                    className="h-16 w-16 rounded-lg border border-slate-200 object-cover bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRemoveSupportImage(true)}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Remover imagem atual
+                  </button>
+                </div>
+              )}
+
+              {removeSupportImage && (
+                <div className="mt-2 text-xs text-slate-600">
+                  ✅ Vai remover a imagem atual ao salvar.
+                  <button
+                    type="button"
+                    onClick={() => setRemoveSupportImage(false)}
+                    className="ml-2 underline"
+                  >
+                    desfazer
+                  </button>
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setSupportImageFile(e.target.files?.[0] ?? null)}
+                className="mt-2 block w-full text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Referência da imagem</label>
+              <input
+                value={imageReference}
+                onChange={(e) => setImageReference(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                placeholder="Fonte/URL/créditos…"
+              />
+            </div>
+          </div>
+        </details>
+      </div>
+
+      {/* ALTERNATIVAS */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-semibold text-slate-900">Alternativas</div>
+
+          <div className="flex items-center gap-2">
+            {options.length < 5 ? (
+              <button
+                type="button"
+                onClick={addOption}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+              >
+                + Adicionar alternativa (E)
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={removeLastOption}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                - Remover alternativa (E)
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {options.map((opt) => (
+            <div
+              key={opt.letter}
+              className={[
+                "rounded-xl border p-4",
+                opt.correct ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white",
+              ].join(" ")}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-slate-900">{opt.letter})</div>
+
+                <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <input
+                    type="radio"
+                    name="correct"
+                    checked={opt.correct}
+                    onChange={() => setCorrect(opt.letter)}
+                  />
+                  Correta
+                </label>
+              </div>
+
+              <div className="mt-2 inline-flex rounded-lg border border-slate-200 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOptions((prev) =>
+                      prev.map((o) =>
+                        o.letter === opt.letter
+                          ? {
+                              ...o,
+                              input_mode: "text",
+                              file: null,
+                              remove: !!o.currentUrl ? true : o.remove,
+                            }
+                          : o
+                      )
+                    );
+                  }}
+                  className={[
+                    "rounded-md px-2 py-1 text-xs font-semibold transition",
+                    opt.input_mode === "text"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "text-slate-600 hover:bg-slate-100",
+                  ].join(" ")}
+                >
+                  Texto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOptions((prev) =>
+                      prev.map((o) =>
+                        o.letter === opt.letter
+                          ? {
+                              ...o,
+                              input_mode: "image",
+                              option_text: "",
+                              remove: false,
+                            }
+                          : o
+                      )
+                    );
+                  }}
+                  className={[
+                    "rounded-md px-2 py-1 text-xs font-semibold transition",
+                    opt.input_mode === "image"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "text-slate-600 hover:bg-slate-100",
+                  ].join(" ")}
+                >
+                  Imagem
+                </button>
+              </div>
+
+              <textarea
+                value={opt.option_text}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setOptions((prev) =>
+                    prev.map((o) =>
+                      o.letter === opt.letter
+                        ? {
+                            ...o,
+                            input_mode: "text",
+                            option_text: v,
+                            file: null,
+                            remove: !!o.currentUrl ? true : o.remove,
+                          }
+                        : o
+                    )
+                  );
+                }}
+                disabled={opt.input_mode === "image"}
+                rows={3}
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                placeholder={`Texto da alternativa ${opt.letter}…`}
+              />
+
+              <div className="mt-2">
+                <label className="text-xs font-semibold text-slate-700">
+                  Imagem
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={opt.input_mode === "text"}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setOptions((prev) =>
+                      prev.map((o) =>
+                        o.letter === opt.letter
+                          ? {
+                              ...o,
+                              input_mode: "image",
+                              option_text: "",
+                              file,
+                              remove: false,
+                            }
+                          : o
+                      )
+                    );
+                  }}
+                  className="mt-1 block w-full text-sm disabled:opacity-50"
+                />
+              </div>
+
+              {(!!opt.file || (!!opt.currentUrl && !opt.remove)) && (
+                <div className="mt-2 flex items-center gap-3">
+                  {opt.file ? (
+                    <div className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                      Nova imagem selecionada
+                    </div>
+                  ) : (
+                    <img
+                      src={opt.currentUrl as string}
+                      alt={`Imagem ${opt.letter}`}
+                      className="h-16 w-16 rounded-lg border border-slate-200 object-cover bg-white"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOptions((prev) =>
+                        prev.map((o) =>
+                          o.letter === opt.letter
+                            ? { ...o, file: null, remove: true }
+                            : o
+                        )
+                      );
+                    }}
+                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Remover imagem
+                  </button>
+                </div>
+              )}
+
+              {optionIsEmpty(opt) && (
+                <div className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  Preencha o texto ou envie uma imagem.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex items-center justify-end gap-2">
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancelar
+          </button>
+        ) : (
+          <Link
+            to="/questoes"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Cancelar
+          </Link>
+        )}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+        >
+          {saving ? "Salvando…" : mode === "create" ? "Criar questão" : "Salvar nova versão"}
+        </button>
+      </div>
+    </form>
   );
 }

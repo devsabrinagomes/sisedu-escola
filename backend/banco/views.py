@@ -1,126 +1,123 @@
 from django.db.models import Q
-from django.utils import timezone
-from datetime import datetime
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Disciplina, Questao, Saber, Habilidade
+from .filters import QuestionFilter
+
+from .models import Subject, Topic, Descriptor, Skill, Question, BookletItem
 from .serializers import (
-    DisciplinaSerializer,
-    QuestaoSerializer,
-    SaberSerializer,
-    HabilidadeSerializer,
+    SubjectSerializer,
+    TopicSerializer,
+    DescriptorSerializer,
+    SkillSerializer,
+    QuestionSerializer,
 )
-from .permissions import IsOwnerOrReadOnly
+# from .permissions import IsOwnerOrReadOnly
 
-class DisciplinaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Disciplina.objects.all().order_by("nome")
-    serializer_class = DisciplinaSerializer
+
+class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Subject.objects.all().order_by("name")
+    serializer_class = SubjectSerializer
     permission_classes = [IsAuthenticated]
 
 
-class SaberViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = SaberSerializer
+class TopicViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = TopicSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Saber.objects.select_related("disciplina").all().order_by("codigo", "titulo")
-        disciplina_id = self.request.query_params.get("disciplina")
-        return qs.filter(disciplina_id=disciplina_id) if disciplina_id else qs
+        qs = Topic.objects.select_related("subject").order_by("description", "id")
+        subject_id = self.request.query_params.get("subject")
+        return qs.filter(subject_id=subject_id) if subject_id else qs
 
 
-class HabilidadeViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = HabilidadeSerializer
+class DescriptorViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = DescriptorSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Habilidade.objects.select_related("saber", "saber__disciplina").all().order_by("codigo", "titulo")
-        saber_id = self.request.query_params.get("saber")
-        return qs.filter(saber_id=saber_id) if saber_id else qs
+        qs = Descriptor.objects.select_related("topic", "topic__subject").all().order_by("code", "id")
 
+        topic_id = self.request.query_params.get("topic")
+        subject_id = self.request.query_params.get("subject")
 
-class QuestaoViewSet(viewsets.ModelViewSet):
-    serializer_class = QuestaoSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def get_queryset(self):
-        user = self.request.user
-        params = self.request.query_params
-
-        qs = Questao.objects.select_related("disciplina", "saber", "habilidade", "created_by")
-
-        # regra de visibilidade (já tinha)
-        if not user.is_superuser:
-            qs = qs.filter(Q(is_private=False) | Q(created_by=user))
-
-        # -------- BUSCA (frontend manda ?search=...) --------
-        search = (params.get("search") or "").strip()
-        if search:
-            ids = set()
-            
-            base_q = (
-                Q(enunciado_html__icontains=search)
-                | Q(comando_html__icontains=search)
-                | Q(texto_suporte_html__icontains=search)
-                | Q(disciplina__nome__icontains=search)
-                | Q(created_by__username__icontains=search)
-                | Q(created_by__first_name__icontains=search)
-                | Q(created_by__last_name__icontains=search)
-            )
-            ids.update(qs.filter(base_q).values_list("id", flat=True))
-            
-            if search.isdigit():
-                ids.add(int(search))
-            
-            ids.update(qs.filter(saber__codigo__icontains=search).values_list("id", flat=True))
-            ids.update(qs.filter(saber__titulo__icontains=search).values_list("id", flat=True))
-            ids.update(qs.filter(habilidade__codigo__icontains=search).values_list("id", flat=True))
-            ids.update(qs.filter(habilidade__titulo__icontains=search).values_list("id", flat=True))
-
-            qs = qs.filter(id__in=ids)
-
-        # -------- FILTRO DISCIPLINA (frontend manda ?disciplina=ID) --------
-        disciplina_id = params.get("disciplina")
-        if disciplina_id and disciplina_id != "todos":
-            qs = qs.filter(disciplina_id=disciplina_id)
-
-        # -------- FILTROS DE DATA (iguais aos params do teu frontend) --------
-        created_at_date = params.get("created_at__date")
-        if created_at_date:
-            qs = qs.filter(created_at__date=created_at_date)
-
-        created_at_gte = params.get("created_at__gte")
-        if created_at_gte:
-            qs = qs.filter(created_at__date__gte=created_at_gte)
-
-        created_at_year = params.get("created_at__year")
-        if created_at_year:
-            qs = qs.filter(created_at__year=created_at_year)
-
-        created_at_month = params.get("created_at__month")
-        if created_at_month:
-            qs = qs.filter(created_at__month=created_at_month)
-
-        # -------- ORDENAÇÃO (frontend manda ?ordering=campo ou -campo) --------
-        ordering = params.get("ordering") or "-created_at"
-
-        allowed = {
-            "id",
-            "created_at",
-            "is_private",
-            "created_by__username",
-            "disciplina__nome",
-            "enunciado_html",
-        }
-        ord_field = ordering.lstrip("-")
-        if ord_field in allowed:
-            qs = qs.order_by(ordering)
-        else:
-            qs = qs.order_by("-created_at")
+        if topic_id:
+            qs = qs.filter(topic_id=topic_id)
+        if subject_id:
+            qs = qs.filter(topic__subject_id=subject_id)
 
         return qs
 
+
+class SkillViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = SkillSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Skill.objects.select_related(
+            "descriptor",
+            "descriptor__topic",
+            "descriptor__topic__subject",
+        ).order_by("code", "id")
+
+        subject_id = self.request.query_params.get("subject")
+        if subject_id:
+            qs = qs.filter(descriptor__topic__subject_id=subject_id)
+
+        return qs
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    serializer_class = QuestionSerializer
+    permission_classes = [IsAuthenticated]  # depois vc volta com IsOwnerOrReadOnly ajustado
+    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = QuestionFilter
+
+    def get_queryset(self):
+        user = self.request.user
+
+        qs = (
+            Question.objects
+            .filter(deleted=False)  # se você usa soft delete
+            .prefetch_related(
+                "versions",
+                "versions__options",
+            )
+        )
+
+        # como created_by é BigInteger (id), compare com user.id
+        if not user.is_superuser:
+            qs = qs.filter(Q(private=False) | Q(created_by=user.id))
+
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(versions__title__icontains=search)
+                | Q(versions__command__icontains=search)
+                | Q(versions__support_text__icontains=search)
+                | Q(versions__subject__name__icontains=search)
+                | Q(versions__skill__code__icontains=search)
+                | Q(versions__skill__name__icontains=search)
+            ).distinct()
+
+        return qs.order_by("-created_at")
+
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        # created_by é BigInteger, então salva o id do user
+        serializer.save(created_by=self.request.user.id)
+
+    def perform_destroy(self, instance):
+        if instance.created_by != self.request.user.id:
+            raise PermissionDenied("Você só pode remover questões criadas por você.")
+
+        in_use = BookletItem.objects.filter(question_version__question=instance).exists()
+        if in_use:
+            raise ValidationError({"detail": "Esta questão está vinculada a um caderno e não pode ser removida."})
+
+        # Soft delete para manter histórico e evitar deleção física
+        instance.deleted = True
+        instance.save(update_fields=["deleted"])
