@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import Breadcrumb from "@/components/ui/Breadcrumb";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   ArrowLeft,
   Image as ImageIcon,
-  Pencil,
-  Trash2,
-  X,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import AddToCadernoModal from "@/features/questoes/components/AddToCadernoModal";
+import QuestionActions from "@/features/questoes/components/QuestionActions";
+import { useToast } from "@/components/ui/toast/useToast";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 type OptionDTO = {
   id: number;
@@ -39,8 +43,25 @@ type QuestionDTO = {
   id: number;
   private: boolean;
   deleted: boolean;
-  created_by: number;
-  created_at: string;
+  created_by:
+    | number
+    | string
+    | {
+        id?: number;
+        name?: string | null;
+        full_name?: string | null;
+        username?: string | null;
+      };
+  created_by_name?: string | null;
+  created_by_full_name?: string | null;
+  created_by_username?: string | null;
+  creator?: {
+    id?: number;
+    name?: string | null;
+    full_name?: string | null;
+    username?: string | null;
+  } | null;
+  created_at?: string | null;
   subject_name?: string | null;
   versions?: VersionDTO[];
 };
@@ -60,12 +81,13 @@ export default function QuestaoDetalhe() {
   const { id } = useParams();
   const nav = useNavigate();
   const auth = useAuth() as any;
+  const { toast } = useToast();
   const [item, setItem] = useState<QuestionDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [actionErr, setActionErr] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cadernoModalOpen, setCadernoModalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -76,7 +98,8 @@ export default function QuestaoDetalhe() {
         setItem(data);
       } catch (e: any) {
         setErr(
-          e?.response?.data?.detail || "Não foi possível carregar a questão.",
+          e?.response?.data?.detail ||
+            "N\u00e3o foi poss\u00edvel carregar a quest\u00e3o.",
         );
       } finally {
         setLoading(false);
@@ -84,27 +107,129 @@ export default function QuestaoDetalhe() {
     })();
   }, [id]);
 
-  const loggedUserId = Number(auth?.userId ?? auth?.id);
-  const createdById = Number(item?.created_by);
+  const userId = Number(
+    auth?.userId ??
+      auth?.id ??
+      auth?.user?.id ??
+      auth?.user?.pk ??
+      auth?.user?.user_id ??
+      auth?.data?.id,
+  );
+  const createdById = Number(
+    (item as any)?.created_by?.id ??
+      (item as any)?.created_by?.pk ??
+      (item as any)?.created_by_id ??
+      item?.created_by,
+  );
   const isMine =
-    Number.isFinite(loggedUserId) &&
+    Number.isFinite(userId) &&
     Number.isFinite(createdById) &&
-    loggedUserId === createdById;
+    userId === createdById;
+  const canAddToCaderno = !isMine && !item?.private;
+
+  const creatorLabel = useMemo(() => {
+    if (!item) return "-";
+
+    const byRoot =
+      item.created_by_full_name ||
+      item.created_by_name ||
+      item.created_by_username;
+    if (byRoot) return byRoot;
+
+    const byCreator =
+      item.creator?.full_name ||
+      item.creator?.name ||
+      item.creator?.username;
+    if (byCreator) return byCreator;
+
+    if (typeof item.created_by === "object" && item.created_by) {
+      return (
+        item.created_by.full_name ||
+        item.created_by.name ||
+        item.created_by.username ||
+        "-"
+      );
+    }
+
+    if (typeof item.created_by === "string" && item.created_by.trim()) {
+      return item.created_by;
+    }
+
+    if (typeof item.created_by === "number") {
+      return String(item.created_by);
+    }
+
+    return "-";
+  }, [item]);
+
+  const createdAtLabel = useMemo(() => {
+    if (!item?.created_at) return "";
+    const dt = new Date(item.created_at);
+    if (Number.isNaN(dt.getTime())) return "";
+    return new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    })
+      .format(dt)
+      .replace(",", " às");
+  }, [item?.created_at]);
+
+  const metadataLabel = createdAtLabel
+    ? `Criada por: ${creatorLabel} • ${createdAtLabel}`
+    : `Criada por: ${creatorLabel}`;
 
   async function onDelete() {
     if (!item || !isMine) return;
-    setActionErr("");
     try {
       setDeleting(true);
       await api.delete(`/questions/${item.id}/`);
+      toast({
+        type: "success",
+        title: "Questão removida com sucesso",
+      });
       nav("/questoes");
     } catch (e: any) {
-      setActionErr(
-        e?.response?.data?.detail || "Não foi possível remover a questão.",
-      );
+      toast({
+        type: "error",
+        title: "Erro ao remover questão",
+        message: getApiErrorMessage(e),
+      });
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
+    }
+  }
+
+  async function onToggleAnnulled() {
+    if (!item || !isMine) return;
+    const latest = pickLatestVersion(item.versions);
+    const nextAnnulled = !Boolean(latest?.annulled);
+
+    try {
+      await api.patch(`/questions/${item.id}/`, { annulled: nextAnnulled });
+      setItem((prev) => {
+        if (!prev) return prev;
+        const latestVersion = pickLatestVersion(prev.versions);
+        if (!latestVersion || !prev.versions?.length) return prev;
+        return {
+          ...prev,
+          versions: prev.versions.map((version) =>
+            version.id === latestVersion.id
+              ? { ...version, annulled: nextAnnulled }
+              : version,
+          ),
+        };
+      });
+      toast({
+        type: "success",
+        title: nextAnnulled ? "Questão anulada" : "Questão reativada",
+      });
+    } catch (e: any) {
+      toast({
+        type: "error",
+        title: "Erro ao alterar status da questão",
+        message: getApiErrorMessage(e),
+      });
     }
   }
 
@@ -128,121 +253,107 @@ export default function QuestaoDetalhe() {
     );
   }, [v]);
 
-  if (loading) return <div className="text-sm text-slate-500">Carregando…</div>;
+  if (loading) return <div className="text-sm text-slate-500">Carregando...</div>;
 
   if (err)
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {err}
         </div>
-        <div className="flex items-center gap-2">
-          {isMine && (
-            <Link
-              to={`/questoes/${id}/editar`}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              <Pencil className="h-4 w-4" />
-              Editar
-            </Link>
-          )}
-          <Link
-            to="/questoes"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar
-          </Link>
-        </div>
+
+        <Link
+          to="/questoes"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Link>
       </div>
     );
 
   if (!item || !v)
-    return <div className="text-sm text-slate-500">Não encontrado.</div>;
+    return <div className="text-sm text-slate-500">{"N\u00e3o encontrado."}</div>;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
       <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Link
-              to="/questoes"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-              aria-label="Voltar para questões"
-              title="Voltar"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-
-            <Link to="/questoes" className="hover:text-slate-800">
-              Questões
-            </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-600">Detalhes</span>
-          </div>
+          <Breadcrumb
+            items={[
+              { label: "Quest\u00f5es", to: "/questoes" },
+              { label: "Detalhes" },
+            ]}
+          />
 
           <div>
             <h1 className="text-lg font-semibold text-slate-900">
-              Detalhes da questão
+              {"Detalhes da quest\u00e3o"}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Visualização somente leitura.
+              {"Visualiza\u00e7\u00e3o somente leitura."}
             </p>
           </div>
         </div>
       </div>
 
-      {actionErr && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {actionErr}
-        </div>
-      )}
-
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-              {item.subject_name || "—"}
-            </span>
-
-            <span
-              className={[
-                "rounded-full px-3 py-1 text-xs font-medium",
-                item.private
-                  ? "bg-red-100 text-red-700"
-                  : "bg-emerald-100 text-emerald-700",
-              ].join(" ")}
-            >
-              {item.private ? "Privada" : "Pública"}
-            </span>
-
-            {correta && (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Correta: {correta.letter}
+        <div className="px-6 pt-6 pb-4 flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                {item.subject_name || "—"}
               </span>
-            )}
-          </div>
 
-          {isMine && (
-            <div className="flex items-center gap-2 shrink-0">
-              <Link
-                to={`/questoes/${id}/editar`}
-                title="Editar questão"
-                aria-label="Editar questão"
-                className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+              <span
+                className={[
+                  "rounded-full px-3 py-1 text-xs font-medium",
+                  item.private
+                    ? "bg-red-100 text-red-700"
+                    : "bg-emerald-100 text-emerald-700",
+                ].join(" ")}
               >
-                <Pencil className="h-[18px] w-[18px]" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => setDeleteOpen(true)}
-                title="Remover questão"
-                aria-label="Remover questão"
-                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
-              >
-                <Trash2 className="h-[18px] w-[18px]" />
-              </button>
+                {item.private ? "Privada" : "P\u00fablica"}
+              </span>
+
+              {correta && (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  Correta: {correta.letter}
+                </span>
+              )}
+              {v.annulled && (
+                <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+                  Anulada
+                </span>
+              )}
             </div>
+            <div className="text-xs text-slate-500">
+              {metadataLabel}
+            </div>
+          </div>
+          {isMine && (
+            <QuestionActions
+              isMine={isMine}
+              annulled={Boolean(v.annulled)}
+              onEdit={() => nav(`/questoes/${id}/editar`)}
+              onToggleAnnulled={onToggleAnnulled}
+              onAddToCaderno={() => setCadernoModalOpen(true)}
+              canAddToCaderno={!v.annulled}
+              onRemove={() => setDeleteOpen(true)}
+              variant="icons"
+            />
+          )}
+          {canAddToCaderno && (
+            <button
+              type="button"
+              onClick={() => setCadernoModalOpen(true)}
+              title="Adicionar ao caderno"
+              aria-label="Adicionar ao caderno"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition shrink-0"
+            >
+              <Plus size={18} />
+              <span>Adicionar ao caderno</span>
+            </button>
           )}
         </div>
 
@@ -267,7 +378,7 @@ export default function QuestaoDetalhe() {
                       Apoio
                     </div>
                     <div className="text-xs text-slate-500">
-                      Texto + imagem + referência (se houver)
+                      {"Texto + imagem + refer\u00eancia (se houver)"}
                     </div>
                   </div>
                   <span className="text-slate-400 group-open:rotate-180 transition">
@@ -305,7 +416,7 @@ export default function QuestaoDetalhe() {
                 {hasMeaningfulText(v.image_reference || "") && (
                   <div>
                     <div className="text-xs font-semibold text-slate-700 mb-1">
-                      Referência da imagem
+                      {"Refer\u00eancia da imagem"}
                     </div>
                     <div className="text-sm text-slate-700 break-words">
                       {v.image_reference}
@@ -382,58 +493,37 @@ export default function QuestaoDetalhe() {
         </div>
       </div>
 
-      {deleteOpen && isMine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Fechar modal"
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !deleting && setDeleteOpen(false)}
-          />
-          <div className="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">
-                Remover questão
-              </h2>
-              <button
-                type="button"
-                onClick={() => !deleting && setDeleteOpen(false)}
-                className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Fechar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      <ConfirmDialog
+        open={deleteOpen && isMine}
+        title="Remover questão"
+        description="Tem certeza que deseja remover essa questão? Essa ação não pode ser desfeita."
+        confirmText={deleting ? "Removendo..." : "Remover"}
+        loading={deleting}
+        onClose={() => {
+          if (deleting) return;
+          setDeleteOpen(false);
+        }}
+        onConfirm={onDelete}
+      />
 
-            <p className="text-sm text-slate-700">
-              Tem certeza que deseja remover essa questão?
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Essa ação não pode ser desfeita.
-            </p>
-
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteOpen(false)}
-                disabled={deleting}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={deleting}
-                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" />
-                {deleting ? "Removendo..." : "Remover"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddToCadernoModal
+        open={cadernoModalOpen}
+        questionId={item?.id ?? null}
+        onClose={() => setCadernoModalOpen(false)}
+        onSuccess={() =>
+          toast({
+            type: "success",
+            title: "Adicionada ao caderno",
+          })
+        }
+        onError={(e) =>
+          toast({
+            type: "error",
+            title: "Erro ao adicionar ao caderno",
+            message: getApiErrorMessage(e),
+          })
+        }
+      />
     </div>
   );
 }

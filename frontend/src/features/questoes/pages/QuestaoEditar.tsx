@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import QuestaoForm, { type QuestionDTO } from "@/features/questoes/components/QuestaoForm";
 import { useAuth } from "@/auth/AuthContext";
+import PageCard from "@/components/layout/PageCard";
 
 export default function QuestaoEditar() {
   const { id } = useParams();
@@ -85,35 +86,26 @@ export default function QuestaoEditar() {
   if (loading) return <div className="text-sm text-slate-500">Carregando…</div>;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Editar questão</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Você pode editar. Excluir só aparece quando dá pra confirmar que foi você quem criou.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canConfirmOwnership && isMine && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-            >
-              Excluir questão
-            </button>
-          )}
-
-          <Link
-            to="/questoes"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+    <PageCard
+      breadcrumb={[
+        { label: "Questões", to: "/questoes" },
+        { label: "Editar" },
+      ]}
+      title="Editar questão"
+      subtitle="Atualize as informações da questão."
+      onBack={() => nav(`/questoes/${id}`)}
+      rightSlot={
+        canConfirmOwnership && isMine ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
           >
-            Voltar
-          </Link>
-        </div>
-      </div>
-
+            Excluir questão
+          </button>
+        ) : undefined
+      }
+    >
       {err && (
         <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
           {err}
@@ -126,9 +118,9 @@ export default function QuestaoEditar() {
           mode="edit"
           initialData={data}
           onSubmitFormData={handleSubmit}
-          onCancel={() => nav("/questoes")}
+          onCancel={() => nav(`/questoes/${id}`)}
         />
       )}
-    </div>
+    </PageCard>
   );
 }

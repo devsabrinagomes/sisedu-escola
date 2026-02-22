@@ -66,11 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     })
 
+    localStorage.setItem("refresh_token", data.refresh)
     setToken(data.access)
     setUsername(user)
   }
 
   function logout() {
+    localStorage.removeItem("refresh_token")
     setToken("")
     setUsername("")
   }

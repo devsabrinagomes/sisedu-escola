@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import { Check } from "lucide-react";
+import RichEditor, {
+  hasMeaningfulHtml,
+  normalizeHtml,
+  useRichEditor,
+} from "@/components/RichEditor";
 
 export type Alternativa = "A" | "B" | "C" | "D" | "E";
 
@@ -66,7 +72,52 @@ function pickLatestVersion(versions?: QuestionVersionDTO[]) {
 }
 
 function hasMeaningfulText(value: string) {
-  return value.trim().length > 0;
+  return hasMeaningfulHtml(value);
+}
+
+function firstErrorText(value: unknown): string {
+  if (Array.isArray(value) && value.length > 0) return String(value[0]);
+  if (typeof value === "string") return value;
+  return "";
+}
+
+function toFriendlySaveError(e: any): string {
+  const data = e?.response?.data;
+
+  if (data?.detail) return String(data.detail);
+
+  if (data && typeof data === "object") {
+    const titleError = firstErrorText((data as any).title);
+    if (titleError) {
+      const low = titleError.toLowerCase();
+      if (low.includes("required") || low.includes("blank") || low.includes("obrigat")) {
+        return "O enunciado é obrigatório.";
+      }
+      return `Enunciado: ${titleError}`;
+    }
+
+    const commandError = firstErrorText((data as any).command);
+    if (commandError) {
+      const low = commandError.toLowerCase();
+      if (low.includes("required") || low.includes("blank") || low.includes("obrigat")) {
+        return "O comando é obrigatório.";
+      }
+      return `Comando: ${commandError}`;
+    }
+
+    const firstField = Object.entries(data as Record<string, unknown>)[0];
+    if (firstField) {
+      const [field, value] = firstField;
+      const text = firstErrorText(value);
+      if (text) return `${field}: ${text}`;
+    }
+  }
+
+  const fallback = typeof e?.message === "string" ? e.message : "";
+  if (fallback.includes("status code 400")) {
+    return "Revise os campos obrigatórios e tente novamente.";
+  }
+  return fallback || "Não foi possível salvar.";
 }
 
 async function fetchList<T>(url: string): Promise<T[]> {
@@ -74,6 +125,57 @@ async function fetchList<T>(url: string): Promise<T[]> {
   if (Array.isArray(data)) return data as T[];
   if (data && Array.isArray(data.results)) return data.results as T[];
   return [];
+}
+
+function RichTextField({
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const { editor } = useRichEditor(value || "<p></p>");
+
+  useEffect(() => {
+    if (!editor) return;
+    const onUpdate = () => {
+      if (disabled) return;
+      onChange(editor.getHTML());
+    };
+    editor.on("update", onUpdate);
+    return () => {
+      editor.off("update", onUpdate);
+    };
+  }, [disabled, editor, onChange]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const current = normalizeHtml(editor.getHTML() || "");
+    const next = normalizeHtml(value || "");
+    if (current !== next) {
+      editor.commands.setContent(next || "<p></p>", false);
+    }
+  }, [editor, value]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
+
+  return (
+    <div
+      className={[
+        "mt-1 rounded-lg border border-slate-200 bg-white",
+        disabled ? "opacity-70" : "",
+      ].join(" ")}
+    >
+      <RichEditor editor={editor} placeholder={placeholder} />
+    </div>
+  );
 }
 
 export default function QuestaoForm({
@@ -351,9 +453,9 @@ export default function QuestaoForm({
     const fd = new FormData();
 
     fd.set("private", String(isPrivate ? "true" : "false"));
-    fd.set("title", title ?? "");
-    fd.set("command", command ?? "");
-    fd.set("support_text", supportText ?? "");
+    fd.set("title", normalizeHtml(title ?? ""));
+    fd.set("command", normalizeHtml(command ?? ""));
+    fd.set("support_text", normalizeHtml(supportText ?? ""));
     fd.set("image_reference", imageReference ?? "");
 
     if (!subjectId) throw new Error("Selecione a disciplina (subject).");
@@ -368,7 +470,7 @@ export default function QuestaoForm({
     // options_payload (JSON)
     const payload = options.map((o) => ({
       letter: o.letter,
-      option_text: o.input_mode === "image" ? "" : (o.option_text ?? ""),
+      option_text: o.input_mode === "image" ? "" : normalizeHtml(o.option_text ?? ""),
       correct: !!o.correct,
     }));
     fd.set("options_payload", JSON.stringify(payload));
@@ -390,6 +492,11 @@ export default function QuestaoForm({
     e.preventDefault();
     setErr("");
 
+    if (!hasMeaningfulText(title)) {
+      setErr("O enunciado é obrigatório.");
+      return;
+    }
+
     if (!hasMeaningfulText(command)) {
       setErr("O comando é obrigatório.");
       return;
@@ -406,11 +513,7 @@ export default function QuestaoForm({
       const fd = buildFormData();
       await onSubmitFormData(fd);
     } catch (e: any) {
-      const msg =
-        e?.response?.data?.detail ||
-        (typeof e?.message === "string" ? e.message : "") ||
-        "Não foi possível salvar.";
-      setErr(msg);
+      setErr(toFriendlySaveError(e));
     } finally {
       setSaving(false);
     }
@@ -434,13 +537,28 @@ export default function QuestaoForm({
             </div>
           </div>
 
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
             <input
               type="checkbox"
               checked={isPrivate}
               onChange={(e) => setIsPrivate(e.target.checked)}
-              className="h-4 w-4"
+              className="sr-only"
+              aria-label="Marcar questão como privada"
             />
+            <span
+              className={[
+                "inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200",
+                isPrivate ? "border-emerald-500 bg-emerald-500" : "border-slate-300 bg-white",
+              ].join(" ")}
+              aria-hidden="true"
+            >
+              <Check
+                className={[
+                  "h-3.5 w-3.5 text-white transition-all duration-200",
+                  isPrivate ? "scale-100 opacity-100" : "scale-50 opacity-0",
+                ].join(" ")}
+              />
+            </span>
             Privada
           </label>
         </div>
@@ -453,7 +571,7 @@ export default function QuestaoForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* SUBJECT */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Disciplina (Subject)</label>
+            <label className="text-xs font-semibold text-slate-700">Disciplina</label>
             <select
               value={subjectId}
               onChange={(e) => {
@@ -476,7 +594,7 @@ export default function QuestaoForm({
 
           {/* TOPIC */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Tópico (Topic)</label>
+            <label className="text-xs font-semibold text-slate-700">Tópico</label>
             <select
               value={topicId}
               onChange={(e) => {
@@ -499,7 +617,7 @@ export default function QuestaoForm({
 
           {/* DESCRIPTOR */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Descritor (Descriptor)</label>
+            <label className="text-xs font-semibold text-slate-700">Descritor</label>
             <select
               value={descriptorId}
               onChange={(e) => {
@@ -521,7 +639,7 @@ export default function QuestaoForm({
 
           {/* SKILL */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Habilidade (Skill)</label>
+            <label className="text-xs font-semibold text-slate-700">Habilidade</label>
             <select
               value={skillId}
               onChange={(e) => {
@@ -547,24 +665,19 @@ export default function QuestaoForm({
         <div className="text-sm font-semibold text-slate-900">Conteúdo</div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700">Enunciado (title)</label>
-          <textarea
+          <label className="text-xs font-semibold text-slate-700">Enunciado</label>
+          <RichTextField
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            rows={3}
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            onChange={setTitle}
             placeholder="Digite o enunciado…"
           />
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700">Comando (command)</label>
-          <textarea
+          <label className="text-xs font-semibold text-slate-700">Comando</label>
+          <RichTextField
             value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            rows={2}
-            required
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            onChange={setCommand}
             placeholder="Ex: Marque a alternativa correta."
           />
         </div>
@@ -577,11 +690,9 @@ export default function QuestaoForm({
           <div className="mt-4 space-y-4">
             <div>
               <label className="text-xs font-semibold text-slate-700">Texto de apoio</label>
-              <textarea
+              <RichTextField
                 value={supportText}
-                onChange={(e) => setSupportText(e.target.value)}
-                rows={3}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                onChange={setSupportText}
                 placeholder="Texto de apoio…"
               />
             </div>
@@ -671,22 +782,37 @@ export default function QuestaoForm({
             <div
               key={opt.letter}
               className={[
-                "rounded-xl border p-4",
-                opt.correct ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white",
+                "rounded-xl bg-white p-4",
+                opt.correct ? "border-2 border-emerald-500" : "border border-slate-200",
               ].join(" ")}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-slate-900">{opt.letter})</div>
 
-                <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
-                  <input
-                    type="radio"
-                    name="correct"
-                    checked={opt.correct}
-                    onChange={() => setCorrect(opt.letter)}
-                  />
+                <button
+                  type="button"
+                  onClick={() => setCorrect(opt.letter)}
+                  className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700"
+                  aria-label={`Marcar alternativa ${opt.letter} como correta`}
+                  title="Marcar como correta"
+                >
+                  <span
+                    className={[
+                      "inline-flex h-5 w-5 items-center justify-center rounded-full border transition-all duration-200",
+                      opt.correct
+                        ? "border-emerald-500 bg-emerald-500"
+                        : "border-slate-300 bg-white",
+                    ].join(" ")}
+                  >
+                    <Check
+                      className={[
+                        "h-3.5 w-3.5 text-white transition-all duration-200",
+                        opt.correct ? "scale-100 opacity-100" : "scale-50 opacity-0",
+                      ].join(" ")}
+                    />
+                  </span>
                   Correta
-                </label>
+                </button>
               </div>
 
               <div className="mt-2 inline-flex rounded-lg border border-slate-200 p-1">
@@ -742,10 +868,9 @@ export default function QuestaoForm({
                 </button>
               </div>
 
-              <textarea
+              <RichTextField
                 value={opt.option_text}
-                onChange={(e) => {
-                  const v = e.target.value;
+                onChange={(v) => {
                   setOptions((prev) =>
                     prev.map((o) =>
                       o.letter === opt.letter
@@ -761,8 +886,6 @@ export default function QuestaoForm({
                   );
                 }}
                 disabled={opt.input_mode === "image"}
-                rows={3}
-                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
                 placeholder={`Texto da alternativa ${opt.letter}…`}
               />
 
