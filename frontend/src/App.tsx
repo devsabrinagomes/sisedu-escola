@@ -7,9 +7,16 @@ import QuestoesNova from "./features/questoes/pages/QuestoesNova";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import QuestaoDetalhe from "./features/questoes/pages/QuestaoDetalhe"; 
 import QuestaoEditar from "./features/questoes/pages/QuestaoEditar";
-import CadernosList from "./pages/CadernosList";
-import OfertasList from "./pages/OfertasList";
-import Gabaritos from "./pages/Gabaritos";
+import CadernosList from "./features/cadernos/pages/CadernosList";
+import CadernoNovo from "./features/cadernos/pages/CadernoNovo";
+import CadernoDetalhe from "./features/cadernos/pages/CadernoDetalhe";
+import CadernoEditar from "./features/cadernos/pages/CadernoEditar";
+import OfertasList from "./features/ofertas/pages/OfertasList";
+import OfertaNova from "./features/ofertas/pages/OfertaNova";
+import OfertaDetalhe from "./features/ofertas/pages/OfertaDetalhe";
+import OfertaEditar from "./features/ofertas/pages/OfertaEditar";
+import GabaritosList from "./features/gabaritos/pages/GabaritosList";
+import GabaritoOfertaGestao from "./features/gabaritos/pages/GabaritoOfertaGestao";
 import Relatorios from "./pages/Relatorios";
 import "katex/dist/katex.min.css";
 
@@ -34,8 +41,15 @@ export default function App() {
         <Route path="/questoes/:id" element={<QuestaoDetalhe />} />
         <Route path="/questoes/:id/editar" element={<QuestaoEditar />} />
         <Route path="/cadernos" element={<CadernosList />} />
+        <Route path="/cadernos/novo" element={<CadernoNovo />} />
+        <Route path="/cadernos/:id" element={<CadernoDetalhe />} />
+        <Route path="/cadernos/:id/editar" element={<CadernoEditar />} />
         <Route path="/ofertas" element={<OfertasList />} />
-        <Route path="/gabaritos" element={<Gabaritos />} />
+        <Route path="/ofertas/nova" element={<OfertaNova />} />
+        <Route path="/ofertas/:id" element={<OfertaDetalhe />} />
+        <Route path="/ofertas/:id/editar" element={<OfertaEditar />} />
+        <Route path="/gabaritos" element={<GabaritosList />} />
+        <Route path="/gabaritos/ofertas/:offerId" element={<GabaritoOfertaGestao />} />
         <Route path="/relatorios" element={<Relatorios />} />
       </Route>
 

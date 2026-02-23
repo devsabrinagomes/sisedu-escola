@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
-import { Check } from "lucide-react";
 import RichEditor, {
   hasMeaningfulHtml,
   normalizeHtml,
   useRichEditor,
 } from "@/components/RichEditor";
+import CheckToggle from "@/components/ui/CheckToggle";
 
 export type Alternativa = "A" | "B" | "C" | "D" | "E";
 
@@ -537,30 +537,16 @@ export default function QuestaoForm({
             </div>
           </div>
 
-          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
-            <input
-              type="checkbox"
+          <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <CheckToggle
               checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
-              className="sr-only"
-              aria-label="Marcar questão como privada"
+              onChange={setIsPrivate}
+              shape="square"
+              size="sm"
+              ariaLabel="Marcar questão como privada"
             />
-            <span
-              className={[
-                "inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200",
-                isPrivate ? "border-emerald-500 bg-emerald-500" : "border-slate-300 bg-white",
-              ].join(" ")}
-              aria-hidden="true"
-            >
-              <Check
-                className={[
-                  "h-3.5 w-3.5 text-white transition-all duration-200",
-                  isPrivate ? "scale-100 opacity-100" : "scale-50 opacity-0",
-                ].join(" ")}
-              />
-            </span>
             Privada
-          </label>
+          </div>
         </div>
       </div>
 
@@ -789,30 +775,16 @@ export default function QuestaoForm({
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-slate-900">{opt.letter})</div>
 
-                <button
-                  type="button"
-                  onClick={() => setCorrect(opt.letter)}
-                  className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700"
-                  aria-label={`Marcar alternativa ${opt.letter} como correta`}
-                  title="Marcar como correta"
-                >
-                  <span
-                    className={[
-                      "inline-flex h-5 w-5 items-center justify-center rounded-full border transition-all duration-200",
-                      opt.correct
-                        ? "border-emerald-500 bg-emerald-500"
-                        : "border-slate-300 bg-white",
-                    ].join(" ")}
-                  >
-                    <Check
-                      className={[
-                        "h-3.5 w-3.5 text-white transition-all duration-200",
-                        opt.correct ? "scale-100 opacity-100" : "scale-50 opacity-0",
-                      ].join(" ")}
-                    />
-                  </span>
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <CheckToggle
+                    checked={opt.correct}
+                    onChange={() => setCorrect(opt.letter)}
+                    shape="circle"
+                    size="sm"
+                    ariaLabel={`Marcar alternativa ${opt.letter} como correta`}
+                  />
                   Correta
-                </button>
+                </div>
               </div>
 
               <div className="mt-2 inline-flex rounded-lg border border-slate-200 p-1">

@@ -1,8 +1,10 @@
 import random
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from banco.models import (
     Subject,
@@ -12,6 +14,11 @@ from banco.models import (
     Question,
     QuestionVersion,
     QuestionOption,
+    Booklet,
+    BookletItem,
+    Offer,
+    Application,
+    StudentAnswer,
 )
 
 
@@ -98,8 +105,16 @@ class Command(BaseCommand):
                         all_skills.append(skill)
 
         # =====================================================
-        # 4) LIMPA QUESTÕES ANTIGAS (SEED CONTROLADO)
+        # 4) LIMPA DADOS ANTIGOS (SEED CONTROLADO)
         # =====================================================
+        # Ambiente de desenvolvimento: limpeza total para manter
+        # o seed determinístico entre execuções.
+        # Ordem respeita FKs com on_delete=PROTECT.
+        StudentAnswer.objects.all().delete()
+        Application.objects.all().delete()
+        Offer.objects.all().delete()
+        BookletItem.objects.all().delete()
+        Booklet.objects.all().delete()
         QuestionOption.objects.all().delete()
         QuestionVersion.objects.all().delete()
         Question.objects.all().delete()
@@ -143,6 +158,102 @@ class Command(BaseCommand):
                     correct=(letter == correct_letter),
                 )
 
+        # =====================================================
+        # 6) BOOKLETS + BOOKLET ITEMS
+        # =====================================================
+        question_versions = list(QuestionVersion.objects.all())
+        if not question_versions:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Nenhuma QuestionVersion encontrada. Seed de cadernos não executado."
+                )
+            )
+            self.stdout.write(
+                self.style.SUCCESS("Seed ok (usuarios + curriculo + questoes)")
+            )
+            return
+
+        booklet_names = [
+            "Simulado ENEM – 1ª Série",
+            "Avaliação Diagnóstica – Matemática",
+            "Prova Bimestral – 2º Ano",
+            "Revisão Final – Ciências da Natureza",
+            "Caderno Interdisciplinar – Linguagens",
+        ]
+
+        total_versions = len(question_versions)
+        min_items = min(5, total_versions)
+        max_items = min(10, total_versions)
+
         self.stdout.write(
-            self.style.SUCCESS("Seed ok ✅ (usuários + currículo + questões)")
+            f"Criando {len(booklet_names)} cadernos com {min_items} a {max_items} questões por caderno..."
+        )
+
+        for booklet_name in booklet_names:
+            seed_user = random.choice(seed_users)
+            booklet = Booklet.objects.create(
+                name=booklet_name,
+                deleted=False,
+                created_by=seed_user.id,
+            )
+
+            items_count = random.randint(min_items, max_items)
+            selected_versions = random.sample(question_versions, k=items_count)
+
+            for order, question_version in enumerate(selected_versions, start=1):
+                BookletItem.objects.create(
+                    booklet=booklet,
+                    question_version=question_version,
+                    order=order,
+                )
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Caderno criado: {booklet.name} ({items_count} itens)"
+                )
+            )
+
+        # =====================================================
+        # 7) OFFERS
+        # =====================================================
+        booklets = list(Booklet.objects.all().order_by("id"))
+        if not booklets:
+            self.stdout.write(
+                self.style.WARNING("Nenhum caderno encontrado. Seed de ofertas não executado.")
+            )
+            self.stdout.write(
+                self.style.SUCCESS("Seed ok (usuarios + curriculo + questoes + cadernos)")
+            )
+            return
+
+        today = timezone.localdate()
+        offer_templates = [
+            # aberta
+            {"start_offset": -3, "end_offset": 7, "description": "Oferta ativa de revisão semanal."},
+            # em breve
+            {"start_offset": 2, "end_offset": 12, "description": "Oferta programada para próxima semana."},
+            # encerrada
+            {"start_offset": -20, "end_offset": -5, "description": "Oferta encerrada do ciclo anterior."},
+        ]
+
+        created_offers = 0
+        for index, booklet in enumerate(booklets):
+            template = offer_templates[index % len(offer_templates)]
+            owner = random.choice(seed_users)
+            Offer.objects.create(
+                booklet=booklet,
+                start_date=today + timedelta(days=template["start_offset"]),
+                end_date=today + timedelta(days=template["end_offset"]),
+                description=template["description"],
+                deleted=False,
+                created_by=owner.id,
+            )
+            created_offers += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Ofertas criadas: {created_offers}")
+        )
+
+        self.stdout.write(
+            self.style.SUCCESS("Seed ok (usuarios + curriculo + questoes + cadernos + ofertas)")
         )
