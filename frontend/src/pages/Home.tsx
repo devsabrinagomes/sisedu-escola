@@ -2,12 +2,12 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { Link } from "react-router-dom";
 import {
   HelpCircle,
+  Info,
   FileText,
   Users,
   School,
   ClipboardCheck,
   LineChart,
-  ArrowRight,
 } from "lucide-react";
 
 type StepKey =
@@ -70,7 +70,7 @@ const steps: StepItem[] = [
   {
     key: "gabaritos",
     titulo: "Gabaritos",
-    tooltip: "Envie fotos dos cartões-resposta ou preencha manualmente.",
+    tooltip: "Insira as respostas dos alunos e realize a correção da avaliação.",
     Icon: ClipboardCheck,
     tone: "green",
   },
@@ -96,6 +96,14 @@ const stepToCard: Partial<Record<StepKey, CardKey>> = {
   ofertas: "definirTurmas",
   gabaritos: "corrigir",
   resultados: "verResultados",
+};
+
+const stepToRoute: Partial<Record<StepKey, string>> = {
+  questoes: "/questoes",
+  caderno: "/cadernos",
+  ofertas: "/ofertas",
+  gabaritos: "/gabaritos",
+  resultados: "/relatorios",
 };
 
 export default function Home() {
@@ -244,11 +252,14 @@ export default function Home() {
         {/* ================= DESKTOP ================= */}
         <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 overflow-hidden">
           <div className="mb-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">
-              Como funciona no sistema
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-1">
+              Ciclo de Avaliação 
             </h3>
-            <p className="text-sm text-slate-500">
-              A sequência abaixo é apenas uma recomendação. Você pode usar qualquer funcionalidade a qualquer momento.
+            <p className="flex items-start gap-2 text-sm text-slate-500">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                A sequência abaixo é apenas uma recomendação. As funcionalidades podem ser acessadas de forma independente.
+              </span>
             </p>
           </div>
 
@@ -288,6 +299,7 @@ export default function Home() {
                 <FlowStep
                   key={s.key}
                   item={s}
+                  to={stepToRoute[s.key]}
                   dotRef={setDesktopDotRef(idx)}
                   active={hoveredIdx === idx}
                   onEnter={() => setTargetByStep(idx)}
@@ -347,6 +359,7 @@ export default function Home() {
                   <FlowStep
                     key={s.key}
                     item={s}
+                    to={stepToRoute[s.key]}
                     dotRef={setMobileDotRef(idx)}
                     active={hoveredIdx === idx}
                     onEnter={() => setTargetByStep(idx)}
@@ -369,7 +382,6 @@ export default function Home() {
             iconBg="bg-[color:var(--blue-fill)]"
             title="Criar questão"
             desc="Cadastre novas questões para usar nas avaliações."
-            cta="Nova questão"
             to="/questoes/nova"
           />
 
@@ -379,7 +391,6 @@ export default function Home() {
             iconBg="bg-[color:var(--yellow-fill)]"
             title="Montar prova"
             desc="Selecione e organize questões para compor uma prova."
-            cta="Criar caderno"
             to="/cadernos"
           />
 
@@ -389,7 +400,6 @@ export default function Home() {
             iconBg="bg-[color:var(--red-fill)]"
             title="Definir turmas"
             desc="Escolha em quais turmas e período a prova será aplicada."
-            cta="Criar oferta"
             to="/ofertas"
           />
 
@@ -398,8 +408,7 @@ export default function Home() {
             icon={<ClipboardCheck className="w-5 h-5" style={{ color: "var(--green-stroke)" }} />}
             iconBg="bg-[color:var(--green-fill)]"
             title="Corrigir prova"
-            desc="Envie fotos dos cartões-resposta ou preencha manualmente após a aplicação presencial."
-            cta="Enviar gabaritos"
+            desc="Insira as respostas dos alunos e realize a correção da avaliação."
             to="/gabaritos"
           />
 
@@ -409,7 +418,6 @@ export default function Home() {
             iconBg="bg-[color:var(--blue-fill)]"
             title="Ver resultados"
             desc="Visualize o desempenho por aluno, turma e questão."
-            cta="Ver relatórios"
             to="/relatorios"
           />
         </div>
@@ -420,18 +428,21 @@ export default function Home() {
 
 function FlowStep({
   item,
+  to,
   dotRef,
   active,
   onEnter,
   onLeave,
 }: {
   item: StepItem;
+  to?: string;
   dotRef: (el: HTMLDivElement | null) => void;
   active: boolean;
   onEnter: () => void;
   onLeave: () => void;
 }) {
   const Icon = item.Icon;
+  const tooltipText = item.tooltip;
 
   const strokeVar =
     item.tone === "neutral" ? "#64748B" : `var(--${item.tone}-stroke)`;
@@ -445,58 +456,74 @@ function FlowStep({
     onBlur: onLeave,
   };
 
+  const content = (
+    <div className={["relative flex flex-col items-center group z-10 shrink-0", to ? "cursor-pointer" : "cursor-default"].join(" ")}>
+      <div
+        ref={dotRef}
+        className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-3 transition-all duration-200"
+        style={{
+          background: active ? fillVar : "#F1F5F9",
+          borderColor: active ? strokeVar : "#CBD5E1",
+        }}
+      >
+        <Icon className="w-6 h-6" style={{ color: strokeVar }} />
+      </div>
+
+      <span
+        className={[
+          "text-sm text-center leading-tight transition-colors duration-200",
+          active
+            ? "font-semibold text-emerald-600"
+            : "font-medium text-slate-700",
+        ].join(" ")}
+      >
+        {item.titulo}
+      </span>
+
+      <div
+        className={[
+          "pointer-events-none absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2",
+          "bg-slate-900 text-white text-xs rounded-lg py-2 px-3 w-56 text-center shadow-md",
+          "opacity-0 translate-y-1 transition-opacity transition-transform duration-200",
+          "group-hover:opacity-100 group-hover:translate-y-0",
+          "group-focus-within:opacity-100 group-focus-within:translate-y-0",
+        ].join(" ")}
+        role="tooltip"
+      >
+        {item.tooltip}
+      </div>
+    </div>
+  );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className="outline-none rounded-xl focus:ring-2 focus:ring-emerald-200"
+        aria-label={`${String(item.titulo).replace(/\s+/g, " ")}. ${item.tooltip}`}
+        title={tooltipText}
+        {...handlers}
+      >
+        {content}
+      </Link>
+    );
+  }
+
   return (
-    <button
-      type="button"
+    <div
       className="outline-none rounded-xl"
       aria-label={`${String(item.titulo).replace(/\s+/g, " ")}. ${item.tooltip}`}
+      title={tooltipText}
       {...handlers}
     >
-      <div className="relative flex flex-col items-center group z-10 shrink-0 cursor-default">
-        <div
-          ref={dotRef}
-          className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-3 transition-all duration-200"
-          style={{
-            background: active ? fillVar : "#F1F5F9",
-            borderColor: active ? strokeVar : "#CBD5E1",
-          }}
-        >
-          <Icon className="w-6 h-6" style={{ color: strokeVar }} />
-        </div>
-
-        <span
-          className={[
-            "text-sm text-center leading-tight transition-colors duration-200",
-            active
-              ? "font-semibold text-emerald-600"
-              : "font-medium text-slate-700",
-          ].join(" ")}
-        >
-          {item.titulo}
-        </span>
-
-
-        <div
-          className={[
-            "pointer-events-none absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2",
-            "bg-slate-900 text-white text-xs rounded-lg py-2 px-3 w-56 text-center shadow-md",
-            "opacity-0 translate-y-1 transition-opacity transition-transform duration-200",
-            "group-hover:opacity-100 group-hover:translate-y-0",
-            "group-focus-within:opacity-100 group-focus-within:translate-y-0",
-          ].join(" ")}
-          role="tooltip"
-        >
-          {item.tooltip}
-        </div>
-      </div>
-    </button>
+      {content}
+    </div>
   );
 }
 
 function ActionCard({
   title,
   desc,
-  cta,
   to,
   icon,
   iconBg,
@@ -504,17 +531,18 @@ function ActionCard({
 }: {
   title: string;
   desc: string;
-  cta: string;
   to: string;
   icon: React.ReactNode;
   iconBg: string;
   highlighted?: boolean;
 }) {
   return (
-    <div
+    <Link
+      to={to}
       className={[
-        "bg-white rounded-xl shadow-sm border border-slate-200 p-6 transition",
+        "block bg-white rounded-xl shadow-sm border border-slate-200 p-6 transition",
         "hover:-translate-y-1 hover:shadow-md",
+        "focus:outline-none focus:ring-2 focus:ring-emerald-200",
         highlighted ? "ring-2 ring-emerald-200 shadow-md" : "",
       ].join(" ")}
     >
@@ -525,17 +553,9 @@ function ActionCard({
 
         <div className="flex-1">
           <h4 className="text-lg font-bold text-slate-900 mb-2">{title}</h4>
-          <p className="text-sm text-slate-600 mb-4">{desc}</p>
-
-          <Link
-            to={to}
-            className="text-emerald-700 font-semibold text-sm hover:text-emerald-800 transition inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-200 rounded"
-          >
-            {cta}
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <p className="text-sm text-slate-600">{desc}</p>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

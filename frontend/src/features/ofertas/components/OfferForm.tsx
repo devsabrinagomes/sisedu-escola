@@ -1,6 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BookletCombobox from "@/components/BookletCombobox";
 import DatePickerInput from "@/components/ui/DatePickerInput";
+import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
+import {
+  listOfferSchoolClasses,
+  listOfferSchools,
+  type OfferClassDTO,
+  type OfferSchoolDTO,
+} from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferPayload } from "@/features/ofertas/types";
 import { normalizeDescription, validateOfferDates } from "@/features/ofertas/utils";
 
@@ -21,6 +28,23 @@ function getInitialBookletId(initialData?: OfferDTO | null) {
   );
 }
 
+function getSeriesFromClassName(name: string) {
+  const match = name.match(/(\d+)\s*[ºoª]?\s*ano/i);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function getSeriesNumber(cls: OfferClassDTO) {
+  const fromEtapa = Number(String(cls.etapa_aplicacao ?? "").replace(/\D/g, ""));
+  if (Number.isFinite(fromEtapa) && fromEtapa > 0) return fromEtapa;
+
+  const fromSerie = Number(String(cls.serie ?? "").replace(/\D/g, ""));
+  if (Number.isFinite(fromSerie) && fromSerie > 0) return fromSerie;
+
+  return getSeriesFromClassName(cls.name);
+}
+
 export default function OfferForm({
   mode,
   saving = false,
@@ -32,12 +56,69 @@ export default function OfferForm({
   const [startDate, setStartDate] = useState(initialData?.start_date || "");
   const [endDate, setEndDate] = useState(initialData?.end_date || "");
   const [description, setDescription] = useState(initialData?.description || "");
+  const [schools, setSchools] = useState<OfferSchoolDTO[]>([]);
+  const [classes, setClasses] = useState<OfferClassDTO[]>([]);
+  const [schoolRef, setSchoolRef] = useState<number | undefined>(undefined);
+  const [seriesYear, setSeriesYear] = useState<number | undefined>(undefined);
+  const [classRef, setClassRef] = useState<number | undefined>(undefined);
+  const [loadingSchools, setLoadingSchools] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const descriptionLeft = useMemo(
     () => 500 - description.length,
     [description.length],
   );
+  const schoolOptions = useMemo(
+    () => schools.map((school) => ({ value: school.school_ref, label: school.name })),
+    [schools],
+  );
+  const seriesOptions = useMemo(() => {
+    const seriesList = Array.from(
+      new Set(
+        classes
+          .map((cls) => getSeriesNumber(cls))
+          .filter((series): series is number => series !== null),
+      ),
+    ).sort((a, b) => a - b);
+    return seriesList.map((series) => ({ value: series, label: `${series}ª série` }));
+  }, [classes]);
+  const classOptions = useMemo(
+    () =>
+      classes
+        .filter((cls) => (seriesYear ? getSeriesNumber(cls) === seriesYear : true))
+        .map((cls) => ({ value: cls.class_ref, label: cls.name })),
+    [classes, seriesYear],
+  );
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    void loadSchools();
+  }, [mode]);
+
+  async function loadSchools() {
+    try {
+      setLoadingSchools(true);
+      const list = await listOfferSchools();
+      setSchools(list);
+    } catch {
+      setSchools([]);
+    } finally {
+      setLoadingSchools(false);
+    }
+  }
+
+  async function loadClasses(nextSchoolRef: number) {
+    try {
+      setLoadingClasses(true);
+      const list = await listOfferSchoolClasses(nextSchoolRef);
+      setClasses(list);
+    } catch {
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  }
 
   function validate() {
     const nextErrors: Record<string, string> = {};
@@ -100,6 +181,53 @@ export default function OfferForm({
               </p>
             )}
           </div>
+
+          {mode === "create" ? (
+            <>
+              <div className="md:col-span-2">
+                <SigeCombobox
+                  label="Escola"
+                  placeholder="Selecione uma escola"
+                  value={schoolRef}
+                  options={schoolOptions}
+                  loading={loadingSchools}
+                  disabled={saving}
+                  onChange={(value) => {
+                    setSchoolRef(value);
+                    setSeriesYear(undefined);
+                    setClassRef(undefined);
+                    setClasses([]);
+                    if (value) void loadClasses(value);
+                  }}
+                />
+              </div>
+              <div>
+                <SigeCombobox
+                  label="Série"
+                  placeholder="Selecione uma série"
+                  value={seriesYear}
+                  options={seriesOptions}
+                  loading={loadingClasses}
+                  disabled={saving || !schoolRef}
+                  onChange={(value) => {
+                    setSeriesYear(value);
+                    setClassRef(undefined);
+                  }}
+                />
+              </div>
+              <div>
+                <SigeCombobox
+                  label="Turma"
+                  placeholder="Selecione uma turma"
+                  value={classRef}
+                  options={classOptions}
+                  loading={loadingClasses}
+                  disabled={saving || !schoolRef || !seriesYear}
+                  onChange={setClassRef}
+                />
+              </div>
+            </>
+          ) : null}
 
           <div className="md:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">

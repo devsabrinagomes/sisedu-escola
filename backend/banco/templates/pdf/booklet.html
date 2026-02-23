@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Caderno de Prova</title>
+  <link rel="stylesheet" href="pdf.css" />
+</head>
+<body>
+  <div class="cover">
+    <h1>CADERNO DE PROVA</h1>
+    <h2>{{ offer.name }}</h2>
+
+    <div class="info-box">
+      <div class="info-row">Disciplina: {{ discipline }}</div>
+      <div class="info-row">Ano/Serie: {{ grade }}</div>
+      <div class="info-row">Turma: {{ class_name }}</div>
+      <div class="info-row">Data: {{ date }}</div>
+      <div class="info-row">Aluno: _______________________</div>
+      <div class="info-row">N de questoes: {{ total_questions }}</div>
+    </div>
+
+    <div class="instructions">
+      <h3>INSTRUCOES</h3>
+      <ul>
+        <li>Leia atentamente cada questao.</li>
+        <li>Marque apenas UMA alternativa.</li>
+        <li>Preencha o cartao-resposta com caneta preta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <div class="internal">
+    <div class="header">
+      {{ offer.name }} | {{ discipline }} | Pagina <span class="page"></span> de <span class="topage"></span>
+    </div>
+
+    <div class="content">
+      {% for question in questions %}
+        <div class="question">
+          <div class="question-number">
+            {{ forloop.counter|stringformat:"02d" }}.
+            <span class="skill">(Habilidade {{ question.skill_code }})</span>
+          </div>
+
+          <div class="statement">
+            {{ question.statement|safe }}
+          </div>
+
+          <div class="options">
+            {% for option in question.options %}
+              <div class="option">
+                <strong>{{ option.letter }})</strong>
+                {{ option.text }}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

@@ -202,17 +202,7 @@ export default function GabaritosList() {
                     {getSortIcon("offer")}
                   </button>
                 </th>
-                <th className="w-64 px-5 py-3 text-left text-xs font-semibold text-slate-600">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("booklet")}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
-                    Caderno
-                    {getSortIcon("booklet")}
-                  </button>
-                </th>
-                <th className="w-56 px-5 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-40 px-5 py-3 text-left text-xs font-semibold text-slate-600">
                   <button
                     type="button"
                     onClick={() => toggleSort("period")}
@@ -249,11 +239,11 @@ export default function GabaritosList() {
                       <div className="font-medium text-slate-900">
                         {offer.description?.trim() || `Oferta #${offer.id}`}
                       </div>
-                      <div className="mt-1 text-xs text-slate-500">Oferta #{offer.id}</div>
+                      <div className="mt-1 text-xs text-slate-500">{getBookletName(offer)}</div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-slate-700">{getBookletName(offer)}</td>
                     <td className="px-5 py-3 text-sm text-slate-700">
-                      {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
+                      <div>{formatDate(offer.start_date)} -</div>
+                      <div>{formatDate(offer.end_date)}</div>
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
                       <span
@@ -265,7 +255,7 @@ export default function GabaritosList() {
                     <td className="px-5 py-3 text-sm text-slate-700">
                       <Link
                         to={`/gabaritos/ofertas/${offer.id}`}
-                        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
                       >
                         Gerenciar gabaritos
                       </Link>

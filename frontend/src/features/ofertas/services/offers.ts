@@ -1,4 +1,4 @@
-﻿import { api } from "@/lib/api";
+import { api } from "@/lib/api";
 import type {
   OfferDTO,
   OfferFilters,
@@ -6,6 +6,19 @@ import type {
   Paginated,
 } from "@/features/ofertas/types";
 import { getOfferStatus } from "@/features/ofertas/utils";
+
+export type OfferSchoolDTO = {
+  school_ref: number;
+  name: string;
+};
+
+export type OfferClassDTO = {
+  class_ref: number;
+  name: string;
+  year: number;
+  etapa_aplicacao?: string | number | null;
+  serie?: string | null;
+};
 
 function isNotFound(error: unknown) {
   const status = (error as { response?: { status?: number } })?.response?.status;
@@ -147,4 +160,35 @@ export async function deleteOffer(offerId: number) {
   }
 
   throw new Error("TODO backend: implementar DELETE /offers/:id/.");
+}
+
+export async function listOfferSchools() {
+  const { data } = await api.get<OfferSchoolDTO[]>("/mock/sige/schools/");
+  return data;
+}
+
+export async function listOfferSchoolClasses(schoolRef: number) {
+  const { data } = await api.get<OfferClassDTO[]>(`/mock/sige/schools/${schoolRef}/classes/`);
+  return data;
+}
+
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function downloadOfferApplicationKit(offerId: number) {
+  const [proofResponse, answerSheetResponse] = await Promise.all([
+    api.get<Blob>(`/offers/${offerId}/kit/prova/`, { responseType: "blob" }),
+    api.get<Blob>(`/offers/${offerId}/kit/cartao-resposta/`, { responseType: "blob" }),
+  ]);
+
+  triggerBlobDownload(proofResponse.data, `oferta-${offerId}-caderno-prova.pdf`);
+  triggerBlobDownload(answerSheetResponse.data, `oferta-${offerId}-cartao-resposta.pdf`);
 }

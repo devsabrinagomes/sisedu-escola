@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Search, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import TablePagination from "@/components/ui/TablePagination";
 import { useToast } from "@/components/ui/toast/useToast";
@@ -238,29 +238,26 @@ export default function CadernosList() {
                       {formatDateTime(item.created_at)}
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/cadernos/${item.id}`)}
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          Ver
-                        </button>
+                      <div className="flex items-center gap-1">
                         {isMine && (
                           <>
                             <button
                               type="button"
                               onClick={() => navigate(`/cadernos/${item.id}/editar`)}
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+                              title="Editar"
+                              aria-label="Editar"
                             >
-                              Editar
+                              <Pencil className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setSelectedId(item.id)}
-                              className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                              title="Remover definitivamente"
+                              aria-label="Remover definitivamente"
                             >
-                              Excluir
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </>
                         )}

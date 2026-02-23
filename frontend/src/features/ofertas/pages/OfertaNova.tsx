@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast/useToast";
 import OfferForm from "@/features/ofertas/components/OfferForm";
 import { createOffer } from "@/features/ofertas/services/offers";
 import type { OfferPayload } from "@/features/ofertas/types";
+import { setOfferKitPending } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function OfertaNova() {
@@ -16,8 +17,10 @@ export default function OfertaNova() {
     try {
       setSaving(true);
       const created = await createOffer(payload);
-      toast({ type: "success", title: "Oferta criada com sucesso" });
-      navigate(`/ofertas/${created.id}`);
+      setOfferKitPending(created.id, true);
+      navigate(`/ofertas/${created.id}`, {
+        state: { showKitModal: true },
+      });
     } catch (error: unknown) {
       toast({
         type: "error",

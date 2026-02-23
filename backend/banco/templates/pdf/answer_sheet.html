@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Cartao-Resposta</title>
+  <link rel="stylesheet" href="pdf.css" />
+</head>
+<body>
+  <div class="answer-sheet">
+    <h1>CARTAO-RESPOSTA</h1>
+
+    <div class="student-info">
+      <div class="student-info-row">Nome: ________________________________________</div>
+      <div class="student-info-row">Turma: __________________</div>
+      <div class="student-info-row">Data: ____/____/____</div>
+    </div>
+
+    <div class="instructions-box">
+      <p>Use caneta preta.</p>
+      <p>Preencha completamente o circulo.</p>
+      <p>Nao rasure.</p>
+    </div>
+
+    <div class="grid">
+      {% for question in questions %}
+        <div class="row">
+          <div class="q-number">{{ question.number }}</div>
+          {% for letter in letters %}
+            <div class="bubble-wrap">
+              <span class="bubble-label">{{ letter }}</span>
+              <span class="bubble"></span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

@@ -11,7 +11,7 @@ import CheckToggle from "@/components/ui/CheckToggle";
 export type Alternativa = "A" | "B" | "C" | "D" | "E";
 
 type SubjectDTO = { id: number; name: string };
-type TopicDTO = { id: number; subject: number; description: string };
+type TopicDTO = { id: number; subject: number };
 type DescriptorDTO = { id: number; topic: number; code: string; name: string };
 type SkillDTO = { id: number; descriptor: number; code: string; name: string };
 
@@ -191,7 +191,6 @@ export default function QuestaoForm({
 
   // ====== catálogo ======
   const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
-  const [topics, setTopics] = useState<TopicDTO[]>([]);
   const [descriptors, setDescriptors] = useState<DescriptorDTO[]>([]);
   const [skills, setSkills] = useState<SkillDTO[]>([]);
 
@@ -203,7 +202,6 @@ export default function QuestaoForm({
   const [subjectId, setSubjectId] = useState<number | "">(
     latest?.subject ?? ""
   );
-  const [topicId, setTopicId] = useState<number | "">("");
   const [descriptorId, setDescriptorId] = useState<number | "">(
     latest?.descriptor ?? ""
   );
@@ -278,58 +276,41 @@ export default function QuestaoForm({
     })();
   }, []);
 
-  // ====== load topics when subject changes ======
+  // ====== load topics/descriptors when subject changes ======
   useEffect(() => {
     (async () => {
       if (!subjectId) {
-        setTopics([]);
-        setTopicId("");
+        setDescriptors([]);
+        if (mode === "create") setDescriptorId("");
         return;
       }
       try {
-        const list = await fetchList<TopicDTO>("/topics/");
-        const filtered = list.filter((t) => t.subject === Number(subjectId));
-        setTopics(filtered);
+        const [topicList, descriptorList] = await Promise.all([
+          fetchList<TopicDTO>("/topics/"),
+          fetchList<DescriptorDTO>("/descriptors/"),
+        ]);
+        const topicIdsForSubject = new Set(
+          topicList
+            .filter((t) => t.subject === Number(subjectId))
+            .map((t) => t.id)
+        );
+        const filteredDescriptors = descriptorList.filter((d) =>
+          topicIdsForSubject.has(d.topic)
+        );
 
-        // se tá edit e já tem descriptor, tenta achar o topic dele
-        if (mode === "edit" && latest?.descriptor && filtered.length) {
-          // deixa pro efeito de descriptors ajustar depois
-        } else {
-          setTopicId(filtered[0]?.id ?? "");
+        setDescriptors(filteredDescriptors);
+
+        const current = Number(descriptorId || 0);
+        if (!filteredDescriptors.some((d) => d.id === current)) {
+          setDescriptorId(filteredDescriptors[0]?.id ?? "");
         }
       } catch {
-        setTopics([]);
-        setTopicId("");
+        setDescriptors([]);
+        if (mode === "create") setDescriptorId("");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId]);
-
-  // ====== load descriptors when topic changes ======
-  useEffect(() => {
-    (async () => {
-      if (!topicId) {
-        setDescriptors([]);
-        if (mode === "create") setDescriptorId("");
-        return;
-      }
-      try {
-        const list = await fetchList<DescriptorDTO>("/descriptors/");
-        const filtered = list.filter((d) => d.topic === Number(topicId));
-        setDescriptors(filtered);
-
-        // se current descriptor não pertence a esse topic, reseta
-        const current = Number(descriptorId || 0);
-        if (!filtered.some((d) => d.id === current)) {
-          setDescriptorId(filtered[0]?.id ?? "");
-        }
-      } catch {
-        setDescriptors([]);
-        if (mode === "create") setDescriptorId("");
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topicId]);
 
   // ====== load skills when descriptor changes ======
   useEffect(() => {
@@ -355,29 +336,6 @@ export default function QuestaoForm({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descriptorId]);
-
-  // ====== se edit e tem descriptor, tenta deduzir o topic ======
-  useEffect(() => {
-    (async () => {
-      if (mode !== "edit") return;
-      if (!subjectId) return;
-
-      // se já tem topic escolhido, não mexe
-      if (topicId) return;
-
-      // baixa tudo e acha o topic do descriptor atual
-      if (!latest?.descriptor) return;
-
-      try {
-        const allDesc = await fetchList<DescriptorDTO>("/descriptors/");
-        const d = allDesc.find((x) => x.id === Number(latest.descriptor));
-        if (d) setTopicId(d.topic);
-      } catch {
-        // ignora
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, subjectId, latest?.descriptor]);
 
   // ====== options helpers ======
   function setCorrect(letter: Alternativa) {
@@ -563,7 +521,6 @@ export default function QuestaoForm({
               onChange={(e) => {
                 const v = e.target.value ? Number(e.target.value) : "";
                 setSubjectId(v as any);
-                setTopicId("");
                 setDescriptorId("");
                 setSkillId("");
               }}
@@ -573,29 +530,6 @@ export default function QuestaoForm({
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* TOPIC */}
-          <div>
-            <label className="text-xs font-semibold text-slate-700">Tópico</label>
-            <select
-              value={topicId}
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : "";
-                setTopicId(v as any);
-                setDescriptorId("");
-                setSkillId("");
-              }}
-              disabled={!subjectId}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
-            >
-              <option value="">Selecione…</option>
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.description}
                 </option>
               ))}
             </select>
@@ -611,7 +545,7 @@ export default function QuestaoForm({
                 setDescriptorId(v as any);
                 setSkillId("");
               }}
-              disabled={!topicId}
+              disabled={!subjectId}
               className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
             >
               <option value="">(Opcional) Selecione…</option>

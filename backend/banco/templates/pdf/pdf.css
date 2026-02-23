@@ -1,0 +1,186 @@
+@page {
+  size: A4;
+  margin: 15mm;
+}
+
+body {
+  font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+  font-size: 11pt;
+  color: #111111;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.cover {
+  text-align: center;
+}
+
+.cover h1 {
+  font-size: 22pt;
+  letter-spacing: 0.4mm;
+  margin-bottom: 4mm;
+}
+
+.cover h2 {
+  font-size: 13pt;
+  font-weight: normal;
+  margin-bottom: 10mm;
+}
+
+.info-box {
+  text-align: left;
+  border: 0.3mm solid #bfc4cc;
+  border-radius: 1.2mm;
+  padding: 5mm;
+  margin-bottom: 8mm;
+}
+
+.info-row {
+  margin-bottom: 2mm;
+}
+
+.instructions {
+  text-align: left;
+  border-top: 0.3mm solid #d7dbe1;
+  padding-top: 5mm;
+}
+
+.instructions h3 {
+  font-size: 11pt;
+  margin-bottom: 2.5mm;
+}
+
+.instructions ul {
+  margin: 0;
+  padding-left: 6mm;
+}
+
+.instructions li {
+  margin-bottom: 2mm;
+}
+
+.page-break {
+  page-break-before: always;
+}
+
+.internal .header {
+  position: fixed;
+  top: 5mm;
+  left: 15mm;
+  right: 15mm;
+  font-size: 9pt;
+  color: #333333;
+  border-bottom: 0.3mm solid #d7dbe1;
+  padding-bottom: 2mm;
+}
+
+.internal .content {
+  margin-top: 14mm;
+}
+
+.question {
+  margin-bottom: 8mm;
+  padding-bottom: 4mm;
+  border-bottom: 0.3mm solid #e1e5eb;
+  page-break-inside: avoid;
+}
+
+.question-number {
+  font-weight: bold;
+  margin-bottom: 3mm;
+}
+
+.skill {
+  font-size: 9pt;
+  color: #555555;
+  margin-left: 5mm;
+}
+
+.statement {
+  margin-bottom: 3mm;
+}
+
+.options {
+  margin-top: 1mm;
+}
+
+.option {
+  margin-left: 5mm;
+  margin-bottom: 2mm;
+}
+
+.answer-sheet h1 {
+  text-align: center;
+  font-size: 20pt;
+  letter-spacing: 0.3mm;
+  margin-bottom: 7mm;
+}
+
+.student-info {
+  border: 0.3mm solid #bfc4cc;
+  border-radius: 1.2mm;
+  padding: 4mm;
+  margin-bottom: 6mm;
+}
+
+.student-info-row {
+  margin-bottom: 2mm;
+}
+
+.instructions-box {
+  border: 0.3mm solid #bfc4cc;
+  border-radius: 1.2mm;
+  padding: 4mm;
+  margin-bottom: 7mm;
+}
+
+.instructions-box p {
+  margin-bottom: 1.5mm;
+}
+
+.grid {
+  border: 0.3mm solid #bfc4cc;
+  border-radius: 1.2mm;
+  padding: 4mm;
+}
+
+.row {
+  margin-bottom: 5mm;
+  page-break-inside: avoid;
+}
+
+.row:last-child {
+  margin-bottom: 0;
+}
+
+.q-number {
+  width: 10mm;
+  display: inline-block;
+  font-weight: bold;
+}
+
+.bubble-wrap {
+  display: inline-block;
+  margin-right: 4mm;
+  text-align: center;
+}
+
+.bubble-label {
+  display: block;
+  font-size: 8pt;
+  margin-bottom: 1mm;
+}
+
+.bubble {
+  width: 5mm;
+  height: 5mm;
+  border: 0.6mm solid #000000;
+  border-radius: 50%;
+  display: inline-block;
+}

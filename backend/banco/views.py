@@ -1,6 +1,17 @@
+import json
+import os
+import time
+import unicodedata
+from urllib import error as urllib_error
+from urllib import parse as urllib_parse
+from urllib import request as urllib_request
+
 from django.db.models import Max, Q
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.conf import settings
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -115,6 +126,120 @@ def _get_mock_sige_for_user(user):
     return MOCK_SIGE_DATA["default"]
 
 
+_SIGE_TOKEN_CACHE = {"access_token": None, "expires_at": 0.0}
+
+
+def _sige_enabled():
+    return bool(getattr(settings, "SIGE_ACADEMICO_BASE_URL", "").strip()) and bool(
+        getattr(settings, "SIGE_ACADEMICO_TOKEN_URL", "").strip()
+    )
+
+
+def _sige_strip_slash(url):
+    return str(url).rstrip("/")
+
+
+def _sige_fetch_token():
+    static_token = str(getattr(settings, "SIGE_ACADEMICO_ACCESS_TOKEN", "") or "").strip()
+    if static_token:
+        return static_token
+
+    now = time.time()
+    if _SIGE_TOKEN_CACHE["access_token"] and now < float(_SIGE_TOKEN_CACHE["expires_at"]):
+        return _SIGE_TOKEN_CACHE["access_token"]
+
+    token_url = _sige_strip_slash(getattr(settings, "SIGE_ACADEMICO_TOKEN_URL", ""))
+    grant_type = str(getattr(settings, "SIGE_ACADEMICO_GRANT_TYPE", "client_credentials"))
+    client_id = str(getattr(settings, "SIGE_ACADEMICO_CLIENT_ID", "") or "")
+    client_secret = str(getattr(settings, "SIGE_ACADEMICO_CLIENT_SECRET", "") or "")
+    username = str(getattr(settings, "SIGE_ACADEMICO_USERNAME", "") or "")
+    password = str(getattr(settings, "SIGE_ACADEMICO_PASSWORD", "") or "")
+    scope = str(getattr(settings, "SIGE_ACADEMICO_SCOPE", "") or "")
+
+    payload = {"grant_type": grant_type}
+    if client_id:
+        payload["client_id"] = client_id
+    if client_secret:
+        payload["client_secret"] = client_secret
+    if username:
+        payload["username"] = username
+    if password:
+        payload["password"] = password
+    if scope:
+        payload["scope"] = scope
+
+    data = urllib_parse.urlencode(payload).encode("utf-8")
+    req = urllib_request.Request(
+        token_url,
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=20) as response:
+            raw = response.read().decode("utf-8")
+            body = json.loads(raw or "{}")
+    except (urllib_error.URLError, urllib_error.HTTPError, json.JSONDecodeError) as exc:
+        raise ValidationError({"detail": f"Falha ao autenticar no SIGE Acadêmico: {exc}"})
+
+    access_token = body.get("access_token")
+    if not access_token:
+        raise ValidationError({"detail": "Token inválido do SIGE Acadêmico (access_token ausente)."})
+
+    expires_in = int(body.get("expires_in") or 300)
+    _SIGE_TOKEN_CACHE["access_token"] = str(access_token)
+    _SIGE_TOKEN_CACHE["expires_at"] = now + max(expires_in - 30, 30)
+    return _SIGE_TOKEN_CACHE["access_token"]
+
+
+def _sige_get(path):
+    base_url = _sige_strip_slash(getattr(settings, "SIGE_ACADEMICO_BASE_URL", ""))
+    if not base_url:
+        raise ValidationError({"detail": "SIGE_ACADEMICO_BASE_URL não configurada."})
+
+    token = _sige_fetch_token()
+    url = f"{base_url}/{str(path).lstrip('/')}"
+    req = urllib_request.Request(
+        url,
+        method="GET",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=30) as response:
+            raw = response.read().decode("utf-8")
+            return json.loads(raw or "[]")
+    except urllib_error.HTTPError as exc:
+        if exc.code == 401:
+            _SIGE_TOKEN_CACHE["access_token"] = None
+            _SIGE_TOKEN_CACHE["expires_at"] = 0.0
+        detail = exc.read().decode("utf-8", errors="ignore") if hasattr(exc, "read") else str(exc)
+        raise ValidationError({"detail": f"Erro SIGE Acadêmico ({exc.code}): {detail or 'sem detalhe'}"})
+    except (urllib_error.URLError, json.JSONDecodeError) as exc:
+        raise ValidationError({"detail": f"Falha ao consumir SIGE Acadêmico: {exc}"})
+
+
+def _as_list(payload):
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        for key in ("results", "data", "items", "content"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return value
+    return []
+
+
+def _as_int(value):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_booklet_items_queryset_for_offer(offer):
     return (
         offer.booklet.items.select_related(
@@ -163,6 +288,11 @@ def _compute_application_summary(application, items_total):
     }
 
 
+def _is_offer_open(offer):
+    today = timezone.localdate()
+    return offer.start_date <= today <= offer.end_date
+
+
 def _serialize_booklet_item_for_answers(item):
     version = item.question_version
     subject = getattr(version, "subject", None)
@@ -179,6 +309,56 @@ def _serialize_booklet_item_for_answers(item):
             "subject_name": getattr(subject, "name", None),
         },
     }
+
+
+def _normalize_ascii(value):
+    raw = str(value or "")
+    normalized = unicodedata.normalize("NFKD", raw)
+    return normalized.encode("ascii", "ignore").decode("ascii")
+
+
+def _escape_pdf_text(value):
+    return str(value).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _build_simple_pdf(lines):
+    safe_lines = [_escape_pdf_text(_normalize_ascii(line)) for line in lines if str(line).strip()]
+    if not safe_lines:
+        safe_lines = ["Documento sem conteudo"]
+
+    content_parts = ["BT", "/F1 14 Tf", "50 800 Td"]
+    for index, line in enumerate(safe_lines):
+        if index > 0:
+            content_parts.append("0 -24 Td")
+        content_parts.append(f"({line}) Tj")
+    content_parts.append("ET")
+
+    stream = ("\n".join(content_parts) + "\n").encode("latin-1", errors="ignore")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(stream)} >>\nstream\n".encode("ascii") + stream + b"endstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+
+    pdf = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for idx, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf))
+        pdf.extend(f"{idx} 0 obj\n".encode("ascii"))
+        pdf.extend(obj)
+        pdf.extend(b"\nendobj\n")
+
+    xref_offset = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    pdf.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+
+    pdf.extend(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n".encode("ascii"))
+    pdf.extend(f"startxref\n{xref_offset}\n%%EOF".encode("ascii"))
+    return bytes(pdf)
 
 
 class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
@@ -406,16 +586,84 @@ class MockSigeSchoolsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        data = _get_mock_sige_for_user(request.user)
-        return Response(data.get("schools", []), status=status.HTTP_200_OK)
+        if not _sige_enabled():
+            data = _get_mock_sige_for_user(request.user)
+            return Response(data.get("schools", []), status=status.HTTP_200_OK)
+
+        payload = _sige_get("/escolas")
+        schools_raw = _as_list(payload)
+        schools = []
+        for row in schools_raw:
+            if not isinstance(row, dict):
+                continue
+            school_ref = _as_int(
+                row.get("inep")
+                or row.get("codigo_inep")
+                or row.get("school_ref")
+                or row.get("id")
+            )
+            name = str(
+                row.get("nome")
+                or row.get("nome_escola")
+                or row.get("name")
+                or ""
+            ).strip()
+            if school_ref is None or not name:
+                continue
+            schools.append({"school_ref": school_ref, "name": name})
+
+        return Response(schools, status=status.HTTP_200_OK)
 
 
 class MockSigeSchoolClassesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, school_ref):
-        data = _get_mock_sige_for_user(request.user)
-        classes = data.get("classes_by_school", {}).get(int(school_ref), [])
+        if not _sige_enabled():
+            data = _get_mock_sige_for_user(request.user)
+            classes = data.get("classes_by_school", {}).get(int(school_ref), [])
+            return Response(classes, status=status.HTTP_200_OK)
+
+        payload = _sige_get(f"/escolas/{school_ref}/turmas")
+        classes_raw = _as_list(payload)
+        classes = []
+        for row in classes_raw:
+            if not isinstance(row, dict):
+                continue
+
+            class_ref = _as_int(row.get("codigo") or row.get("class_ref") or row.get("id"))
+            if class_ref is None:
+                continue
+
+            detail = _sige_get(f"/turmas/{class_ref}")
+            if not isinstance(detail, dict):
+                detail = {}
+
+            class_name = str(
+                row.get("nome")
+                or row.get("descricao")
+                or detail.get("nome")
+                or detail.get("descricao")
+                or f"Turma {class_ref}"
+            ).strip()
+            year_value = _as_int(
+                row.get("ano_letivo")
+                or detail.get("ano_letivo")
+                or row.get("year")
+                or detail.get("year")
+            )
+            year = year_value if year_value is not None else timezone.localdate().year
+
+            classes.append(
+                {
+                    "class_ref": class_ref,
+                    "name": class_name,
+                    "year": year,
+                    "etapa_aplicacao": detail.get("etapa_aplicacao"),
+                    "serie": detail.get("serie"),
+                }
+            )
+
         return Response(classes, status=status.HTTP_200_OK)
 
 
@@ -493,6 +741,93 @@ class OfferApplicationsSyncView(APIView):
         )
 
 
+class OfferKitPdfView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_offer(self, request, offer_id):
+        offer = get_object_or_404(Offer.objects.select_related("booklet"), id=offer_id, deleted=False)
+        if not request.user.is_superuser and offer.created_by != request.user.id:
+            raise PermissionDenied("Você não tem permissão para baixar o kit desta oferta.")
+        return offer
+
+    def get(self, request, offer_id, kind):
+        offer = self._get_offer(request, offer_id)
+        try:
+            from weasyprint import CSS, HTML
+        except ModuleNotFoundError:
+            raise ValidationError(
+                {"detail": "WeasyPrint não está disponível neste ambiente do backend."}
+            )
+
+        booklet_items = list(
+            offer.booklet.items.select_related(
+                "question_version",
+                "question_version__skill",
+            )
+            .prefetch_related("question_version__options")
+            .order_by("order", "id")
+        )
+
+        questions = []
+        for index, item in enumerate(booklet_items, start=1):
+            version = item.question_version
+            options = [
+                {"letter": opt.letter, "text": opt.option_text or "-"}
+                for opt in version.options.all().order_by("letter")
+            ]
+            questions.append(
+                {
+                    "number": index,
+                    "statement": version.command or version.title or "-",
+                    "skill_code": getattr(getattr(version, "skill", None), "code", "-"),
+                    "options": options,
+                }
+            )
+
+        context = {
+            "offer": {
+                "id": offer.id,
+                "name": offer.description or f"Oferta #{offer.id}",
+            },
+            "discipline": "-",
+            "grade": "-",
+            "class_name": "-",
+            "date": timezone.localdate().strftime("%d/%m/%Y"),
+            "total_questions": len(questions),
+            "questions": questions,
+            "letters": ["A", "B", "C", "D", "E"],
+        }
+
+        css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
+        base_url = str(settings.BASE_DIR / "banco" / "templates" / "pdf")
+
+        if kind == "prova":
+            html_string = render_to_string("pdf/booklet.html", context)
+            filename = f"oferta-{offer.id}-caderno-prova.pdf"
+        elif kind == "cartao-resposta":
+            html_string = render_to_string("pdf/answer_sheet.html", context)
+            filename = f"oferta-{offer.id}-cartao-resposta.pdf"
+        else:
+            raise ValidationError({"detail": "Tipo de kit inválido."})
+
+        try:
+            pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
+                stylesheets=[CSS(filename=css_path)]
+            )
+        except Exception as exc:
+            raise ValidationError(
+                {
+                    "detail": (
+                        "Falha ao gerar PDF com WeasyPrint. "
+                        f"Verifique compatibilidade das dependências ({type(exc).__name__}: {exc})."
+                    )
+                }
+            )
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
 class ApplicationAnswersView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -538,6 +873,8 @@ class ApplicationAnswersView(APIView):
 
     def put(self, request, application_id):
         application = self._get_application(request, application_id)
+        if not _is_offer_open(application.offer):
+            raise ValidationError({"detail": "Só é possível preencher o gabarito com a oferta aberta."})
         serializer = StudentAnswersBulkUpsertSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payload_answers = serializer.validated_data.get("answers", [])

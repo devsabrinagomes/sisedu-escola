@@ -200,6 +200,7 @@ export default function GabaritoOfertaGestao() {
   }
 
   async function onOpenDrawer(application: ApplicationRowDTO) {
+    if (offerStatus !== "open") return;
     if (application.student_absent) return;
     setDrawerApplication(application);
     try {
@@ -223,6 +224,7 @@ export default function GabaritoOfertaGestao() {
   }
 
   const offerStatus = useMemo(() => (offer ? getOfferStatus(offer) : "upcoming"), [offer]);
+  const canFillAnswers = offerStatus === "open";
 
   if (offerLoading) return <div className="text-sm text-slate-500">Carregando...</div>;
 
@@ -230,7 +232,7 @@ export default function GabaritoOfertaGestao() {
     <PageCard
       breadcrumb={[
         { label: "Gabaritos", to: "/gabaritos" },
-        { label: "Gerenciar oferta" },
+        { label: "Gerenciar gabaritos" },
       ]}
       title="Gerenciar gabaritos"
       subtitle="Selecione escola e turma para lançar respostas dos alunos."
@@ -254,7 +256,6 @@ export default function GabaritoOfertaGestao() {
                 <div className="mt-1 text-sm font-medium text-slate-900">
                   {offer.description?.trim() || `Oferta #${offer.id}`}
                 </div>
-                <div className="mt-1 text-xs text-slate-500">Oferta #{offer.id}</div>
               </div>
               <div>
                 <div className="text-xs font-semibold text-slate-600">Caderno</div>
@@ -289,6 +290,11 @@ export default function GabaritoOfertaGestao() {
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="mb-3 text-sm font-semibold text-slate-900">Selecionar turma</div>
+            {!canFillAnswers && (
+              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                O preenchimento do gabarito só é permitido com a oferta aberta.
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
               <div className="lg:col-span-5">
                 <SigeCombobox
@@ -356,7 +362,7 @@ export default function GabaritoOfertaGestao() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Aluno</th>
                     <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
                     <th className="w-56 px-4 py-3 text-left text-xs font-semibold text-slate-600">
-                      Acertos / Erros / Brancos / Total
+                      Respondidas / Total
                     </th>
                     <th className="w-64 px-4 py-3 text-left text-xs font-semibold text-slate-600">
                       Ações
@@ -378,25 +384,17 @@ export default function GabaritoOfertaGestao() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700">
-                        {application.correct} / {application.wrong} / {application.blank} / {itemsTotal}
+                        {application.correct + application.wrong} / {itemsTotal}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => void onOpenDrawer(application)}
-                            disabled={application.student_absent}
+                            disabled={!canFillAnswers || application.student_absent}
                             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Responder
-                          </button>
-                          <button
-                            type="button"
-                            disabled
-                            title="Em breve"
-                            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400"
-                          >
-                            Enviar foto
                           </button>
                           <div className="flex items-center gap-2">
                             <CheckToggle

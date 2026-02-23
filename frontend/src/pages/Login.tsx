@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function Login() {
   const { login } = useAuth();
@@ -29,8 +30,8 @@ const inputBase =
     try {
       await login(username, password);
       nav("/");
-    } catch {
-      setErr("Usuário ou senha inválidos.");
+    } catch (e) {
+      setErr(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }

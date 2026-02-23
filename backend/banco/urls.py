@@ -17,6 +17,7 @@ from .views import (
     MockSigeSchoolClassesView,
     MockSigeSchoolsView,
     OfferApplicationsSyncView,
+    OfferKitPdfView,
     OfferViewSet,
     QuestionViewSet,
 )
@@ -49,6 +50,11 @@ urlpatterns = [
         "offers/<int:offer_id>/applications/sync/",
         OfferApplicationsSyncView.as_view(),
         name="offer-applications-sync",
+    ),
+    path(
+        "offers/<int:offer_id>/kit/<str:kind>/",
+        OfferKitPdfView.as_view(),
+        name="offer-kit-pdf",
     ),
     path(
         "applications/<int:application_id>/answers/",

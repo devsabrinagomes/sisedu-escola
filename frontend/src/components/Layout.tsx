@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import { Menu, X } from "lucide-react";
 import { links } from "./Sidebar"
+import logo from "../assets/images/logo/logo.png";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -23,8 +24,8 @@ export default function Layout() {
   return (
     <div className="min-h-screen text-slate-900">
       {/* HEADER */}
-      <header className="sticky top-0 z-20 border-b border-emerald-700/20 bg-emerald-600 text-white shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
+      <header className="sticky top-0 z-20 h-auto border-b border-green-500 bg-white text-white shadow-md">
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Botão sanduíche: só no mobile */}
             <button
@@ -36,7 +37,11 @@ export default function Layout() {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="font-semibold tracking-tight">SISEDU Escola</div>
+            <img
+              src={logo}
+              alt="SISEDU Escola"
+              className="h-20 w-auto"
+            />
           </div>
         </div>
       </header>

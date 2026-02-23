@@ -68,3 +68,19 @@ export function validateOfferDates(startDate: string, endDate: string) {
   if (!startDate || !endDate) return true;
   return endDate >= startDate;
 }
+
+function offerKitPendingKey(offerId: number) {
+  return `offer:kit:pending:${offerId}`;
+}
+
+export function setOfferKitPending(offerId: number, pending: boolean) {
+  if (pending) {
+    localStorage.setItem(offerKitPendingKey(offerId), "1");
+    return;
+  }
+  localStorage.removeItem(offerKitPendingKey(offerId));
+}
+
+export function isOfferKitPending(offerId: number) {
+  return localStorage.getItem(offerKitPendingKey(offerId)) === "1";
+}

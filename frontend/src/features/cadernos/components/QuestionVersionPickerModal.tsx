@@ -109,7 +109,14 @@ export default function QuestionVersionPickerModal({
       setError("");
 
       const params: Record<string, unknown> = { page };
-      if (q.trim()) params.search = q.trim();
+      const searchTerm = q.trim();
+      if (searchTerm) {
+        if (/^\d+$/.test(searchTerm)) {
+          params.id = Number(searchTerm);
+        } else {
+          params.search = searchTerm;
+        }
+      }
       if (subjectId !== "todos") params.subject = subjectId;
 
       const { data } = await api.get<Paginated<QuestionDTO> | QuestionDTO[]>(
@@ -243,7 +250,7 @@ export default function QuestionVersionPickerModal({
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar por enunciado"
+                  placeholder="Buscar por enunciado ou código"
                   className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-200"
                 />
                 {q && (

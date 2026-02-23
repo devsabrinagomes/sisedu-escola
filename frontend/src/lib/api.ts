@@ -1,7 +1,10 @@
 import axios from "axios"
 
+const rawApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "")
+const apiBaseUrl = rawApiBaseUrl.endsWith("/api") ? rawApiBaseUrl : `${rawApiBaseUrl}/api`
+
 export const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: apiBaseUrl,
 })
 
 function getAccessToken() {

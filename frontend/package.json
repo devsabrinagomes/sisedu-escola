@@ -2,7 +2,10 @@
   "name": "sisedu-escola",
   "private": true,
   "scripts": {
-    "dev": "vite"
+    "dev": "vite --host 0.0.0.0",
+    "dev:network": "vite --host 0.0.0.0",
+    "dev:network:open": "vite --host 0.0.0.0 --open",
+    "dev:local": "vite --host localhost"
   },
   "dependencies": {
     "@tiptap/core": "^3.19.0",

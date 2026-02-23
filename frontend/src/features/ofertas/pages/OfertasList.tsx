@@ -1,20 +1,24 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Pencil, Search, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DatePickerInput from "@/components/ui/DatePickerInput";
 import TablePagination from "@/components/ui/TablePagination";
 import { useToast } from "@/components/ui/toast/useToast";
-import { deleteOffer, listOffers } from "@/features/ofertas/services/offers";
+import {
+  deleteOffer,
+  downloadOfferApplicationKit,
+  listOffers,
+} from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/ofertas/types";
 import {
   formatDate,
-  formatDateTime,
   getBookletName,
   getOfferStatus,
   getOfferStatusBadgeClass,
   getOfferStatusLabel,
+  setOfferKitPending,
 } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
@@ -34,6 +38,7 @@ export default function OfertasList() {
   const [err, setErr] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingKitId, setDownloadingKitId] = useState<number | null>(null);
 
   const [filters, setFilters] = useState<OfferFilters>({
     search: "",
@@ -88,6 +93,23 @@ export default function OfertasList() {
       });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function onDownloadKit(offerId: number) {
+    try {
+      setDownloadingKitId(offerId);
+      await downloadOfferApplicationKit(offerId);
+      setOfferKitPending(offerId, false);
+      toast({ type: "success", title: "Kit de aplicação baixado com sucesso" });
+    } catch (error: unknown) {
+      toast({
+        type: "error",
+        title: "Erro ao baixar kit de aplicação",
+        message: getApiErrorMessage(error),
+      });
+    } finally {
+      setDownloadingKitId(null);
     }
   }
 
@@ -269,16 +291,6 @@ export default function OfertasList() {
           <table className="w-full table-auto border-collapse">
             <thead className="border-b border-slate-200 bg-slate-50">
               <tr>
-                <th className="w-16 px-5 py-3 text-left text-xs font-semibold text-slate-600">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("id")}
-                    className="inline-flex items-center gap-1 hover:text-slate-900"
-                  >
-                    Código
-                    {getSortIcon("id")}
-                  </button>
-                </th>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600">
                   <button
                     type="button"
@@ -289,7 +301,7 @@ export default function OfertasList() {
                     {getSortIcon("booklet")}
                   </button>
                 </th>
-                <th className="w-52 px-5 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-44 px-5 py-3 text-left text-xs font-semibold text-slate-600">
                   <button
                     type="button"
                     onClick={() => toggleSort("period")}
@@ -299,8 +311,8 @@ export default function OfertasList() {
                     {getSortIcon("period")}
                   </button>
                 </th>
-                <th className="w-28 px-5 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                <th className="w-36 px-5 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-40 px-5 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
+                <th className="w-28 px-5 py-3 text-left text-xs font-semibold text-slate-600">
                   Ações
                 </th>
               </tr>
@@ -314,7 +326,6 @@ export default function OfertasList() {
                     key={offer.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="px-5 py-3 text-sm text-slate-700">{offer.id}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">
                       <Link
                         to={`/ofertas/${offer.id}`}
@@ -326,40 +337,47 @@ export default function OfertasList() {
                         {getBookletName(offer)}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-slate-700">
+                    <td className="px-5 py-3 text-sm text-slate-700 whitespace-nowrap">
                       {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(status)}`}
+                        className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(status)}`}
                       >
                         {getOfferStatusLabel(status)}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/ofertas/${offer.id}`)}
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          Ver
-                        </button>
+                      <div className="flex items-center gap-1">
                         {isMine && (
                           <>
                             <button
                               type="button"
-                              onClick={() => navigate(`/ofertas/${offer.id}/editar`)}
-                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                              onClick={() => void onDownloadKit(offer.id)}
+                              disabled={downloadingKitId === offer.id}
+                              className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
+                              title="Baixar kit aplicação"
+                              aria-label="Baixar kit aplicação"
                             >
-                              Editar
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/ofertas/${offer.id}/editar`)}
+                              className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+                              title="Editar"
+                              aria-label="Editar"
+                            >
+                              <Pencil className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeletingId(offer.id)}
-                              className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                              title="Remover definitivamente"
+                              aria-label="Remover definitivamente"
                             >
-                              Excluir
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </>
                         )}
