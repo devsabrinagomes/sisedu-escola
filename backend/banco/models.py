@@ -266,4 +266,4 @@ class StudentAnswer(models.Model):
         ]
 
     def __str__(self):
-        return f"Resposta {self.application_id} - Item {self.item_id}"
+        return f"Resposta {self.application_id} - Item {self.booklet_item_id}"

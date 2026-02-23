@@ -1,10 +1,23 @@
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    ApplicationAbsentView,
+    ApplicationAnswersView,
+    BookletAddQuestionView,
+    BookletItemDetailView,
+    BookletItemsBulkView,
+    BookletItemsView,
+    BookletViewSet,
     SubjectViewSet,
     TopicViewSet,
     DescriptorViewSet,
     SkillViewSet,
+    MockSigeClassStudentsView,
+    MockSigeSchoolClassesView,
+    MockSigeSchoolsView,
+    OfferApplicationsSyncView,
+    OfferViewSet,
     QuestionViewSet,
 )
 
@@ -14,5 +27,41 @@ router.register(r"topics", TopicViewSet, basename="topic")
 router.register(r"descriptors", DescriptorViewSet, basename="descriptor")
 router.register(r"skills", SkillViewSet, basename="skill")
 router.register(r"questions", QuestionViewSet, basename="question")
+router.register(r"booklets", BookletViewSet, basename="booklet")
+router.register(r"cadernos", BookletViewSet, basename="caderno")
+router.register(r"offers", OfferViewSet, basename="offer")
+router.register(r"ofertas", OfferViewSet, basename="oferta")
 
-urlpatterns = router.urls
+urlpatterns = [
+    *router.urls,
+    path("mock/sige/schools/", MockSigeSchoolsView.as_view(), name="mock-sige-schools"),
+    path(
+        "mock/sige/schools/<int:school_ref>/classes/",
+        MockSigeSchoolClassesView.as_view(),
+        name="mock-sige-school-classes",
+    ),
+    path(
+        "mock/sige/classes/<int:class_ref>/students/",
+        MockSigeClassStudentsView.as_view(),
+        name="mock-sige-class-students",
+    ),
+    path(
+        "offers/<int:offer_id>/applications/sync/",
+        OfferApplicationsSyncView.as_view(),
+        name="offer-applications-sync",
+    ),
+    path(
+        "applications/<int:application_id>/answers/",
+        ApplicationAnswersView.as_view(),
+        name="application-answers",
+    ),
+    path(
+        "applications/<int:application_id>/absent/",
+        ApplicationAbsentView.as_view(),
+        name="application-absent",
+    ),
+    path("cadernos/<int:id>/add-question/", BookletAddQuestionView.as_view(), name="caderno-add-question"),
+    path("booklets/<int:id>/items/", BookletItemsView.as_view(), name="booklet-items"),
+    path("booklets/<int:id>/items/bulk/", BookletItemsBulkView.as_view(), name="booklet-items-bulk"),
+    path("booklets/<int:id>/items/<int:item_id>/", BookletItemDetailView.as_view(), name="booklet-item-detail"),
+]

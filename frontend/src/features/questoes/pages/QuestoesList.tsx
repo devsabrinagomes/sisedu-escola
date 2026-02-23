@@ -5,6 +5,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { ArrowDown, ArrowUp, ArrowUpDown, Filter, Search, X } from "lucide-react";
 import Tabs from "@/components/ui/Tabs";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import TablePagination from "@/components/ui/TablePagination";
 import AddToCadernoButton from "@/features/questoes/components/AddToCadernoButton";
 import AddToCadernoModal from "@/features/questoes/components/AddToCadernoModal";
 import QuestionActions from "@/features/questoes/components/QuestionActions";
@@ -114,6 +115,8 @@ export default function QuestoesList() {
   const [criadoEm, setCriadoEm] = useState<CreatedAtPreset>("qualquer");
   const [activeTab, setActiveTab] = useState<ActiveTab>("mine");
   const [page, setPage] = useState(1);
+  const [nextPage, setNextPage] = useState<string | null>(null);
+  const [previousPage, setPreviousPage] = useState<string | null>(null);
 
   // bottom sheet (mobile)
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -147,8 +150,15 @@ export default function QuestoesList() {
 
   function buildParams(searchText: string) {
     const params: Record<string, any> = {};
+    const searchTerm = searchText.trim();
 
-    if (searchText.trim()) params.search = searchText.trim();
+    if (searchTerm) {
+      if (/^\d+$/.test(searchTerm)) {
+        params.id = Number(searchTerm);
+      } else {
+        params.search = searchTerm;
+      }
+    }
     if (subjectId !== "todos") params.subject = subjectId;
 
     const now = new Date();
@@ -192,9 +202,13 @@ export default function QuestoesList() {
 
       const list = Array.isArray(data) ? data : (data?.results ?? []);
       setItems(list);
+      setNextPage(Array.isArray(data) ? null : data.next ?? null);
+      setPreviousPage(Array.isArray(data) ? null : data.previous ?? null);
     } catch (e: any) {
       if (reqId !== reqIdRef.current) return;
       setItems([]);
+      setNextPage(null);
+      setPreviousPage(null);
       setErr(
         e?.response?.data?.detail || "Não foi possível carregar as questões.",
       );
@@ -451,7 +465,7 @@ export default function QuestoesList() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onEnter}
-                placeholder="Enunciado"
+                placeholder="Enunciado ou código"
                 className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-200"
               />
 
@@ -642,15 +656,15 @@ export default function QuestoesList() {
           ) : (
             <table className="w-full table-auto border-collapse">
               <colgroup>
-                <col className="w-20" />
+                <col className="w-14" />
                 <col />
-                <col className="w-28" />
+                <col className="w-32" />
                 <col className="w-36" />
               </colgroup>
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
                   <th
-                    className="w-20 px-5 py-3 text-left text-xs font-semibold text-slate-600"
+                    className="w-14 px-5 py-3 text-left text-xs font-semibold text-slate-600"
                     aria-sort={
                       sortByTab[activeTab].key === "code"
                         ? sortByTab[activeTab].dir === "asc"
@@ -734,7 +748,7 @@ export default function QuestoesList() {
                         activeTab === "mine" && isAnnulled ? "opacity-60" : ""
                       }`}
                     >
-                      <td className="w-20 px-5 py-3 align-middle text-sm text-slate-700">
+                      <td className="w-14 px-5 py-3 align-middle text-sm text-slate-700">
                         {it.id}
                       </td>
                       <td className="w-full px-5 py-3 align-middle text-sm text-slate-700">
@@ -752,7 +766,9 @@ export default function QuestoesList() {
                         )}
                       </td>
                       <td className="w-28 px-5 py-3 align-middle text-sm text-slate-700">
-                        <span className="block truncate">{subjectLabel}</span>
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
+                          {subjectLabel}
+                        </span>
                       </td>
                       <td className="w-36 whitespace-nowrap px-5 py-3 align-middle text-sm text-slate-700">
                         {activeTab === "mine" ? (
@@ -780,6 +796,17 @@ export default function QuestoesList() {
             </table>
           )}
         </div>
+
+        {!loading && sortedItems.length > 0 && (
+          <TablePagination
+            page={page}
+            hasPrevious={Boolean(previousPage)}
+            hasNext={Boolean(nextPage)}
+            loading={loading}
+            onPrevious={() => setPage((prev) => Math.max(1, prev - 1))}
+            onNext={() => setPage((prev) => prev + 1)}
+          />
+        )}
       </section>
 
       {/* FILTROS (desktop) */}

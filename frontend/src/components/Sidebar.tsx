@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   HelpCircle,
   FileText,
-  Users,
+  BadgePercent,
   ClipboardCheck,
   LineChart,
 } from "lucide-react";
@@ -24,7 +24,7 @@ export const links: Array<{
   { to: "/", label: "Dashboard", icon: LayoutDashboard, tone: "green" },
   { to: "/questoes", label: "Questões", icon: HelpCircle, tone: "blue" },
   { to: "/cadernos", label: "Cadernos", icon: FileText, tone: "yellow" },
-  { to: "/ofertas", label: "Ofertas", icon: Users, tone: "red" },
+  { to: "/ofertas", label: "Ofertas", icon: BadgePercent, tone: "red" },
   { to: "/gabaritos", label: "Gabaritos", icon: ClipboardCheck, tone: "green" },
   { to: "/relatorios", label: "Relatórios", icon: LineChart, tone: "blue" },
 ];

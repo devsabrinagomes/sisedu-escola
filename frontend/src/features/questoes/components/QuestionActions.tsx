@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Ban, Pencil, Plus, Trash2 } from "lucide-react";
 
 type QuestionActionsProps = {
   isMine: boolean;
@@ -45,7 +45,7 @@ export default function QuestionActions({
         title={annulled ? "Reativar questão" : "Anular questão"}
         aria-label={annulled ? "Reativar questão" : "Anular questão"}
       >
-        <X className="h-4 w-4" />
+        <Ban className="h-4 w-4" />
       </button>
 
       {canAddToCaderno ? (
