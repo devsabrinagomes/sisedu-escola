@@ -4,12 +4,9 @@ import PageCard from "@/components/layout/PageCard";
 import { useToast } from "@/components/ui/toast/useToast";
 import { getReportOffer, getReportsByClass } from "@/features/relatorios/services/reports";
 import type { OfferDTO, ReportByClassRowDTO } from "@/features/relatorios/types";
+import { formatPct } from "@/features/relatorios/utils";
 import { getBookletName } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
-
-function formatPct(value: number) {
-  return `${Number(value || 0).toFixed(2)}%`;
-}
 
 export default function RelatorioTurmasList() {
   const { id } = useParams();

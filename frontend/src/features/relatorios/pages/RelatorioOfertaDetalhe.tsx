@@ -15,9 +15,14 @@ import {
 import type {
   OfferDTO,
   ReportItemRowDTO,
-  ReportStudentStatus,
   ReportSummaryDTO,
 } from "@/features/relatorios/types";
+import {
+  formatPct,
+  getReportStudentStatusBadgeClass,
+  getReportStudentStatusLabel,
+  isInBucketRange,
+} from "@/features/relatorios/utils";
 import {
   formatDate,
   getBookletName,
@@ -40,40 +45,6 @@ type StudentSelection =
   | { kind: "not_finalized"; label: string }
   | { kind: "bucket"; range: string; label: string }
   | null;
-
-function getStatusLabel(status: ReportStudentStatus) {
-  if (status === "ABSENT") return "Ausente";
-  if (status === "FINALIZED") return "Finalizado";
-  if (status === "RECOGNIZED") return "Em andamento";
-  return "Sem respostas";
-}
-
-function getStatusBadgeClass(status: ReportStudentStatus) {
-  if (status === "ABSENT") return "bg-amber-50 text-amber-700 border border-amber-100";
-  if (status === "FINALIZED") return "bg-emerald-50 text-emerald-700 border border-emerald-100";
-  if (status === "RECOGNIZED") return "bg-indigo-50 text-indigo-700 border border-indigo-100";
-  return "bg-slate-100 text-slate-700 border border-slate-200";
-}
-
-function formatPct(value: number) {
-  return `${Number(value || 0).toFixed(2)}%`;
-}
-
-function parseBucketRange(range: string) {
-  const match = String(range).match(/(\d+)\s*-\s*(\d+)/);
-  if (!match) return null;
-  const min = Number(match[1]);
-  const max = Number(match[2]);
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  return { min, max };
-}
-
-function isInBucketRange(correctPct: number, range: string) {
-  const parsed = parseBucketRange(range);
-  if (!parsed) return false;
-  if (parsed.max >= 100) return correctPct >= parsed.min && correctPct <= parsed.max;
-  return correctPct >= parsed.min && correctPct < parsed.max;
-}
 
 export default function RelatorioOfertaDetalhe() {
   const { offerId } = useParams();
@@ -686,8 +657,8 @@ export default function RelatorioOfertaDetalhe() {
                                   <td className="px-3 py-2 text-sm text-slate-800">{row.name}</td>
                                   <td className="px-3 py-2 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
                                   <td className="px-3 py-2 text-sm text-slate-700">
-                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
-                                      {getStatusLabel(row.status)}
+                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getReportStudentStatusBadgeClass(row.status)}`}>
+                                      {getReportStudentStatusLabel(row.status)}
                                     </span>
                                   </td>
                                 </tr>
@@ -855,8 +826,8 @@ export default function RelatorioOfertaDetalhe() {
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
                               <td className="px-4 py-3 text-sm text-slate-700">
-                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
-                                  {getStatusLabel(row.status)}
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getReportStudentStatusBadgeClass(row.status)}`}>
+                                  {getReportStudentStatusLabel(row.status)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-700">
