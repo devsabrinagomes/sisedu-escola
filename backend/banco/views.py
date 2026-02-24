@@ -24,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .filters import QuestionFilter
+from .mixins import OwnerAccessMixin
 from .models import (
     Application,
     Booklet,
@@ -733,7 +734,7 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
 
-class QuestionViewSet(viewsets.ModelViewSet):
+class QuestionViewSet(OwnerAccessMixin, viewsets.ModelViewSet):
     serializer_class = QuestionSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = (JSONParser, FormParser, MultiPartParser)
@@ -770,34 +771,27 @@ class QuestionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user.id)
 
-    def _ensure_owner(self, instance):
-        if self.request.user.is_superuser:
-            return
-        if instance.created_by != self.request.user.id:
-            raise PermissionDenied("Voce so pode alterar questoes criadas por voce.")
-
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar questoes criadas por voce.")
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar questoes criadas por voce.")
         return super().partial_update(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
-        self._ensure_owner(instance)
+        self.ensure_owner(self.request, instance, "Voce so pode alterar questoes criadas por voce.")
 
         in_use = BookletItem.objects.filter(question_version__question=instance).exists()
         if in_use:
             raise ValidationError({"detail": "Esta questao esta vinculada a um caderno e nao pode ser removida."})
 
-        instance.deleted = True
-        instance.save(update_fields=["deleted"])
+        self.soft_delete(instance)
 
 
-class BookletViewSet(viewsets.ModelViewSet):
+class BookletViewSet(OwnerAccessMixin, viewsets.ModelViewSet):
     serializer_class = BookletSerializer
     permission_classes = [IsAuthenticated]
 
@@ -815,29 +809,22 @@ class BookletViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user.id, deleted=False)
 
-    def _ensure_owner(self, instance):
-        if self.request.user.is_superuser:
-            return
-        if instance.created_by != self.request.user.id:
-            raise PermissionDenied("Voce so pode alterar cadernos criados por voce.")
-
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar cadernos criados por voce.")
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar cadernos criados por voce.")
         return super().partial_update(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
-        self._ensure_owner(instance)
-        instance.deleted = True
-        instance.save(update_fields=["deleted"])
+        self.ensure_owner(self.request, instance, "Voce so pode alterar cadernos criados por voce.")
+        self.soft_delete(instance)
 
 
-class OfferViewSet(viewsets.ModelViewSet):
+class OfferViewSet(OwnerAccessMixin, viewsets.ModelViewSet):
     serializer_class = OfferSerializer
     permission_classes = [IsAuthenticated]
 
@@ -880,26 +867,19 @@ class OfferViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user.id, deleted=False)
 
-    def _ensure_owner(self, instance):
-        if self.request.user.is_superuser:
-            return
-        if instance.created_by != self.request.user.id:
-            raise PermissionDenied("Voce so pode alterar ofertas criadas por voce.")
-
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar ofertas criadas por voce.")
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        self._ensure_owner(instance)
+        self.ensure_owner(request, instance, "Voce so pode alterar ofertas criadas por voce.")
         return super().partial_update(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
-        self._ensure_owner(instance)
-        instance.deleted = True
-        instance.save(update_fields=["deleted"])
+        self.ensure_owner(self.request, instance, "Voce so pode alterar ofertas criadas por voce.")
+        self.soft_delete(instance)
 
 
 class MockSigeSchoolsView(APIView):
@@ -996,14 +976,15 @@ class MockSigeClassStudentsView(APIView):
         return Response(students, status=status.HTTP_200_OK)
 
 
-class OfferApplicationsSyncView(APIView):
+class OfferApplicationsSyncView(OwnerAccessMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_offer(self, request, offer_id):
-        offer = get_object_or_404(Offer.objects.select_related("booklet"), id=offer_id, deleted=False)
-        if not request.user.is_superuser and offer.created_by != request.user.id:
-            raise PermissionDenied("Você não tem permissão para gerenciar gabaritos desta oferta.")
-        return offer
+        return self.get_owned_offer(
+            request,
+            offer_id,
+            message="Você não tem permissão para gerenciar gabaritos desta oferta.",
+        )
 
     def post(self, request, offer_id):
         offer = self._get_offer(request, offer_id)
@@ -1061,14 +1042,15 @@ class OfferApplicationsSyncView(APIView):
         )
 
 
-class OfferKitPdfView(APIView):
+class OfferKitPdfView(OwnerAccessMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_offer(self, request, offer_id):
-        offer = get_object_or_404(Offer.objects.select_related("booklet"), id=offer_id, deleted=False)
-        if not request.user.is_superuser and offer.created_by != request.user.id:
-            raise PermissionDenied("Você não tem permissão para baixar o kit desta oferta.")
-        return offer
+        return self.get_owned_offer(
+            request,
+            offer_id,
+            message="Você não tem permissão para baixar o kit desta oferta.",
+        )
 
     def get(self, request, offer_id, kind):
         offer = self._get_offer(request, offer_id)
@@ -1080,14 +1062,15 @@ class OfferKitPdfView(APIView):
         )
 
 
-class BookletKitPdfView(APIView):
+class BookletKitPdfView(OwnerAccessMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_booklet(self, request, booklet_id):
-        booklet = get_object_or_404(Booklet, id=booklet_id, deleted=False)
-        if not request.user.is_superuser and booklet.created_by != request.user.id:
-            raise PermissionDenied("Você não tem permissão para baixar o kit deste caderno.")
-        return booklet
+        return self.get_owned_booklet(
+            request,
+            booklet_id,
+            message="Você não tem permissão para baixar o kit deste caderno.",
+        )
 
     def get(self, request, booklet_id, kind):
         booklet = self._get_booklet(request, booklet_id)
@@ -1522,18 +1505,15 @@ class OfferReportItemsCsvView(APIView):
         return response
 
 
-class ApplicationAnswersView(APIView):
+class ApplicationAnswersView(OwnerAccessMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_application(self, request, application_id):
-        application = get_object_or_404(
-            Application.objects.select_related("offer", "offer__booklet"),
-            id=application_id,
-            offer__deleted=False,
+        return self.get_owned_application(
+            request,
+            application_id,
+            message="Você não tem permissão para alterar respostas desta aplicação.",
         )
-        if not request.user.is_superuser and application.offer.created_by != request.user.id:
-            raise PermissionDenied("Você não tem permissão para alterar respostas desta aplicação.")
-        return application
 
     def _build_response(self, application):
         offer = application.offer
@@ -1618,18 +1598,15 @@ class ApplicationAnswersView(APIView):
         return Response(self._build_response(application), status=status.HTTP_200_OK)
 
 
-class ApplicationAbsentView(APIView):
+class ApplicationAbsentView(OwnerAccessMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_application(self, request, application_id):
-        application = get_object_or_404(
-            Application.objects.select_related("offer", "offer__booklet"),
-            id=application_id,
-            offer__deleted=False,
+        return self.get_owned_application(
+            request,
+            application_id,
+            message="Você não tem permissão para alterar esta aplicação.",
         )
-        if not request.user.is_superuser and application.offer.created_by != request.user.id:
-            raise PermissionDenied("Você não tem permissão para alterar esta aplicação.")
-        return application
 
     def patch(self, request, application_id):
         application = self._get_application(request, application_id)
