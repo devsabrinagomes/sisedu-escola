@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 
 type Option = {
@@ -7,7 +7,7 @@ type Option = {
 };
 
 type SigeComboboxProps = {
-  label: string;
+  label: ReactNode;
   placeholder: string;
   value?: number;
   options: Option[];

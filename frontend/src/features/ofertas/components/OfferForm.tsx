@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import BookletCombobox from "@/components/BookletCombobox";
 import DatePickerInput from "@/components/ui/DatePickerInput";
-import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
+import SigeMultiCombobox from "@/features/gabaritos/components/SigeMultiCombobox";
 import {
   listOfferSchoolClasses,
   listOfferSchools,
@@ -9,14 +9,16 @@ import {
   type OfferSchoolDTO,
 } from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferPayload } from "@/features/ofertas/types";
+import type { OfferSigeSelection } from "@/features/ofertas/utils";
 import { normalizeDescription, validateOfferDates } from "@/features/ofertas/utils";
 
 type OfferFormProps = {
   mode: "create" | "edit";
   saving?: boolean;
   initialData?: OfferDTO | null;
+  initialSigeSelection?: OfferSigeSelection | null;
   onCancel: () => void;
-  onSubmit: (payload: OfferPayload) => Promise<void>;
+  onSubmit: (payload: OfferPayload, sigeSelection: OfferSigeSelection) => Promise<void>;
 };
 
 function getInitialBookletId(initialData?: OfferDTO | null) {
@@ -49,6 +51,7 @@ export default function OfferForm({
   mode,
   saving = false,
   initialData,
+  initialSigeSelection = null,
   onCancel,
   onSubmit,
 }: OfferFormProps) {
@@ -58,9 +61,9 @@ export default function OfferForm({
   const [description, setDescription] = useState(initialData?.description || "");
   const [schools, setSchools] = useState<OfferSchoolDTO[]>([]);
   const [classes, setClasses] = useState<OfferClassDTO[]>([]);
-  const [schoolRef, setSchoolRef] = useState<number | undefined>(undefined);
-  const [seriesYear, setSeriesYear] = useState<number | undefined>(undefined);
-  const [classRef, setClassRef] = useState<number | undefined>(undefined);
+  const [schoolRefs, setSchoolRefs] = useState<number[]>(initialSigeSelection?.school_refs || []);
+  const [seriesYears, setSeriesYears] = useState<number[]>(initialSigeSelection?.series_years || []);
+  const [classRefs, setClassRefs] = useState<number[]>(initialSigeSelection?.class_refs || []);
   const [loadingSchools, setLoadingSchools] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -86,15 +89,30 @@ export default function OfferForm({
   const classOptions = useMemo(
     () =>
       classes
-        .filter((cls) => (seriesYear ? getSeriesNumber(cls) === seriesYear : true))
+        .filter((cls) => (seriesYears.length > 0 ? seriesYears.includes(getSeriesNumber(cls) || -1) : true))
         .map((cls) => ({ value: cls.class_ref, label: cls.name })),
-    [classes, seriesYear],
+    [classes, seriesYears],
   );
 
   useEffect(() => {
-    if (mode !== "create") return;
     void loadSchools();
-  }, [mode]);
+  }, []);
+
+  useEffect(() => {
+    if (schoolRefs.length === 0) {
+      setClasses([]);
+      setSeriesYears([]);
+      setClassRefs([]);
+      return;
+    }
+    void loadClassesForSchools(schoolRefs);
+  }, [schoolRefs]);
+
+  useEffect(() => {
+    if (classes.length === 0) return;
+    const allowed = new Set(classOptions.map((opt) => opt.value));
+    setClassRefs((prev) => prev.filter((id) => allowed.has(id)));
+  }, [classOptions, classes.length]);
 
   async function loadSchools() {
     try {
@@ -108,11 +126,18 @@ export default function OfferForm({
     }
   }
 
-  async function loadClasses(nextSchoolRef: number) {
+  async function loadClassesForSchools(nextSchoolRefs: number[]) {
     try {
       setLoadingClasses(true);
-      const list = await listOfferSchoolClasses(nextSchoolRef);
-      setClasses(list);
+      const uniqueSchoolRefs = Array.from(new Set(nextSchoolRefs));
+      const responses = await Promise.all(
+        uniqueSchoolRefs.map((schoolRef) => listOfferSchoolClasses(schoolRef)),
+      );
+      const dedup = new Map<number, OfferClassDTO>();
+      responses.flat().forEach((cls) => {
+        dedup.set(cls.class_ref, cls);
+      });
+      setClasses(Array.from(dedup.values()));
     } catch {
       setClasses([]);
     } finally {
@@ -137,6 +162,10 @@ export default function OfferForm({
       nextErrors.description = "Descrição deve ter no máximo 500 caracteres.";
     }
 
+    if (schoolRefs.length === 0) nextErrors.school_ref = "Selecione ao menos uma escola.";
+    if (seriesYears.length === 0) nextErrors.series_year = "Selecione ao menos uma série.";
+    if (classRefs.length === 0) nextErrors.class_ref = "Selecione ao menos uma turma.";
+
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
@@ -145,12 +174,32 @@ export default function OfferForm({
     event.preventDefault();
     if (!validate()) return;
 
-    await onSubmit({
-      booklet: Number(bookletId),
-      start_date: startDate,
-      end_date: endDate,
-      description: normalizeDescription(description),
-    });
+    const uniqueSchoolRefs = Array.from(new Set(schoolRefs));
+    const uniqueSeriesYears = Array.from(new Set(seriesYears));
+    const uniqueClassRefs = Array.from(new Set(classRefs));
+
+    const selectedSchoolNames = schoolOptions
+      .filter((option) => uniqueSchoolRefs.includes(option.value))
+      .map((option) => option.label);
+    const selectedClassNames = classOptions
+      .filter((option) => uniqueClassRefs.includes(option.value))
+      .map((option) => option.label);
+
+    await onSubmit(
+      {
+        booklet: Number(bookletId),
+        start_date: startDate,
+        end_date: endDate,
+        description: normalizeDescription(description),
+      },
+      {
+        school_refs: uniqueSchoolRefs,
+        school_names: selectedSchoolNames,
+        series_years: uniqueSeriesYears,
+        class_refs: uniqueClassRefs,
+        class_names: selectedClassNames,
+      },
+    );
   }
 
   return (
@@ -182,52 +231,62 @@ export default function OfferForm({
             )}
           </div>
 
-          {mode === "create" ? (
-            <>
-              <div className="md:col-span-2">
-                <SigeCombobox
-                  label="Escola"
-                  placeholder="Selecione uma escola"
-                  value={schoolRef}
-                  options={schoolOptions}
-                  loading={loadingSchools}
-                  disabled={saving}
-                  onChange={(value) => {
-                    setSchoolRef(value);
-                    setSeriesYear(undefined);
-                    setClassRef(undefined);
-                    setClasses([]);
-                    if (value) void loadClasses(value);
-                  }}
-                />
-              </div>
-              <div>
-                <SigeCombobox
-                  label="Série"
-                  placeholder="Selecione uma série"
-                  value={seriesYear}
-                  options={seriesOptions}
-                  loading={loadingClasses}
-                  disabled={saving || !schoolRef}
-                  onChange={(value) => {
-                    setSeriesYear(value);
-                    setClassRef(undefined);
-                  }}
-                />
-              </div>
-              <div>
-                <SigeCombobox
-                  label="Turma"
-                  placeholder="Selecione uma turma"
-                  value={classRef}
-                  options={classOptions}
-                  loading={loadingClasses}
-                  disabled={saving || !schoolRef || !seriesYear}
-                  onChange={setClassRef}
-                />
-              </div>
-            </>
-          ) : null}
+          <>
+            <div className="md:col-span-2">
+              <SigeMultiCombobox
+                label={
+                  <>
+                    Escola <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Selecione uma escola"
+                values={schoolRefs}
+                options={schoolOptions}
+                loading={loadingSchools}
+                disabled={saving}
+                onChange={setSchoolRefs}
+              />
+              {errors.school_ref && (
+                <p className="mt-1 text-xs text-red-600">{errors.school_ref}</p>
+              )}
+            </div>
+            <div>
+              <SigeMultiCombobox
+                label={
+                  <>
+                    Série <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Selecione uma série"
+                values={seriesYears}
+                options={seriesOptions}
+                loading={loadingClasses}
+                disabled={saving || schoolRefs.length === 0}
+                onChange={setSeriesYears}
+              />
+              {errors.series_year && (
+                <p className="mt-1 text-xs text-red-600">{errors.series_year}</p>
+              )}
+            </div>
+            <div>
+              <SigeMultiCombobox
+                label={
+                  <>
+                    Turma <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Selecione uma turma"
+                values={classRefs}
+                options={classOptions}
+                loading={loadingClasses}
+                disabled={saving || schoolRefs.length === 0 || seriesYears.length === 0}
+                onChange={setClassRefs}
+              />
+              {errors.class_ref && (
+                <p className="mt-1 text-xs text-red-600">{errors.class_ref}</p>
+              )}
+            </div>
+          </>
 
           <div className="md:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">

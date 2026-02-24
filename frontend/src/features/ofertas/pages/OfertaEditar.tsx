@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast/useToast";
 import OfferForm from "@/features/ofertas/components/OfferForm";
 import { getOffer, updateOffer } from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferPayload } from "@/features/ofertas/types";
+import { getOfferSigeSelection, setOfferSigeSelection, type OfferSigeSelection } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function OfertaEditar() {
@@ -19,6 +20,7 @@ export default function OfertaEditar() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [item, setItem] = useState<OfferDTO | null>(null);
+  const [sigeSelection, setSigeSelection] = useState<OfferSigeSelection | null>(null);
 
   useEffect(() => {
     if (!offerId) return;
@@ -31,6 +33,7 @@ export default function OfertaEditar() {
       setErr("");
       const offer = await getOffer(offerId);
       setItem(offer);
+      setSigeSelection(getOfferSigeSelection(offerId));
     } catch {
       setErr("Não foi possível carregar a oferta.");
     } finally {
@@ -40,11 +43,12 @@ export default function OfertaEditar() {
 
   const canEdit = Number(item?.created_by) === Number(userId);
 
-  async function handleSubmit(payload: OfferPayload) {
+  async function handleSubmit(payload: OfferPayload, nextSigeSelection: OfferSigeSelection) {
     if (!canEdit) return;
     try {
       setSaving(true);
       await updateOffer(offerId, payload);
+      setOfferSigeSelection(offerId, nextSigeSelection);
       toast({ type: "success", title: "Oferta atualizada com sucesso" });
       navigate(`/ofertas/${offerId}`);
     } catch (error: unknown) {
@@ -90,6 +94,7 @@ export default function OfertaEditar() {
           mode="edit"
           saving={saving}
           initialData={item}
+          initialSigeSelection={sigeSelection}
           onCancel={() => navigate(`/ofertas/${offerId}`)}
           onSubmit={handleSubmit}
         />

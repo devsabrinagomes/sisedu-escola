@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, TriangleAlert } from "lucide-react";
 import TablePagination from "@/components/ui/TablePagination";
 import { listGabaritoOffers } from "@/features/gabaritos/services/gabaritos";
 import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/gabaritos/types";
@@ -10,6 +10,7 @@ import {
   getOfferStatus,
   getOfferStatusBadgeClass,
   getOfferStatusLabel,
+  isOfferKitPending,
 } from "@/features/ofertas/utils";
 
 type SortKey = "offer" | "booklet" | "period" | "status";
@@ -230,15 +231,26 @@ export default function GabaritosList() {
             <tbody>
               {sortedItems.map((offer) => {
                 const status = getOfferStatus(offer);
+                const canManage = status === "open";
+                const kitPending = isOfferKitPending(offer.id);
                 return (
                   <tr
                     key={offer.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
                     <td className="px-5 py-3 text-sm text-slate-800">
-                      <div className="font-medium text-slate-900">
+                      {kitPending ? (
+                        <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                          <TriangleAlert className="h-3.5 w-3.5" />
+                          Download do kit de aplicação pendente
+                        </div>
+                      ) : null}
+                      <Link
+                        to={`/gabaritos/ofertas/${offer.id}`}
+                        className="block font-medium text-slate-900 hover:text-emerald-700 hover:underline"
+                      >
                         {offer.description?.trim() || `Oferta #${offer.id}`}
-                      </div>
+                      </Link>
                       <div className="mt-1 text-xs text-slate-500">{getBookletName(offer)}</div>
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
@@ -253,12 +265,23 @@ export default function GabaritosList() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
-                      <Link
-                        to={`/gabaritos/ofertas/${offer.id}`}
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                      >
-                        Gerenciar gabaritos
-                      </Link>
+                      {canManage ? (
+                        <Link
+                          to={`/gabaritos/ofertas/${offer.id}`}
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                        >
+                          Gerenciar gabaritos
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          title="Disponível apenas para ofertas com status Aberta"
+                          className="inline-flex cursor-not-allowed items-center justify-center whitespace-nowrap rounded-lg bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-500"
+                        >
+                          Gerenciar gabaritos
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

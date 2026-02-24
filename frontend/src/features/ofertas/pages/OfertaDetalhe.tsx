@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Pencil, Trash2, TriangleAlert, X } from "lucide-react";
+import { CheckCircle2, Download, Pencil, Trash2, TriangleAlert, X } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import PageCard from "@/components/layout/PageCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -14,6 +14,7 @@ import type { OfferDTO } from "@/features/ofertas/types";
 import {
   formatDate,
   formatDateTime,
+  getOfferSigeSelection,
   getBookletId,
   getBookletName,
   getOfferStatus,
@@ -40,6 +41,7 @@ export default function OfertaDetalhe() {
   const [kitModalOpen, setKitModalOpen] = useState(false);
   const [kitPending, setKitPending] = useState(false);
   const [downloadingKit, setDownloadingKit] = useState(false);
+  const [sigeSelection, setSigeSelection] = useState<ReturnType<typeof getOfferSigeSelection>>(null);
 
   useEffect(() => {
     if (!offerId) return;
@@ -49,10 +51,12 @@ export default function OfertaDetalhe() {
   useEffect(() => {
     if (!offerId) return;
     const pending = isOfferKitPending(offerId);
+    const sige = getOfferSigeSelection(offerId);
     const shouldOpenFromNavigation = Boolean(
       (location.state as { showKitModal?: boolean } | null)?.showKitModal,
     );
     setKitPending(pending);
+    setSigeSelection(sige);
     setKitModalOpen(shouldOpenFromNavigation);
   }, [offerId, location.state]);
 
@@ -150,12 +154,13 @@ export default function OfertaDetalhe() {
                       title="Download do kit de aplicação pendente"
                     >
                       <TriangleAlert className="h-3.5 w-3.5" />
-                      Kit pendente
+                      Download do kit de aplicação pendente
                     </span>
                   ) : null}
-                  <span>Oferta #{item.id}</span>
                 </div>
-                <div className="mt-1 text-base font-semibold text-slate-900">{getBookletName(item)}</div>
+                <div className="mt-1 text-base font-semibold text-slate-900">
+                  {item.description?.trim() || `Oferta #${item.id}`}
+                </div>
                 <div className="mt-2 text-xs text-slate-500">
                   Criada em: {formatDateTime(item.created_at)}
                 </div>
@@ -163,6 +168,16 @@ export default function OfertaDetalhe() {
 
               {isMine && (
                 <div className="flex items-center gap-1 text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => void onDownloadKit()}
+                    disabled={downloadingKit}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 transition disabled:opacity-50"
+                    title="Baixar kit aplicação"
+                    aria-label="Baixar kit aplicação"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => navigate(`/ofertas/${item.id}/editar`)}
@@ -191,7 +206,7 @@ export default function OfertaDetalhe() {
               <div className="text-xs font-semibold text-slate-600">Caderno</div>
               <Link
                 to={`/cadernos/${getBookletId(item)}`}
-                className="mt-1 inline-block text-sm font-medium text-slate-900 hover:text-emerald-700 hover:underline"
+                className="mt-1 inline-block text-sm text-slate-900 hover:text-emerald-700 hover:underline"
               >
                 {getBookletName(item)}
               </Link>
@@ -214,16 +229,32 @@ export default function OfertaDetalhe() {
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Criado por</div>
-              <div className="mt-1 text-sm text-slate-800">{item.created_by}</div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <div className="text-xs font-semibold text-slate-600">Descrição</div>
-              <div className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
-                {item.description?.trim() ? item.description : "-"}
+              <div className="text-xs font-semibold text-slate-600">Escola</div>
+              <div className="mt-1 text-sm text-slate-800">
+                {sigeSelection?.school_names?.length
+                  ? sigeSelection.school_names.join(", ")
+                  : "-"}
               </div>
             </div>
+
+            <div>
+              <div className="text-xs font-semibold text-slate-600">Série</div>
+              <div className="mt-1 text-sm text-slate-800">
+                {sigeSelection?.series_years?.length
+                  ? sigeSelection.series_years.map((year) => `${year}ª série`).join(", ")
+                  : "-"}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold text-slate-600">Turma</div>
+              <div className="mt-1 text-sm text-slate-800">
+                {sigeSelection?.class_names?.length
+                  ? sigeSelection.class_names.join(", ")
+                  : "-"}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -247,7 +278,10 @@ export default function OfertaDetalhe() {
           <div className="absolute left-1/2 top-1/2 w-[92%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
               <div>
-                <div className="text-base font-semibold text-slate-900">Oferta criada com sucesso</div>
+                <div className="inline-flex items-center gap-2 text-base font-semibold text-emerald-700">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
+                  Oferta criada com sucesso!
+                </div>
                 <div className="mt-1 text-sm text-slate-600">
                   Baixe o kit de aplicação: caderno de prova e cartão-resposta.
                 </div>
@@ -273,9 +307,10 @@ export default function OfertaDetalhe() {
               <button
                 type="button"
                 onClick={() => void onDownloadKit()}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
                 disabled={downloadingKit}
               >
+                <Download className="h-4 w-4" />
                 {downloadingKit ? "Baixando..." : "Baixar kit aplicação"}
               </button>
             </div>

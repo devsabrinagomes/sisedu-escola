@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/toast/useToast";
 import OfferForm from "@/features/ofertas/components/OfferForm";
 import { createOffer } from "@/features/ofertas/services/offers";
 import type { OfferPayload } from "@/features/ofertas/types";
-import { setOfferKitPending } from "@/features/ofertas/utils";
+import { setOfferKitPending, setOfferSigeSelection, type OfferSigeSelection } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function OfertaNova() {
@@ -13,11 +13,12 @@ export default function OfertaNova() {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  async function handleSubmit(payload: OfferPayload) {
+  async function handleSubmit(payload: OfferPayload, sigeSelection: OfferSigeSelection) {
     try {
       setSaving(true);
       const created = await createOffer(payload);
       setOfferKitPending(created.id, true);
+      setOfferSigeSelection(created.id, sigeSelection);
       navigate(`/ofertas/${created.id}`, {
         state: { showKitModal: true },
       });

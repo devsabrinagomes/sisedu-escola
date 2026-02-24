@@ -20,7 +20,6 @@ export type StudentDTO = {
 
 export type ApplicationStatus =
   | "NONE"
-  | "MANUAL"
   | "RECOGNIZED"
   | "ABSENT"
   | "FINALIZED";

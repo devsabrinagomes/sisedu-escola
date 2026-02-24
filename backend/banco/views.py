@@ -55,8 +55,8 @@ from .serializers import (
 MOCK_SIGE_DATA = {
     "default": {
         "schools": [
-            {"school_ref": 1101, "name": "EEEP X"},
-            {"school_ref": 1102, "name": "EEM Y"},
+            {"school_ref": 1101, "name": "EEMTI Dom José Tupinambá da Frota"},
+            {"school_ref": 1102, "name": "EEEP Lysia Pimentel Gomes Sampaio Sales"},
         ],
         "classes_by_school": {
             1101: [
@@ -64,8 +64,8 @@ MOCK_SIGE_DATA = {
                 {"class_ref": 901002, "name": "1º Ano Integral B", "year": 2026},
             ],
             1102: [
-                {"class_ref": 902001, "name": "2º Ano Regular A", "year": 2026},
-                {"class_ref": 902002, "name": "3º Ano Regular B", "year": 2026},
+                {"class_ref": 902001, "name": "2º Ano Integral A", "year": 2026},
+                {"class_ref": 902002, "name": "3º Ano Integral B", "year": 2026},
             ],
         },
         "students_by_class": {
@@ -90,16 +90,16 @@ MOCK_SIGE_DATA = {
     },
     1: {
         "schools": [
-            {"school_ref": 1201, "name": "EEFM Professor Arnaldo"},
-            {"school_ref": 1202, "name": "EEMTI José de Alencar"},
+            {"school_ref": 1201, "name": "EEMTI Governador Adauto Bezerra"},
+            {"school_ref": 1202, "name": "EEMTI Dom José Tupinambá da Frota"},
         ],
         "classes_by_school": {
             1201: [
-                {"class_ref": 903001, "name": "1º Ano A", "year": 2026},
-                {"class_ref": 903002, "name": "1º Ano B", "year": 2026},
+                {"class_ref": 903001, "name": "1º Ano Integral A", "year": 2026},
+                {"class_ref": 903002, "name": "1º Ano Integral B", "year": 2026},
             ],
             1202: [
-                {"class_ref": 904001, "name": "2º Ano A", "year": 2026},
+                {"class_ref": 904001, "name": "2º Ano Integral A", "year": 2026},
             ],
         },
         "students_by_class": {
@@ -118,7 +118,6 @@ MOCK_SIGE_DATA = {
         },
     },
 }
-
 
 def _get_mock_sige_for_user(user):
     if user and user.is_authenticated and user.id in MOCK_SIGE_DATA:
@@ -275,8 +274,10 @@ def _compute_application_summary(application, items_total):
         status = "FINALIZED"
     elif application.student_absent:
         status = "ABSENT"
+    elif items_total > 0 and answered_count >= items_total:
+        status = "FINALIZED"
     elif answered_count > 0:
-        status = "MANUAL"
+        status = "RECOGNIZED"
     else:
         status = "NONE"
 
@@ -906,6 +907,20 @@ class ApplicationAnswersView(APIView):
                     },
                 )
 
+            answered_count = (
+                application.answers.exclude(selected_option__isnull=True)
+                .exclude(selected_option="")
+                .count()
+            )
+            items_total = len(booklet_items)
+            if items_total > 0 and answered_count >= items_total:
+                application.finalized_at = timezone.now()
+                application.finalized_by = request.user.id
+            else:
+                application.finalized_at = None
+                application.finalized_by = None
+            application.save(update_fields=["finalized_at", "finalized_by"])
+
         application.refresh_from_db()
         return Response(self._build_response(application), status=status.HTTP_200_OK)
 
@@ -933,7 +948,12 @@ class ApplicationAbsentView(APIView):
 
         student_absent = bool(request.data.get("student_absent"))
         application.student_absent = student_absent
-        application.save(update_fields=["student_absent"])
+        if student_absent:
+            application.finalized_at = None
+            application.finalized_by = None
+            application.save(update_fields=["student_absent", "finalized_at", "finalized_by"])
+        else:
+            application.save(update_fields=["student_absent"])
 
         items_total = application.offer.booklet.items.count()
         summary = _compute_application_summary(application, items_total)
