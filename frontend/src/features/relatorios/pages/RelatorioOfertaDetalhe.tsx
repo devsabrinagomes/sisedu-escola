@@ -339,6 +339,8 @@ export default function RelatorioOfertaDetalhe() {
   const pieSize = 144;
   const pieRadius = 52;
   const pieStroke = 32;
+  const pieBorderWidth = 1;
+  const pieInnerStroke = Math.max(pieStroke - pieBorderWidth * 2, 1);
   const pieCenter = pieSize / 2;
   const pieCircumference = 2 * Math.PI * pieRadius;
   const finalizedStroke = (summaryFinalizedPct / 100) * pieCircumference;
@@ -517,14 +519,32 @@ export default function RelatorioOfertaDetalhe() {
                         </div>
                         <div className="flex flex-col items-center gap-3">
                           <svg viewBox={`0 0 ${pieSize} ${pieSize}`} className="h-36 w-36">
-                            <circle cx={pieCenter} cy={pieCenter} r={pieRadius} fill="none" stroke="#e2e8f0" strokeWidth={pieStroke} />
+                            <circle
+                              cx={pieCenter}
+                              cy={pieCenter}
+                              r={pieRadius}
+                              fill="none"
+                              stroke="var(--chart-border)"
+                              strokeWidth={pieStroke}
+                            />
+                            <circle
+                              cx={pieCenter}
+                              cy={pieCenter}
+                              r={pieRadius}
+                              fill="none"
+                              stroke="var(--blue-stroke)"
+                              strokeWidth={pieStroke}
+                              strokeDasharray={`${finalizedStroke} ${pieCircumference}`}
+                              strokeDashoffset={0}
+                              transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                            />
                             <circle
                               cx={pieCenter}
                               cy={pieCenter}
                               r={pieRadius}
                               fill="none"
                               stroke="var(--blue-fill)"
-                              strokeWidth={pieStroke}
+                              strokeWidth={pieInnerStroke}
                               strokeDasharray={`${finalizedStroke} ${pieCircumference}`}
                               strokeDashoffset={0}
                               transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
@@ -536,8 +556,19 @@ export default function RelatorioOfertaDetalhe() {
                               cy={pieCenter}
                               r={pieRadius}
                               fill="none"
-                              stroke="var(--red-fill)"
+                              stroke="var(--red-stroke)"
                               strokeWidth={pieStroke}
+                              strokeDasharray={`${notFinalizedStroke} ${pieCircumference}`}
+                              strokeDashoffset={-finalizedStroke}
+                              transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                            />
+                            <circle
+                              cx={pieCenter}
+                              cy={pieCenter}
+                              r={pieRadius}
+                              fill="none"
+                              stroke="var(--red-fill)"
+                              strokeWidth={pieInnerStroke}
                               strokeDasharray={`${notFinalizedStroke} ${pieCircumference}`}
                               strokeDashoffset={-finalizedStroke}
                               transform={`rotate(-90 ${pieCenter} ${pieCenter})`}

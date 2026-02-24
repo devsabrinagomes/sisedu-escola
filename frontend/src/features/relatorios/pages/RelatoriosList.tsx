@@ -465,19 +465,19 @@ export default function RelatoriosList() {
   const pieFinalizedPct = (overviewFinalized / pieDenominator) * 100;
   const pieInProgressPct = (overviewInProgress / pieDenominator) * 100;
   const pieAbsentPct = (overviewAbsent / pieDenominator) * 100;
-  const pieChartStyle = {
-    background: `conic-gradient(var(--green-fill) 0 ${pieFinalizedPct}%,
-      var(--blue-fill) ${pieFinalizedPct}% ${pieFinalizedPct + pieInProgressPct}%,
-      var(--yellow-fill) ${pieFinalizedPct + pieInProgressPct}% 100%)`,
-  };
   const overviewBars = overview?.accuracy_buckets_overall || [];
   const pieSize = 144;
   const pieRadius = 52;
   const pieStroke = 32;
+  const pieBorderWidth = 1;
+  const pieInnerStroke = Math.max(pieStroke - pieBorderWidth * 2, 1);
   const pieCenter = pieSize / 2;
   const pieCircumference = 2 * Math.PI * pieRadius;
   const finalizedStroke = (summaryFinalizedPct / 100) * pieCircumference;
   const notFinalizedStroke = Math.max(pieCircumference - finalizedStroke, 0);
+  const overviewFinalizedStroke = (pieFinalizedPct / 100) * pieCircumference;
+  const overviewInProgressStroke = (pieInProgressPct / 100) * pieCircumference;
+  const overviewAbsentStroke = Math.max(pieCircumference - overviewFinalizedStroke - overviewInProgressStroke, 0);
 
   const selectedStudents = useMemo(() => {
     if (!summary || !studentSelection) return [];
@@ -656,14 +656,32 @@ export default function RelatoriosList() {
                     </div>
                     <div className="flex flex-col items-center gap-3">
                       <svg viewBox={`0 0 ${pieSize} ${pieSize}`} className="h-36 w-36">
-                        <circle cx={pieCenter} cy={pieCenter} r={pieRadius} fill="none" stroke="#e2e8f0" strokeWidth={pieStroke} />
+                        <circle
+                          cx={pieCenter}
+                          cy={pieCenter}
+                          r={pieRadius}
+                          fill="none"
+                          stroke="var(--chart-border)"
+                          strokeWidth={pieStroke}
+                        />
+                        <circle
+                          cx={pieCenter}
+                          cy={pieCenter}
+                          r={pieRadius}
+                          fill="none"
+                          stroke="var(--blue-stroke)"
+                          strokeWidth={pieStroke}
+                          strokeDasharray={`${finalizedStroke} ${pieCircumference}`}
+                          strokeDashoffset={0}
+                          transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                        />
                         <circle
                           cx={pieCenter}
                           cy={pieCenter}
                           r={pieRadius}
                           fill="none"
                           stroke="var(--blue-fill)"
-                          strokeWidth={pieStroke}
+                          strokeWidth={pieInnerStroke}
                           strokeDasharray={`${finalizedStroke} ${pieCircumference}`}
                           strokeDashoffset={0}
                           transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
@@ -675,8 +693,19 @@ export default function RelatoriosList() {
                           cy={pieCenter}
                           r={pieRadius}
                           fill="none"
-                          stroke="var(--red-fill)"
+                          stroke="var(--red-stroke)"
                           strokeWidth={pieStroke}
+                          strokeDasharray={`${notFinalizedStroke} ${pieCircumference}`}
+                          strokeDashoffset={-finalizedStroke}
+                          transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                        />
+                        <circle
+                          cx={pieCenter}
+                          cy={pieCenter}
+                          r={pieRadius}
+                          fill="none"
+                          stroke="var(--red-fill)"
+                          strokeWidth={pieInnerStroke}
                           strokeDasharray={`${notFinalizedStroke} ${pieCircumference}`}
                           strokeDashoffset={-finalizedStroke}
                           transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
@@ -905,9 +934,83 @@ export default function RelatoriosList() {
                     Composição das aplicações
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="relative h-36 w-36 shrink-0 rounded-full" style={pieChartStyle}>
-                      <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
-                    </div>
+                    <svg viewBox={`0 0 ${pieSize} ${pieSize}`} className="h-36 w-36 shrink-0">
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--chart-border)"
+                        strokeWidth={pieStroke}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--green-stroke)"
+                        strokeWidth={pieStroke}
+                        strokeDasharray={`${overviewFinalizedStroke} ${pieCircumference}`}
+                        strokeDashoffset={0}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--green-fill)"
+                        strokeWidth={pieInnerStroke}
+                        strokeDasharray={`${overviewFinalizedStroke} ${pieCircumference}`}
+                        strokeDashoffset={0}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--blue-stroke)"
+                        strokeWidth={pieStroke}
+                        strokeDasharray={`${overviewInProgressStroke} ${pieCircumference}`}
+                        strokeDashoffset={-overviewFinalizedStroke}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--blue-fill)"
+                        strokeWidth={pieInnerStroke}
+                        strokeDasharray={`${overviewInProgressStroke} ${pieCircumference}`}
+                        strokeDashoffset={-overviewFinalizedStroke}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--yellow-stroke)"
+                        strokeWidth={pieStroke}
+                        strokeDasharray={`${overviewAbsentStroke} ${pieCircumference}`}
+                        strokeDashoffset={-(overviewFinalizedStroke + overviewInProgressStroke)}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle
+                        cx={pieCenter}
+                        cy={pieCenter}
+                        r={pieRadius}
+                        fill="none"
+                        stroke="var(--yellow-fill)"
+                        strokeWidth={pieInnerStroke}
+                        strokeDasharray={`${overviewAbsentStroke} ${pieCircumference}`}
+                        strokeDashoffset={-(overviewFinalizedStroke + overviewInProgressStroke)}
+                        transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                      />
+                      <circle cx={pieCenter} cy={pieCenter} r={18} fill="white" />
+                    </svg>
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center gap-2 text-slate-700">
                         <span

@@ -4,6 +4,7 @@
 
 
 :root{
+  --chart-border:#cbd5e1;
   --red-fill:#F28B82; --red-stroke:#D9534F;
   --yellow-fill:#F6E58D; --yellow-stroke:#E1C542;
   --green-fill:#9EDC9A; --green-stroke:#4CAF50;
