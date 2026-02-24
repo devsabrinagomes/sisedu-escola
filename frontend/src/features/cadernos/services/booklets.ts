@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { getWithFallback, isNotFound } from "@/lib/httpFallback";
 import type {
   BookletDTO,
   BookletItemDTO,
@@ -10,31 +11,11 @@ function toList<T>(data: Paginated<T> | T[]): T[] {
   return Array.isArray(data) ? data : (data?.results ?? []);
 }
 
-function isNotFound(error: unknown) {
-  const status = (error as { response?: { status?: number } })?.response?.status;
-  return status === 404;
-}
-
-async function getWithFallback<T>(
-  primaryUrl: string,
-  fallbackUrl: string,
-  params?: Record<string, unknown>,
-) {
-  try {
-    const { data } = await api.get<T>(primaryUrl, { params });
-    return data;
-  } catch (error) {
-    if (!isNotFound(error)) throw error;
-    const { data } = await api.get<T>(fallbackUrl, { params });
-    return data;
-  }
-}
-
 export async function listBooklets(params?: Record<string, unknown>) {
   const data = await getWithFallback<Paginated<BookletDTO> | BookletDTO[]>(
     "/booklets/",
     "/cadernos/",
-    params,
+    { params },
   );
   const list = toList(data);
   if (!params?.search) return list;
