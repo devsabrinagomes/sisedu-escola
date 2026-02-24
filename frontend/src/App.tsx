@@ -17,7 +17,8 @@ import OfertaDetalhe from "./features/ofertas/pages/OfertaDetalhe";
 import OfertaEditar from "./features/ofertas/pages/OfertaEditar";
 import GabaritosList from "./features/gabaritos/pages/GabaritosList";
 import GabaritoOfertaGestao from "./features/gabaritos/pages/GabaritoOfertaGestao";
-import Relatorios from "./pages/Relatorios";
+import RelatoriosList from "./features/relatorios/pages/RelatoriosList";
+import RelatorioOfertaDetalhe from "./features/relatorios/pages/RelatorioOfertaDetalhe";
 import "katex/dist/katex.min.css";
 
 
@@ -50,7 +51,8 @@ export default function App() {
         <Route path="/ofertas/:id/editar" element={<OfertaEditar />} />
         <Route path="/gabaritos" element={<GabaritosList />} />
         <Route path="/gabaritos/ofertas/:offerId" element={<GabaritoOfertaGestao />} />
-        <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/relatorios" element={<RelatoriosList />} />
+        <Route path="/relatorios/ofertas/:offerId" element={<RelatorioOfertaDetalhe />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
