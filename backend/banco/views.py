@@ -366,6 +366,18 @@ def _build_simple_pdf(lines):
     return bytes(pdf)
 
 
+def _build_csv_response(*, filename, header, rows):
+    output = StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(header)
+    for row in rows:
+        writer.writerow(row)
+
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 def _parse_class_ref(raw_value):
     if raw_value in (None, ""):
         return None
@@ -1417,10 +1429,9 @@ class OfferReportStudentsCsvView(APIView):
             serie=serie,
         )
 
-        output = StringIO()
-        writer = csv.writer(output, delimiter=";")
-        writer.writerow(
-            [
+        return _build_csv_response(
+            filename=f"oferta-{offer.id}-relatorio-alunos.csv",
+            header=[
                 "student_ref",
                 "name",
                 "class_ref",
@@ -1430,10 +1441,8 @@ class OfferReportStudentsCsvView(APIView):
                 "total",
                 "correct_pct",
                 "status",
-            ]
-        )
-        for row in payload["students"]:
-            writer.writerow(
+            ],
+            rows=[
                 [
                     row["student_ref"],
                     row["name"],
@@ -1445,11 +1454,9 @@ class OfferReportStudentsCsvView(APIView):
                     row["correct_pct"],
                     row["status"],
                 ]
-            )
-
-        response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio-alunos.csv"'
-        return response
+                for row in payload["students"]
+            ],
+        )
 
 
 class OfferReportItemsCsvView(APIView):
@@ -1468,10 +1475,9 @@ class OfferReportItemsCsvView(APIView):
             serie=serie,
         )
 
-        output = StringIO()
-        writer = csv.writer(output, delimiter=";")
-        writer.writerow(
-            [
+        return _build_csv_response(
+            filename=f"oferta-{offer.id}-relatorio-questoes.csv",
+            header=[
                 "order",
                 "booklet_item_id",
                 "question_id",
@@ -1482,10 +1488,8 @@ class OfferReportItemsCsvView(APIView):
                 "most_marked_option",
                 "total_answered",
                 "question_detail_url",
-            ]
-        )
-        for row in payload["items"]:
-            writer.writerow(
+            ],
+            rows=[
                 [
                     row["order"],
                     row["booklet_item_id"],
@@ -1498,11 +1502,9 @@ class OfferReportItemsCsvView(APIView):
                     row["total_answered"],
                     row["question_detail_url"] or "",
                 ]
-            )
-
-        response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio-questoes.csv"'
-        return response
+                for row in payload["items"]
+            ],
+        )
 
 
 class ApplicationAnswersView(OwnerAccessMixin, APIView):
