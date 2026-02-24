@@ -1,9 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Pencil,
   Search,
   Trash2,
@@ -12,12 +9,14 @@ import { useAuth } from "@/auth/AuthContext";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import DatePickerInput from "@/components/ui/DatePickerInput";
 import TablePagination from "@/components/ui/TablePagination";
+import { useTableSort } from "@/components/ui/table/useTableSort";
 import { useToast } from "@/components/ui/toast/useToast";
+import { useOfferListData } from "@/features/ofertas/hooks/useOfferListData";
 import {
   deleteOffer,
   listOffers,
 } from "@/features/ofertas/services/offers";
-import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/ofertas/types";
+import type { OfferDTO, OfferStatus } from "@/features/ofertas/types";
 import {
   formatDate,
   getBookletName,
@@ -28,58 +27,41 @@ import {
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 type SortKey = "id" | "booklet" | "period" | "created_at";
-type SortDir = "asc" | "desc";
 
 export default function OfertasList() {
   const navigate = useNavigate();
   const { userId } = useAuth();
   const { toast } = useToast();
 
-  const [items, setItems] = useState<OfferDTO[]>([]);
-  const [count, setCount] = useState(0);
-  const [nextPage, setNextPage] = useState<string | null>(null);
-  const [previousPage, setPreviousPage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const [filters, setFilters] = useState<OfferFilters>({
-    search: "",
-    status: "all",
-    start_date: "",
-    end_date: "",
-    page: 1,
+  const {
+    items,
+    setItems,
+    count,
+    nextPage,
+    previousPage,
+    loading,
+    err,
+    filters,
+    setFilters,
+  } = useOfferListData<OfferDTO>({
+    initialFilters: {
+      search: "",
+      status: "all",
+      start_date: "",
+      end_date: "",
+      page: 1,
+    },
+    loadOffers: listOffers,
+    loadErrorMessage: "Não foi possível carregar as ofertas.",
   });
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+  const { sort, toggleSort, getSortIcon } = useTableSort<SortKey>({
     key: "created_at",
     dir: "desc",
   });
-
-  useEffect(() => {
-    void loadOffers();
-  }, [filters]);
-
-  async function loadOffers() {
-    try {
-      setLoading(true);
-      setErr("");
-      const data = await listOffers(filters);
-      setItems(data.results.filter((offer) => !offer.deleted));
-      setCount(data.count);
-      setNextPage(data.next);
-      setPreviousPage(data.previous);
-    } catch {
-      setItems([]);
-      setCount(0);
-      setNextPage(null);
-      setPreviousPage(null);
-      setErr("Não foi possível carregar as ofertas.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function onDeleteConfirm() {
     if (!deletingId) return;
@@ -98,25 +80,6 @@ export default function OfertasList() {
     } finally {
       setDeleting(false);
     }
-  }
-
-  function toggleSort(key: SortKey) {
-    setSort((prev) => {
-      if (prev.key === key) {
-        return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
-      }
-      return { key, dir: "asc" };
-    });
-  }
-
-  function getSortIcon(column: SortKey) {
-    const active = sort.key === column;
-    if (!active) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
-    return sort.dir === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
   }
 
   const sortedItems = useMemo(() => {

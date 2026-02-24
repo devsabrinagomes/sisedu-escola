@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Download,
   Pencil,
   Search,
@@ -12,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import TablePagination from "@/components/ui/TablePagination";
+import { useTableSort } from "@/components/ui/table/useTableSort";
 import { useToast } from "@/components/ui/toast/useToast";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import type { BookletDTO } from "@/features/cadernos/types";
@@ -27,7 +25,6 @@ import { isBookletKitPending, setBookletKitPending } from "@/features/ofertas/ut
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type SortKey = "name" | "count" | "created_at";
-type SortDir = "asc" | "desc";
 
 function countItems(booklet: BookletDTO) {
   if (typeof booklet.items_count === "number") return booklet.items_count;
@@ -44,7 +41,7 @@ export default function CadernosList() {
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+  const { sort, toggleSort, getSortIcon } = useTableSort<SortKey>({
     key: "created_at",
     dir: "desc",
   });
@@ -95,25 +92,6 @@ export default function CadernosList() {
     } finally {
       setDeleting(false);
     }
-  }
-
-  function toggleSort(key: SortKey) {
-    setSort((prev) => {
-      if (prev.key === key) {
-        return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
-      }
-      return { key, dir: "asc" };
-    });
-  }
-
-  function getSortIcon(column: SortKey) {
-    const active = sort.key === column;
-    if (!active) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
-    return sort.dir === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
   }
 
   const sortedItems = useMemo(() => {

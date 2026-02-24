@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import TablePagination from "@/components/ui/TablePagination";
+import { useTableSort } from "@/components/ui/table/useTableSort";
 import { listGabaritoOffers } from "@/features/gabaritos/services/gabaritos";
-import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/gabaritos/types";
+import { useOfferListData } from "@/features/ofertas/hooks/useOfferListData";
+import type { OfferDTO, OfferStatus } from "@/features/gabaritos/types";
 import {
   formatDate,
   getBookletName,
@@ -13,50 +15,31 @@ import {
 } from "@/features/ofertas/utils";
 
 type SortKey = "offer" | "booklet" | "period" | "status";
-type SortDir = "asc" | "desc";
 
 export default function GabaritosList() {
-  const [items, setItems] = useState<OfferDTO[]>([]);
-  const [count, setCount] = useState(0);
-  const [nextPage, setNextPage] = useState<string | null>(null);
-  const [previousPage, setPreviousPage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-
-  const [filters, setFilters] = useState<OfferFilters>({
-    search: "",
-    status: "all",
-    page: 1,
+  const {
+    items,
+    count,
+    nextPage,
+    previousPage,
+    loading,
+    err,
+    filters,
+    setFilters,
+  } = useOfferListData<OfferDTO>({
+    initialFilters: {
+      search: "",
+      status: "all",
+      page: 1,
+    },
+    loadOffers: listGabaritoOffers,
+    loadErrorMessage: "Não foi possível carregar as ofertas para gabaritos.",
   });
 
-  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
+  const { sort, toggleSort, getSortIcon } = useTableSort<SortKey>({
     key: "offer",
     dir: "asc",
   });
-
-  useEffect(() => {
-    void loadOffers();
-  }, [filters]);
-
-  async function loadOffers() {
-    try {
-      setLoading(true);
-      setErr("");
-      const data = await listGabaritoOffers(filters);
-      setItems(data.results.filter((offer) => !offer.deleted));
-      setCount(data.count);
-      setNextPage(data.next);
-      setPreviousPage(data.previous);
-    } catch {
-      setItems([]);
-      setCount(0);
-      setNextPage(null);
-      setPreviousPage(null);
-      setErr("Não foi possível carregar as ofertas para gabaritos.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function setStatusFilter(value: string) {
     const nextStatus: OfferStatus | "all" =
@@ -67,25 +50,6 @@ export default function GabaritosList() {
       status: nextStatus,
       page: 1,
     }));
-  }
-
-  function toggleSort(key: SortKey) {
-    setSort((prev) => {
-      if (prev.key === key) {
-        return { key, dir: prev.dir === "asc" ? "desc" : "asc" };
-      }
-      return { key, dir: "asc" };
-    });
-  }
-
-  function getSortIcon(column: SortKey) {
-    const active = sort.key === column;
-    if (!active) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
-    return sort.dir === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5" />
-    ) : (
-      <ArrowDown className="h-3.5 w-3.5" />
-    );
   }
 
   const sortedItems = useMemo(() => {
