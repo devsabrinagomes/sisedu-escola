@@ -18,6 +18,9 @@ from .views import (
     MockSigeSchoolsView,
     OfferApplicationsSyncView,
     OfferKitPdfView,
+    OfferReportItemsCsvView,
+    OfferReportStudentsCsvView,
+    OfferReportSummaryView,
     OfferViewSet,
     QuestionViewSet,
 )
@@ -55,6 +58,21 @@ urlpatterns = [
         "offers/<int:offer_id>/kit/<str:kind>/",
         OfferKitPdfView.as_view(),
         name="offer-kit-pdf",
+    ),
+    path(
+        "offers/<int:offer_id>/reports/summary/",
+        OfferReportSummaryView.as_view(),
+        name="offer-report-summary",
+    ),
+    path(
+        "offers/<int:offer_id>/reports/students.csv",
+        OfferReportStudentsCsvView.as_view(),
+        name="offer-report-students-csv",
+    ),
+    path(
+        "offers/<int:offer_id>/reports/items.csv",
+        OfferReportItemsCsvView.as_view(),
+        name="offer-report-items-csv",
     ),
     path(
         "applications/<int:application_id>/answers/",

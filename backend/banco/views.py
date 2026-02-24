@@ -2,11 +2,13 @@ import json
 import os
 import time
 import unicodedata
+from io import StringIO
+import csv
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
-from django.db.models import Max, Q
+from django.db.models import Max, Prefetch, Q
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -360,6 +362,204 @@ def _build_simple_pdf(lines):
     pdf.extend(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n".encode("ascii"))
     pdf.extend(f"startxref\n{xref_offset}\n%%EOF".encode("ascii"))
     return bytes(pdf)
+
+
+def _parse_class_ref(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        raise ValidationError({"class_ref": "Informe um class_ref válido."})
+
+
+def _get_offer_for_reports(request, offer_id):
+    offer = get_object_or_404(Offer.objects.select_related("booklet"), id=offer_id, deleted=False)
+    if not request.user.is_superuser and offer.created_by != request.user.id:
+        raise PermissionDenied("Você não tem permissão para acessar relatórios desta oferta.")
+    return offer
+
+
+def _build_student_names_map(request, class_refs):
+    names_map = {}
+    data = _get_mock_sige_for_user(request.user)
+    students_by_class = data.get("students_by_class", {})
+    for class_ref in class_refs:
+        students = students_by_class.get(int(class_ref), [])
+        for student in students:
+            student_ref = _as_int(student.get("student_ref"))
+            if student_ref is None:
+                continue
+            name = str(student.get("name") or "").strip()
+            if not name:
+                continue
+            names_map[(int(class_ref), int(student_ref))] = name
+    return names_map
+
+
+def _resolve_report_data(request, offer, class_ref=None):
+    booklet_items = list(
+        offer.booklet.items.select_related("question_version", "question_version__subject").order_by("order", "id")
+    )
+    items_total = len(booklet_items)
+
+    applications_qs = Application.objects.filter(offer=offer).order_by("class_ref", "student_ref", "id")
+    if class_ref is not None:
+        applications_qs = applications_qs.filter(class_ref=class_ref)
+
+    answers_prefetch = Prefetch(
+        "answers",
+        queryset=StudentAnswer.objects.select_related("booklet_item").only(
+            "id",
+            "application_id",
+            "booklet_item_id",
+            "selected_option",
+            "is_correct",
+        ),
+    )
+    applications = list(applications_qs.prefetch_related(answers_prefetch))
+
+    class_refs = sorted({int(app.class_ref) for app in applications})
+    student_name_map = _build_student_names_map(request, class_refs)
+
+    item_rows_map = {
+        item.id: {
+            "booklet_item_id": item.id,
+            "order": item.order,
+            "question_id": item.question_version.question_id,
+            "subject_name": getattr(getattr(item.question_version, "subject", None), "name", None),
+            "correct_count": 0,
+            "wrong_count": 0,
+            "total_answered": 0,
+            "option_counts": {letter: 0 for letter in ("A", "B", "C", "D", "E")},
+        }
+        for item in booklet_items
+    }
+
+    students = []
+    distribution_counts = [0 for _ in range(items_total + 1)]
+    absent_count = 0
+    finalized_count = 0
+    in_progress_count = 0
+    sum_correct_present = 0
+    present_count = 0
+
+    for application in applications:
+        answers = list(application.answers.all())
+        answered_count = 0
+        correct = 0
+
+        for answer in answers:
+            selected = str(answer.selected_option or "").strip().upper()
+            if not selected:
+                continue
+            answered_count += 1
+            if answer.is_correct:
+                correct += 1
+
+            row = item_rows_map.get(answer.booklet_item_id)
+            if row is None:
+                continue
+            row["total_answered"] += 1
+            if answer.is_correct:
+                row["correct_count"] += 1
+            else:
+                row["wrong_count"] += 1
+            if selected in row["option_counts"]:
+                row["option_counts"][selected] += 1
+
+        wrong = max(answered_count - correct, 0)
+        blank = max(items_total - answered_count, 0)
+
+        if application.student_absent:
+            status_value = "ABSENT"
+            absent_count += 1
+        elif application.finalized_at:
+            status_value = "FINALIZED"
+            finalized_count += 1
+        elif items_total > 0 and answered_count >= items_total:
+            status_value = "FINALIZED"
+            finalized_count += 1
+        elif answered_count > 0:
+            status_value = "RECOGNIZED"
+            in_progress_count += 1
+        else:
+            status_value = "NONE"
+
+        if status_value != "ABSENT":
+            present_count += 1
+            sum_correct_present += correct
+            bucket_index = min(max(correct, 0), items_total)
+            distribution_counts[bucket_index] += 1
+
+        students.append(
+            {
+                "student_ref": int(application.student_ref),
+                "name": student_name_map.get(
+                    (int(application.class_ref), int(application.student_ref)),
+                    f"Aluno {application.student_ref}",
+                ),
+                "class_ref": int(application.class_ref),
+                "correct": correct,
+                "wrong": wrong,
+                "blank": blank,
+                "total": items_total,
+                "correct_pct": round((correct / items_total) * 100, 2) if items_total else 0.0,
+                "status": status_value,
+            }
+        )
+
+    students.sort(key=lambda row: (str(row["name"]).lower(), row["student_ref"]))
+
+    item_rows = []
+    for item in booklet_items:
+        stats = item_rows_map[item.id]
+        denominator = present_count
+        blank_count = max(denominator - stats["total_answered"], 0)
+
+        most_marked_option = None
+        top_count = 0
+        for letter in ("A", "B", "C", "D", "E"):
+            letter_count = stats["option_counts"][letter]
+            if letter_count > top_count:
+                top_count = letter_count
+                most_marked_option = letter
+
+        item_rows.append(
+            {
+                "booklet_item_id": item.id,
+                "order": item.order,
+                "question_id": item.question_version.question_id,
+                "subject_name": getattr(getattr(item.question_version, "subject", None), "name", None),
+                "correct_pct": round((stats["correct_count"] / denominator) * 100, 2) if denominator else 0.0,
+                "wrong_pct": round((stats["wrong_count"] / denominator) * 100, 2) if denominator else 0.0,
+                "blank_pct": round((blank_count / denominator) * 100, 2) if denominator else 0.0,
+                "most_marked_option": most_marked_option,
+                "total_answered": stats["total_answered"],
+                "question_detail_url": f"/questoes/{item.question_version.question_id}",
+            }
+        )
+
+    avg_correct = (sum_correct_present / present_count) if present_count else 0.0
+    avg_correct_pct = (avg_correct / items_total * 100) if items_total and present_count else 0.0
+
+    distribution = [
+        {"correct": index, "count": count}
+        for index, count in enumerate(distribution_counts)
+    ]
+
+    return {
+        "items_total": items_total,
+        "students_total": len(applications),
+        "absent_count": absent_count,
+        "finalized_count": finalized_count,
+        "in_progress_count": in_progress_count,
+        "avg_correct": round(avg_correct, 2),
+        "avg_correct_pct": round(avg_correct_pct, 2),
+        "distribution": distribution,
+        "students": students,
+        "items": item_rows,
+    }
 
 
 class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
@@ -826,6 +1026,104 @@ class OfferKitPdfView(APIView):
             )
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
+class OfferReportSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class OfferReportStudentsCsvView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+
+        output = StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(
+            [
+                "student_ref",
+                "name",
+                "class_ref",
+                "correct",
+                "wrong",
+                "blank",
+                "total",
+                "correct_pct",
+                "status",
+            ]
+        )
+        for row in payload["students"]:
+            writer.writerow(
+                [
+                    row["student_ref"],
+                    row["name"],
+                    row["class_ref"],
+                    row["correct"],
+                    row["wrong"],
+                    row["blank"],
+                    row["total"],
+                    row["correct_pct"],
+                    row["status"],
+                ]
+            )
+
+        response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio-alunos.csv"'
+        return response
+
+
+class OfferReportItemsCsvView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+
+        output = StringIO()
+        writer = csv.writer(output, delimiter=";")
+        writer.writerow(
+            [
+                "order",
+                "booklet_item_id",
+                "question_id",
+                "subject_name",
+                "correct_pct",
+                "wrong_pct",
+                "blank_pct",
+                "most_marked_option",
+                "total_answered",
+                "question_detail_url",
+            ]
+        )
+        for row in payload["items"]:
+            writer.writerow(
+                [
+                    row["order"],
+                    row["booklet_item_id"],
+                    row["question_id"],
+                    row["subject_name"] or "",
+                    row["correct_pct"],
+                    row["wrong_pct"],
+                    row["blank_pct"],
+                    row["most_marked_option"] or "",
+                    row["total_answered"],
+                    row["question_detail_url"] or "",
+                ]
+            )
+
+        response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio-questoes.csv"'
         return response
 
 
