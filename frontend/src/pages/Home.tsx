@@ -252,7 +252,7 @@ export default function Home() {
         {/* ================= DESKTOP ================= */}
         <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 overflow-hidden">
           <div className="mb-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-700 mb-1">
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">
               Ciclo de Avaliação 
             </h3>
             <p className="flex items-start gap-2 text-sm text-slate-500">

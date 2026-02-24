@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Download } from "lucide-react";
 import PageCard from "@/components/layout/PageCard";
 import Tabs from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/toast/useToast";
@@ -34,6 +35,11 @@ type Option = {
 };
 
 type TabValue = "overview" | "students" | "items" | "exports";
+type StudentSelection =
+  | { kind: "finalized"; label: string }
+  | { kind: "not_finalized"; label: string }
+  | { kind: "bucket"; range: string; label: string }
+  | null;
 
 function getStatusLabel(status: ReportStudentStatus) {
   if (status === "ABSENT") return "Ausente";
@@ -53,11 +59,33 @@ function formatPct(value: number) {
   return `${Number(value || 0).toFixed(2)}%`;
 }
 
+function parseBucketRange(range: string) {
+  const match = String(range).match(/(\d+)\s*-\s*(\d+)/);
+  if (!match) return null;
+  const min = Number(match[1]);
+  const max = Number(match[2]);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+  return { min, max };
+}
+
+function isInBucketRange(correctPct: number, range: string) {
+  const parsed = parseBucketRange(range);
+  if (!parsed) return false;
+  if (parsed.max >= 100) return correctPct >= parsed.min && correctPct <= parsed.max;
+  return correctPct >= parsed.min && correctPct < parsed.max;
+}
+
 export default function RelatorioOfertaDetalhe() {
   const { offerId } = useParams();
   const parsedOfferId = Number(offerId);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const classRefFromQuery = Number(searchParams.get("class_ref") || "");
+  const initialClassRef = Number.isFinite(classRefFromQuery) && classRefFromQuery > 0 ? classRefFromQuery : undefined;
+  const classNameFromQuery = String(searchParams.get("class_name") || "").trim();
+  const schoolRefFromQueryRaw = searchParams.get("school_ref");
+  const serieFromQueryRaw = searchParams.get("serie");
 
   const [offer, setOffer] = useState<OfferDTO | null>(null);
   const [offerLoading, setOfferLoading] = useState(true);
@@ -74,6 +102,7 @@ export default function RelatorioOfertaDetalhe() {
   const [summary, setSummary] = useState<ReportSummaryDTO | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  const [studentSelection, setStudentSelection] = useState<StudentSelection>(null);
   const [downloading, setDownloading] = useState<"students" | "items" | null>(null);
 
   const classOptions = useMemo(() => {
@@ -172,9 +201,21 @@ export default function RelatorioOfertaDetalhe() {
 
       setSchoolOptions(schools);
       setClassOptionsBySchool(classesBySchool);
-      const initialSchool = schools[0]?.value;
+      const initialSchool =
+        initialClassRef !== undefined
+          ? schools.find((school) =>
+              (classesBySchool[school.value] || []).some((item) => item.value === initialClassRef),
+            )?.value || schools[0]?.value
+          : schools[0]?.value;
       setSelectedSchoolRef(initialSchool);
-      const firstClass = initialSchool ? classesBySchool[initialSchool]?.[0]?.value : undefined;
+      const firstClass =
+        initialSchool && initialClassRef !== undefined
+          ? classesBySchool[initialSchool]?.some((item) => item.value === initialClassRef)
+            ? initialClassRef
+            : classesBySchool[initialSchool]?.[0]?.value
+          : initialSchool
+            ? classesBySchool[initialSchool]?.[0]?.value
+            : undefined;
       setSelectedClassRef(firstClass);
     } catch (error: unknown) {
       setSchoolOptions([]);
@@ -198,6 +239,7 @@ export default function RelatorioOfertaDetalhe() {
       setSummaryError("");
       const data = await getOfferReportSummary(offer.id, selectedClassRef);
       setSummary(data);
+      setStudentSelection(null);
     } catch (error: unknown) {
       setSummary(null);
       setSummaryError("Não foi possível carregar o relatório da oferta.");
@@ -245,97 +287,191 @@ export default function RelatorioOfertaDetalhe() {
     }
   }
 
-  if (offerLoading) return <div className="text-sm text-slate-500">Carregando...</div>;
-
   const offerStatus = offer ? getOfferStatus(offer) : "upcoming";
+
+  const resolvedClassName =
+    classNameFromQuery ||
+    classOptions.find((option) => option.value === selectedClassRef)?.label ||
+    (selectedClassRef ? `Turma ${selectedClassRef}` : "");
+
+  const pageTitle = initialClassRef ? `Relatório da turma ${resolvedClassName}` : "Relatório da oferta";
+  const pageSubtitle = initialClassRef
+    ? "Acompanhe desempenho da turma selecionada."
+    : "Acompanhe desempenho por turma, aluno e questão.";
+  const offerReportSearchParams = new URLSearchParams();
+  offerReportSearchParams.set("offer_id", String(parsedOfferId));
+  if (schoolRefFromQueryRaw) {
+    offerReportSearchParams.set("school_ref", schoolRefFromQueryRaw);
+  }
+  if (serieFromQueryRaw) {
+    offerReportSearchParams.set("serie", serieFromQueryRaw);
+  }
+  const offerReportPath = `/relatorios?${offerReportSearchParams.toString()}`;
+  const breadcrumbItems = initialClassRef
+    ? [
+        { label: "Relatórios", to: "/relatorios" },
+        { label: "Relatório da oferta", to: offerReportPath },
+        { label: "Relatório da turma" },
+      ]
+    : [
+        { label: "Relatórios", to: "/relatorios" },
+        { label: "Relatório da oferta" },
+      ];
+  const onBackTarget = initialClassRef ? offerReportPath : "/relatorios";
+  const summaryTotals = summary?.totals || {
+    students_total: summary?.students_total || 0,
+    absent: summary?.absent_count || 0,
+    finalized: summary?.finalized_count || 0,
+    in_progress: summary?.in_progress_count || 0,
+  };
+  const nonFinalizedCount = Math.max(summaryTotals.students_total - summaryTotals.finalized, 0);
+  const summaryStudentsBase = Math.max(summaryTotals.students_total, 1);
+  const summaryFinalizedPct = (summaryTotals.finalized / summaryStudentsBase) * 100;
+  const summaryNotFinalizedPct = (nonFinalizedCount / summaryStudentsBase) * 100;
+  const accuracyBuckets =
+    summary?.accuracy_buckets ||
+    [
+      { range: "0-25", pct_students: 0, count_students: 0 },
+      { range: "25-50", pct_students: 0, count_students: 0 },
+      { range: "50-75", pct_students: 0, count_students: 0 },
+      { range: "75-100", pct_students: 0, count_students: 0 },
+    ];
+  const pieSize = 144;
+  const pieRadius = 52;
+  const pieStroke = 32;
+  const pieCenter = pieSize / 2;
+  const pieCircumference = 2 * Math.PI * pieRadius;
+  const finalizedStroke = (summaryFinalizedPct / 100) * pieCircumference;
+  const notFinalizedStroke = Math.max(pieCircumference - finalizedStroke, 0);
+  const selectedStudents = useMemo(() => {
+    if (!summary || !studentSelection) return [];
+    if (studentSelection.kind === "finalized") {
+      return summary.students.filter((student) => student.status === "FINALIZED");
+    }
+    if (studentSelection.kind === "not_finalized") {
+      return summary.students.filter((student) => student.status !== "FINALIZED");
+    }
+    return summary.students.filter((student) => isInBucketRange(student.correct_pct, studentSelection.range));
+  }, [summary, studentSelection]);
+  const serieLabel = sigeSelection?.series_years?.length
+    ? sigeSelection.series_years.map((value) => `${value}ª série`).join(", ")
+    : "-";
+  const headerRightSlot = initialClassRef ? (
+    <details className="relative">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        <Download className="h-4 w-4" />
+        {downloading ? "Baixando..." : "Baixar"}
+      </summary>
+      <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+        <button
+          type="button"
+          onClick={() => void onDownloadStudentsCsv()}
+          disabled={downloading !== null}
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {downloading === "students" ? "Baixando..." : "CSV por aluno"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void onDownloadItemsCsv()}
+          disabled={downloading !== null}
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {downloading === "items" ? "Baixando..." : "CSV por questão"}
+        </button>
+      </div>
+    </details>
+  ) : null;
 
   return (
     <PageCard
-      breadcrumb={[
-        { label: "Relatórios", to: "/relatorios" },
-        { label: "Relatório da oferta" },
-      ]}
-      title="Relatório da oferta"
-      subtitle="Acompanhe desempenho por turma, aluno e questão."
-      onBack={() => navigate("/relatorios")}
+      breadcrumb={breadcrumbItems}
+      title={pageTitle}
+      subtitle={pageSubtitle}
+      onBack={() => navigate(onBackTarget)}
+      rightSlot={headerRightSlot}
     >
-      {offerError && (
+      {offerLoading ? (
+        <div className="text-sm text-slate-500">Carregando...</div>
+      ) : offerError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {offerError}
         </div>
-      )}
-
-      {!offerError && offer ? (
+      ) : offer ? (
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-4 py-3">
-              <div className="text-xs font-semibold text-slate-700">Resumo da oferta</div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2">
-              <div>
-                <div className="text-xs font-semibold text-slate-600">Oferta</div>
-                <div className="mt-1 text-sm text-slate-800">{offer.description?.trim() || `Oferta #${offer.id}`}</div>
+          {!initialClassRef ? (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <div className="text-xs font-semibold text-slate-700">Resumo da oferta</div>
               </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-600">Caderno</div>
-                <div className="mt-1 text-sm text-slate-800">
-                  <Link
-                    to={`/cadernos/${typeof offer.booklet === "number" ? offer.booklet : offer.booklet.id}`}
-                    className="hover:text-emerald-700 hover:underline"
+              <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Oferta</div>
+                  <div className="mt-1 text-sm text-slate-800">{offer.description?.trim() || `Oferta #${offer.id}`}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Caderno</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    <Link
+                      to={`/cadernos/${typeof offer.booklet === "number" ? offer.booklet : offer.booklet.id}`}
+                      className="hover:text-emerald-700 hover:underline"
+                    >
+                      {getBookletName(offer)}
+                    </Link>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Período</div>
+                  <div className="mt-1 text-sm text-slate-800">
+                    {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-600">Status</div>
+                  <span
+                    className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(offerStatus)}`}
                   >
-                    {getBookletName(offer)}
-                  </Link>
+                    {getOfferStatusLabel(offerStatus)}
+                  </span>
                 </div>
               </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-600">Período</div>
-                <div className="mt-1 text-sm text-slate-800">
-                  {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-slate-600">Status</div>
-                <span
-                  className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(offerStatus)}`}
-                >
-                  {getOfferStatusLabel(offerStatus)}
-                </span>
+              <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+                Quantidade de questões: <span className="font-semibold">{summary?.items_total ?? "-"}</span>
               </div>
             </div>
-            <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
-              Quantidade de questões: <span className="font-semibold">{summary?.items_total ?? "-"}</span>
-            </div>
-          </div>
+          ) : null}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 text-sm font-semibold text-slate-900">Filtros</div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <SigeCombobox
-                label="Escola"
-                placeholder="Selecione uma escola"
-                value={selectedSchoolRef}
-                options={schoolOptions}
-                loading={filtersLoading}
-                onChange={(nextSchoolRef) => setSelectedSchoolRef(nextSchoolRef)}
-                emptyText="Nenhuma escola disponível para esta oferta."
-              />
-              <SigeCombobox
-                label="Turma"
-                placeholder="Selecione uma turma"
-                value={selectedClassRef}
-                options={classOptions}
-                loading={filtersLoading}
-                disabled={!selectedSchoolRef}
-                onChange={(nextClassRef) => setSelectedClassRef(nextClassRef)}
-                emptyText="Nenhuma turma disponível para esta escola."
-              />
+          {!initialClassRef ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-900">Filtros</div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <SigeCombobox
+                  label="Escola"
+                  placeholder="Selecione a escola"
+                  value={selectedSchoolRef}
+                  options={schoolOptions}
+                  loading={filtersLoading}
+                  onChange={(nextSchoolRef) => setSelectedSchoolRef(nextSchoolRef)}
+                  emptyText="Nenhuma escola disponível para esta oferta."
+                />
+                <SigeCombobox
+                  label="Turma"
+                  placeholder="Selecione uma turma"
+                  value={selectedClassRef}
+                  options={classOptions}
+                  loading={filtersLoading}
+                  disabled={!selectedSchoolRef}
+                  onChange={(nextClassRef) => setSelectedClassRef(nextClassRef)}
+                  emptyText="Nenhuma turma disponível para esta escola."
+                />
+              </div>
+              <div className="mt-3 text-xs text-slate-500">
+                Escola selecionada: <span className="font-medium text-slate-700">{selectedSchoolLabel}</span>
+                {" | "}
+                Turma selecionada: <span className="font-medium text-slate-700">{selectedClassLabel}</span>
+              </div>
             </div>
-            <div className="mt-3 text-xs text-slate-500">
-              Escola selecionada: <span className="font-medium text-slate-700">{selectedSchoolLabel}</span>
-              {" | "}
-              Turma selecionada: <span className="font-medium text-slate-700">{selectedClassLabel}</span>
-            </div>
-          </div>
+          ) : null}
 
           {summaryError && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -349,44 +485,232 @@ export default function RelatorioOfertaDetalhe() {
             </div>
           ) : summary ? (
             <>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-xs font-semibold text-slate-600">Total alunos</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{summary.students_total}</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-xs font-semibold text-slate-600">Presentes / Ausentes</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">
-                    {presentCount} / {summary.absent_count}
+              {initialClassRef ? (
+                <>
+                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2 sm:gap-x-6">
+                      <div>
+                        <span className="font-semibold text-slate-900">Escola: </span>
+                        {selectedSchoolLabel}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-900">Série: </span>
+                        {serieLabel}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-900">Oferta: </span>
+                        {offer.description?.trim() || `Oferta #${offer.id}`}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-900">Caderno: </span>
+                        {getBookletName(offer)}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-slate-900">Período: </span>
+                        {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
+                      </div>
                   </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-xs font-semibold text-slate-600">Finalizados / Em andamento</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">
-                    {summary.finalized_count} / {summary.in_progress_count}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-xs font-semibold text-slate-600">Média de acertos</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{summary.avg_correct.toFixed(2)}</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <div className="text-xs font-semibold text-slate-600">% acerto</div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{formatPct(summary.avg_correct_pct)}</div>
-                </div>
-              </div>
 
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                <Tabs<TabValue>
-                  tabs={[
-                    { value: "overview", label: "Visão geral" },
-                    { value: "students", label: "Por aluno", count: summary.students.length },
-                    { value: "items", label: "Por questão", count: summary.items.length },
-                    { value: "exports", label: "Exportações" },
-                  ]}
-                  active={activeTab}
-                  onChange={setActiveTab}
-                />
+                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                      <div className="rounded-lg border border-slate-200 p-4">
+                        <div className="mb-3 text-sm font-semibold text-slate-900">
+                          Percentual de alunos que finalizaram o teste
+                        </div>
+                        <div className="flex flex-col items-center gap-3">
+                          <svg viewBox={`0 0 ${pieSize} ${pieSize}`} className="h-36 w-36">
+                            <circle cx={pieCenter} cy={pieCenter} r={pieRadius} fill="none" stroke="#e2e8f0" strokeWidth={pieStroke} />
+                            <circle
+                              cx={pieCenter}
+                              cy={pieCenter}
+                              r={pieRadius}
+                              fill="none"
+                              stroke="var(--blue-fill)"
+                              strokeWidth={pieStroke}
+                              strokeDasharray={`${finalizedStroke} ${pieCircumference}`}
+                              strokeDashoffset={0}
+                              transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                              className="cursor-pointer"
+                              onClick={() => setStudentSelection({ kind: "finalized", label: "Finalizaram" })}
+                            />
+                            <circle
+                              cx={pieCenter}
+                              cy={pieCenter}
+                              r={pieRadius}
+                              fill="none"
+                              stroke="var(--red-fill)"
+                              strokeWidth={pieStroke}
+                              strokeDasharray={`${notFinalizedStroke} ${pieCircumference}`}
+                              strokeDashoffset={-finalizedStroke}
+                              transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
+                              className="cursor-pointer"
+                              onClick={() => setStudentSelection({ kind: "not_finalized", label: "Não finalizaram" })}
+                            />
+                            <circle cx={pieCenter} cy={pieCenter} r={18} fill="white" />
+                          </svg>
+                          <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setStudentSelection({ kind: "finalized", label: "Finalizaram" })}
+                              className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                            >
+                              <span
+                                className="h-3 w-3 rounded-full"
+                                style={{ backgroundColor: "var(--blue-fill)", border: "1px solid var(--blue-stroke)" }}
+                              />
+                              Finalizaram: {formatPct(summaryFinalizedPct)} ({summaryTotals.finalized})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setStudentSelection({ kind: "not_finalized", label: "Não finalizaram" })}
+                              className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                            >
+                              <span
+                                className="h-3 w-3 rounded-full"
+                                style={{ backgroundColor: "var(--red-fill)", border: "1px solid var(--red-stroke)" }}
+                              />
+                              Não finalizaram: {formatPct(summaryNotFinalizedPct)} ({nonFinalizedCount})
+                            </button>
+                          </div>
+                          <div className="text-xs text-slate-500">Clique no gráfico para ver a lista de alunos.</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 p-4">
+                        <div className="mb-3 text-sm font-semibold text-slate-900">
+                          Percentual de alunos por faixa de acerto
+                        </div>
+                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                          <table className="w-full table-auto border-collapse">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de acerto</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de alunos</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {accuracyBuckets.map((bucket, index) => {
+                                const bucketColor =
+                                  index === 0
+                                    ? { fill: "var(--red-fill)", stroke: "var(--red-stroke)" }
+                                    : index === 1
+                                      ? { fill: "var(--yellow-fill)", stroke: "var(--yellow-stroke)" }
+                                      : index === 2
+                                        ? { fill: "var(--green-fill)", stroke: "var(--green-stroke)" }
+                                        : { fill: "var(--blue-fill)", stroke: "var(--blue-stroke)" };
+                                return (
+                                  <tr
+                                    key={bucket.range}
+                                    style={{ backgroundColor: bucketColor.fill }}
+                                    className="cursor-pointer hover:brightness-95"
+                                    onClick={() =>
+                                      setStudentSelection({
+                                        kind: "bucket",
+                                        range: bucket.range,
+                                        label: `Faixa ${bucket.range}%`,
+                                      })
+                                    }
+                                  >
+                                    <td
+                                      className="px-4 py-3 text-sm font-medium text-slate-800"
+                                      style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
+                                    >
+                                      {bucket.range}%
+                                    </td>
+                                    <td
+                                      className="px-4 py-3 text-sm font-semibold text-slate-800"
+                                      style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
+                                    >
+                                      {formatPct(bucket.pct_students)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="mt-3 text-xs text-slate-500">
+                          Clique na tabela para ver a lista de alunos.
+                        </div>
+                      </div>
+                  </div>
+                  {studentSelection ? (
+                    <div className="mt-4 rounded-lg border border-slate-200 p-4">
+                      <div className="mb-3 text-sm font-semibold text-slate-900">
+                        Alunos relacionados: {studentSelection.label}
+                      </div>
+                      {selectedStudents.length === 0 ? (
+                        <div className="text-sm text-slate-500">Nenhum aluno encontrado para este recorte.</div>
+                      ) : (
+                        <div className="overflow-auto">
+                          <table className="w-full table-auto border-collapse">
+                            <thead className="border-b border-slate-200 bg-slate-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Aluno</th>
+                                <th className="w-28 px-3 py-2 text-left text-xs font-semibold text-slate-600">% acerto</th>
+                                <th className="w-40 px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedStudents.map((row) => (
+                                <tr key={`${row.class_ref}-${row.student_ref}`} className="border-t border-slate-100">
+                                  <td className="px-3 py-2 text-sm text-slate-800">{row.name}</td>
+                                  <td className="px-3 py-2 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
+                                  <td className="px-3 py-2 text-sm text-slate-700">
+                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(row.status)}`}>
+                                      {getStatusLabel(row.status)}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {!initialClassRef ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600">Total alunos</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">{summary.students_total}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600">Presentes / Ausentes</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">
+                      {presentCount} / {summary.absent_count}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600">Finalizados / Em andamento</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">
+                      {summary.finalized_count} / {summary.in_progress_count}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600">Média de acertos</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">{summary.avg_correct.toFixed(2)}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600">% acerto</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">{formatPct(summary.avg_correct_pct)}</div>
+                  </div>
+                </div>
+              ) : null}
+
+              {!initialClassRef ? (
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <Tabs<TabValue>
+                    tabs={[
+                      { value: "overview", label: "Visão geral" },
+                      { value: "students", label: "Por aluno", count: summary.students.length },
+                      { value: "items", label: "Por questão", count: summary.items.length },
+                      { value: "exports", label: "Exportações" },
+                    ]}
+                    active={activeTab}
+                    onChange={setActiveTab}
+                  />
 
                 {activeTab === "overview" ? (
                   <div className="space-y-4">
@@ -416,8 +740,12 @@ export default function RelatorioOfertaDetalhe() {
                                   <td className="px-4 py-3">
                                     <div className="h-2 rounded bg-slate-100">
                                       <div
-                                        className="h-2 rounded bg-emerald-500"
-                                        style={{ width: `${widthPct}%` }}
+                                        className="h-2 rounded"
+                                        style={{
+                                          width: `${widthPct}%`,
+                                          backgroundColor: "var(--blue-fill)",
+                                          border: "1px solid var(--blue-stroke)",
+                                        }}
                                       />
                                     </div>
                                   </td>
@@ -452,8 +780,12 @@ export default function RelatorioOfertaDetalhe() {
                                 <td className="px-4 py-3">
                                   <div className="h-2 rounded bg-slate-100">
                                     <div
-                                      className="h-2 rounded bg-rose-500"
-                                      style={{ width: `${Math.min(item.wrong_pct, 100)}%` }}
+                                      className="h-2 rounded"
+                                      style={{
+                                        width: `${Math.min(item.wrong_pct, 100)}%`,
+                                        backgroundColor: "var(--red-fill)",
+                                        border: "1px solid var(--red-stroke)",
+                                      }}
                                     />
                                   </div>
                                 </td>
@@ -581,9 +913,10 @@ export default function RelatorioOfertaDetalhe() {
                     </div>
                   </div>
                 ) : null}
-              </div>
+                </div>
+              ) : null}
 
-              {summary.students_total === 0 ? (
+              {!initialClassRef && summary.students_total === 0 ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                   Não há aplicações para a turma selecionada.
                 </div>

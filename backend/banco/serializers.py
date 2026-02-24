@@ -543,3 +543,12 @@ class StudentAnswerSerializer(serializers.ModelSerializer):
         model = StudentAnswer
         fields = ["id", "application", "booklet_item", "selected_option", "is_correct", "created_at"]
         read_only_fields = ["id", "application", "is_correct", "created_at"]
+
+
+class ReportByClassRowSerializer(serializers.Serializer):
+    class_id = serializers.IntegerField()
+    class_name = serializers.CharField()
+    total_students = serializers.IntegerField()
+    accuracy_percent = serializers.FloatField()
+    absent_count = serializers.IntegerField()
+    absent_percent = serializers.FloatField()

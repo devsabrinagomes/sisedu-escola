@@ -11,6 +11,7 @@ import {
   createBookletItem,
   createBookletItemsBulk,
 } from "@/features/cadernos/services/booklets";
+import { setBookletKitPending } from "@/features/ofertas/utils";
 
 function toUpsertItems(items: BookletItemDraft[]): BookletItemUpsertInput[] {
   return items.map((item, index) => ({
@@ -60,11 +61,14 @@ export default function CadernoNovo() {
       setSaving(true);
       const created = await createBooklet({ name });
       await persistBookletItems(created.id, items);
+      setBookletKitPending(created.id, true);
       toast({
         type: "success",
         title: "Caderno criado com sucesso",
       });
-      navigate(`/cadernos/${created.id}`);
+      navigate(`/cadernos/${created.id}`, {
+        state: { showKitModal: true },
+      });
     } catch (error: unknown) {
       toast({
         type: "error",
@@ -97,4 +101,3 @@ export default function CadernoNovo() {
     </PageCard>
   );
 }
-

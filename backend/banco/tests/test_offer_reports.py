@@ -165,3 +165,105 @@ class OfferReportsTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 403)
+
+    def test_offer_report_summary_accepts_school_ref_and_serie(self):
+        url = reverse("offer-report-summary", args=[self.offer.id])
+
+        response = self.client.get(url, {"school_ref": "1201", "serie": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["students_total"], 3)
+        self.assertIn("totals", response.data)
+        self.assertIn("accuracy_buckets", response.data)
+
+    def test_reports_overview_returns_expected_payload(self):
+        url = reverse("reports-overview")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("offers_active", response.data)
+        self.assertIn("offers_closed", response.data)
+        self.assertIn("offers_total", response.data)
+        self.assertIn("applications_total", response.data)
+        self.assertIn("answered_total", response.data)
+        self.assertIn("finalized_total", response.data)
+        self.assertIn("absent_total", response.data)
+        self.assertIn("finalization_rate_pct", response.data)
+        self.assertIn("top_offers_finalization", response.data)
+        self.assertIn("accuracy_buckets_overall", response.data)
+        self.assertIn("recent_offers", response.data)
+
+    def test_reports_by_class_returns_expected_payload(self):
+        item_1 = BookletItem.objects.filter(booklet=self.offer.booklet, order=1).first()
+        item_2 = BookletItem.objects.filter(booklet=self.offer.booklet, order=2).first()
+        app_extra = Application.objects.create(
+            offer=self.offer,
+            class_ref=903002,
+            student_ref=7103,
+            student_absent=False,
+            finalized_at=timezone.now(),
+            finalized_by=self.owner.id,
+        )
+        StudentAnswer.objects.create(
+            application=app_extra,
+            booklet_item=item_1,
+            selected_option="A",
+            is_correct=True,
+        )
+        StudentAnswer.objects.create(
+            application=app_extra,
+            booklet_item=item_2,
+            selected_option="B",
+            is_correct=True,
+        )
+
+        url = reverse("reports-by-class", args=[self.offer.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+
+        first = response.data[0]
+        self.assertEqual(first["class_id"], 903001)
+        self.assertEqual(first["class_name"], "1º Ano Integral A")
+        self.assertEqual(first["total_students"], 3)
+        self.assertEqual(first["absent_count"], 1)
+        self.assertEqual(first["absent_percent"], 33.33)
+        self.assertEqual(first["accuracy_percent"], 16.67)
+
+        second = response.data[1]
+        self.assertEqual(second["class_id"], 903002)
+        self.assertEqual(second["class_name"], "1º Ano Integral B")
+        self.assertEqual(second["total_students"], 1)
+        self.assertEqual(second["absent_count"], 0)
+        self.assertEqual(second["absent_percent"], 0.0)
+        self.assertEqual(second["accuracy_percent"], 100.0)
+
+    def test_non_owner_cannot_access_reports_by_class(self):
+        self.client.force_authenticate(user=self.other)
+        url = reverse("reports-by-class", args=[self.offer.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_reports_by_class_accepts_school_ref_and_serie(self):
+        app_from_other_serie = Application.objects.create(
+            offer=self.offer,
+            class_ref=904001,
+            student_ref=7105,
+            student_absent=False,
+        )
+        item_1 = BookletItem.objects.filter(booklet=self.offer.booklet, order=1).first()
+        StudentAnswer.objects.create(
+            application=app_from_other_serie,
+            booklet_item=item_1,
+            selected_option="A",
+            is_correct=True,
+        )
+
+        url = reverse("reports-by-class", args=[self.offer.id])
+        response = self.client.get(url, {"school_ref": "1201", "serie": "1"})
+
+        self.assertEqual(response.status_code, 200)
+        class_ids = [row["class_id"] for row in response.data]
+        self.assertEqual(class_ids, [903001])

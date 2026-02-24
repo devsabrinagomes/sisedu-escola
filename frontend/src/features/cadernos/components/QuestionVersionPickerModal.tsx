@@ -25,6 +25,16 @@ type QuestionVersionPickerModalProps = {
   currentUserId?: number;
 };
 
+function mapsHaveSameKeys(
+  a: Record<number, BookletItemDraft>,
+  b: Record<number, BookletItemDraft>,
+) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => key in b);
+}
+
 export default function QuestionVersionPickerModal({
   open,
   initialSelected,
@@ -63,8 +73,13 @@ export default function QuestionVersionPickerModal({
     for (const item of initialSelected) {
       initialMap[item.question_version_id] = item;
     }
-    setSelectedByVersionId(initialMap);
-  }, [open, initialSelected]);
+    setSelectedByVersionId((prev) => {
+      if (mapsHaveSameKeys(prev, initialMap)) return prev;
+      return initialMap;
+    });
+    // Intencional: sincroniza seleção apenas ao abrir o modal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

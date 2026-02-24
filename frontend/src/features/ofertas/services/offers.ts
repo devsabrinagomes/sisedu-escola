@@ -192,3 +192,30 @@ export async function downloadOfferApplicationKit(offerId: number) {
   triggerBlobDownload(proofResponse.data, `oferta-${offerId}-caderno-prova.pdf`);
   triggerBlobDownload(answerSheetResponse.data, `oferta-${offerId}-cartao-resposta.pdf`);
 }
+
+export async function downloadBookletApplicationKit(bookletId: number) {
+  async function getBlobWithFallback(primaryUrl: string, fallbackUrl: string) {
+    try {
+      const { data } = await api.get<Blob>(primaryUrl, { responseType: "blob" });
+      return data;
+    } catch (error) {
+      if (!isNotFound(error)) throw error;
+      const { data } = await api.get<Blob>(fallbackUrl, { responseType: "blob" });
+      return data;
+    }
+  }
+
+  const [proofBlob, answerSheetBlob] = await Promise.all([
+    getBlobWithFallback(
+      `/booklets/${bookletId}/kit/prova/`,
+      `/cadernos/${bookletId}/kit/prova/`,
+    ),
+    getBlobWithFallback(
+      `/booklets/${bookletId}/kit/cartao-resposta/`,
+      `/cadernos/${bookletId}/kit/cartao-resposta/`,
+    ),
+  ]);
+
+  triggerBlobDownload(proofBlob, `caderno-${bookletId}-caderno-prova.pdf`);
+  triggerBlobDownload(answerSheetBlob, `caderno-${bookletId}-cartao-resposta.pdf`);
+}

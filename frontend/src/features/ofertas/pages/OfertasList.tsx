@@ -4,11 +4,9 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Download,
   Pencil,
   Search,
   Trash2,
-  TriangleAlert,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -17,7 +15,6 @@ import TablePagination from "@/components/ui/TablePagination";
 import { useToast } from "@/components/ui/toast/useToast";
 import {
   deleteOffer,
-  downloadOfferApplicationKit,
   listOffers,
 } from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/ofertas/types";
@@ -27,8 +24,6 @@ import {
   getOfferStatus,
   getOfferStatusBadgeClass,
   getOfferStatusLabel,
-  isOfferKitPending,
-  setOfferKitPending,
 } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
@@ -48,7 +43,6 @@ export default function OfertasList() {
   const [err, setErr] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [downloadingKitId, setDownloadingKitId] = useState<number | null>(null);
 
   const [filters, setFilters] = useState<OfferFilters>({
     search: "",
@@ -103,23 +97,6 @@ export default function OfertasList() {
       });
     } finally {
       setDeleting(false);
-    }
-  }
-
-  async function onDownloadKit(offerId: number) {
-    try {
-      setDownloadingKitId(offerId);
-      await downloadOfferApplicationKit(offerId);
-      setOfferKitPending(offerId, false);
-      toast({ type: "success", title: "Kit de aplicação baixado com sucesso" });
-    } catch (error: unknown) {
-      toast({
-        type: "error",
-        title: "Erro ao baixar kit de aplicação",
-        message: getApiErrorMessage(error),
-      });
-    } finally {
-      setDownloadingKitId(null);
     }
   }
 
@@ -191,9 +168,13 @@ export default function OfertasList() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Ofertas</h1>
+          <p className="mt-1 text-sm text-gray-500">Defina período e turmas para aplicação.</p>
+        </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
           <div className="lg:col-span-4">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Buscar</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Buscar ofertas</label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
                 <Search className="h-4 w-4" />
@@ -203,7 +184,7 @@ export default function OfertasList() {
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, search: e.target.value, page: 1 }))
                 }
-                placeholder="Buscar ofertas..."
+                placeholder="Nome da oferta ou caderno"
                 className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-emerald-200"
               />
             </div>
@@ -331,19 +312,12 @@ export default function OfertasList() {
               {sortedItems.map((offer) => {
                 const status = getOfferStatus(offer);
                 const isMine = Number(offer.created_by) === Number(userId);
-                const kitPending = isOfferKitPending(offer.id);
                 return (
                   <tr
                     key={offer.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
                     <td className="px-5 py-3 text-sm text-slate-800">
-                      {kitPending ? (
-                        <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                          <TriangleAlert className="h-3.5 w-3.5" />
-                          Download do kit de aplicação pendente
-                        </div>
-                      ) : null}
                       <Link
                         to={`/ofertas/${offer.id}`}
                         className="block font-medium text-slate-900 hover:text-emerald-700 hover:underline"
@@ -368,16 +342,6 @@ export default function OfertasList() {
                       <div className="flex items-center gap-1">
                         {isMine && (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => void onDownloadKit(offer.id)}
-                              disabled={downloadingKitId === offer.id}
-                              className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
-                              title="Baixar kit aplicação"
-                              aria-label="Baixar kit aplicação"
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
                             <button
                               type="button"
                               onClick={() => navigate(`/ofertas/${offer.id}/editar`)}

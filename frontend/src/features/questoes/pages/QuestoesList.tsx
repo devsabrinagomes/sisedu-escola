@@ -442,6 +442,10 @@ export default function QuestoesList() {
       <section className="lg:col-span-9 space-y-4 min-w-0">
         {/* Topo */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-6">
+            <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Questões</h1>
+            <p className="mt-1 text-sm text-gray-500">Crie, edite e gerencie questões.</p>
+          </div>
           <Tabs
             tabs={[
               { value: "mine", label: "Minhas" },
@@ -1076,4 +1080,3 @@ function FilterLink({
     </button>
   );
 }
-

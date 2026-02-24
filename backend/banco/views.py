@@ -47,6 +47,7 @@ from .serializers import (
     DescriptorSerializer,
     OfferSerializer,
     QuestionSerializer,
+    ReportByClassRowSerializer,
     SkillSerializer,
     StudentAnswersBulkUpsertSerializer,
     SubjectSerializer,
@@ -373,6 +374,43 @@ def _parse_class_ref(raw_value):
         raise ValidationError({"class_ref": "Informe um class_ref válido."})
 
 
+def _parse_school_ref(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        raise ValidationError({"school_ref": "Informe um school_ref válido."})
+
+
+def _parse_serie(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        serie = int(raw_value)
+    except (TypeError, ValueError):
+        raise ValidationError({"serie": "Informe uma série válida."})
+    if serie < 1:
+        raise ValidationError({"serie": "Informe uma série válida."})
+    return serie
+
+
+def _extract_serie_from_text(value):
+    text = str(value or "")
+    digits = []
+    for char in text:
+        if char.isdigit():
+            digits.append(char)
+        elif digits:
+            break
+    if not digits:
+        return None
+    try:
+        return int("".join(digits))
+    except (TypeError, ValueError):
+        return None
+
+
 def _get_offer_for_reports(request, offer_id):
     offer = get_object_or_404(Offer.objects.select_related("booklet"), id=offer_id, deleted=False)
     if not request.user.is_superuser and offer.created_by != request.user.id:
@@ -397,7 +435,44 @@ def _build_student_names_map(request, class_refs):
     return names_map
 
 
-def _resolve_report_data(request, offer, class_ref=None):
+def _build_class_names_map(request):
+    names_map = {}
+    data = _get_mock_sige_for_user(request.user)
+    classes_by_school = data.get("classes_by_school", {})
+    for _, classes in classes_by_school.items():
+        for class_row in classes:
+            class_ref = _as_int(class_row.get("class_ref"))
+            if class_ref is None:
+                continue
+            name = str(class_row.get("name") or "").strip()
+            if not name:
+                continue
+            names_map[int(class_ref)] = name
+    return names_map
+
+
+def _resolve_filtered_class_refs(request, school_ref=None, serie=None):
+    data = _get_mock_sige_for_user(request.user)
+    classes_by_school = data.get("classes_by_school", {})
+
+    school_refs = [int(school_ref)] if school_ref is not None else [int(ref) for ref in classes_by_school.keys()]
+    filtered_refs = set()
+    for ref in school_refs:
+        for class_row in classes_by_school.get(int(ref), []):
+            class_id = _as_int(class_row.get("class_ref"))
+            if class_id is None:
+                continue
+            if serie is not None:
+                class_serie = _as_int(class_row.get("serie")) or _extract_serie_from_text(
+                    class_row.get("name")
+                )
+                if class_serie != serie:
+                    continue
+            filtered_refs.add(int(class_id))
+    return filtered_refs
+
+
+def _resolve_report_data(request, offer, class_ref=None, school_ref=None, serie=None):
     booklet_items = list(
         offer.booklet.items.select_related("question_version", "question_version__subject").order_by("order", "id")
     )
@@ -406,6 +481,14 @@ def _resolve_report_data(request, offer, class_ref=None):
     applications_qs = Application.objects.filter(offer=offer).order_by("class_ref", "student_ref", "id")
     if class_ref is not None:
         applications_qs = applications_qs.filter(class_ref=class_ref)
+    else:
+        filtered_class_refs = _resolve_filtered_class_refs(
+            request,
+            school_ref=school_ref,
+            serie=serie,
+        )
+        if school_ref is not None or serie is not None:
+            applications_qs = applications_qs.filter(class_ref__in=filtered_class_refs)
 
     answers_prefetch = Prefetch(
         "answers",
@@ -548,7 +631,42 @@ def _resolve_report_data(request, offer, class_ref=None):
         for index, count in enumerate(distribution_counts)
     ]
 
+    bucket_ranges = [
+        {"range": "0-25", "count": 0},
+        {"range": "25-50", "count": 0},
+        {"range": "50-75", "count": 0},
+        {"range": "75-100", "count": 0},
+    ]
+    for row in students:
+        if row["status"] == "ABSENT":
+            continue
+        pct = float(row["correct_pct"])
+        if pct <= 25:
+            bucket_ranges[0]["count"] += 1
+        elif pct <= 50:
+            bucket_ranges[1]["count"] += 1
+        elif pct <= 75:
+            bucket_ranges[2]["count"] += 1
+        else:
+            bucket_ranges[3]["count"] += 1
+
+    present_or_answered = max(present_count, 1)
+    accuracy_buckets = [
+        {
+            "range": bucket["range"],
+            "count_students": int(bucket["count"]),
+            "pct_students": round((bucket["count"] / present_or_answered) * 100, 2),
+        }
+        for bucket in bucket_ranges
+    ]
+
     return {
+        "totals": {
+            "students_total": len(applications),
+            "absent": absent_count,
+            "finalized": finalized_count,
+            "in_progress": in_progress_count,
+        },
         "items_total": items_total,
         "students_total": len(applications),
         "absent_count": absent_count,
@@ -556,6 +674,7 @@ def _resolve_report_data(request, offer, class_ref=None):
         "in_progress_count": in_progress_count,
         "avg_correct": round(avg_correct, 2),
         "avg_correct_pct": round(avg_correct_pct, 2),
+        "accuracy_buckets": accuracy_buckets,
         "distribution": distribution,
         "students": students,
         "items": item_rows,
@@ -953,80 +1072,108 @@ class OfferKitPdfView(APIView):
 
     def get(self, request, offer_id, kind):
         offer = self._get_offer(request, offer_id)
-        try:
-            from weasyprint import CSS, HTML
-        except ModuleNotFoundError:
-            raise ValidationError(
-                {"detail": "WeasyPrint não está disponível neste ambiente do backend."}
-            )
-
-        booklet_items = list(
-            offer.booklet.items.select_related(
-                "question_version",
-                "question_version__skill",
-            )
-            .prefetch_related("question_version__options")
-            .order_by("order", "id")
+        return _render_booklet_kit_pdf(
+            booklet=offer.booklet,
+            kind=kind,
+            kit_name=offer.description or f"Oferta #{offer.id}",
+            filename_prefix=f"oferta-{offer.id}",
         )
 
-        questions = []
-        for index, item in enumerate(booklet_items, start=1):
-            version = item.question_version
-            options = [
-                {"letter": opt.letter, "text": opt.option_text or "-"}
-                for opt in version.options.all().order_by("letter")
-            ]
-            questions.append(
-                {
-                    "number": index,
-                    "statement": version.command or version.title or "-",
-                    "skill_code": getattr(getattr(version, "skill", None), "code", "-"),
-                    "options": options,
-                }
-            )
 
-        context = {
-            "offer": {
-                "id": offer.id,
-                "name": offer.description or f"Oferta #{offer.id}",
-            },
-            "discipline": "-",
-            "grade": "-",
-            "class_name": "-",
-            "date": timezone.localdate().strftime("%d/%m/%Y"),
-            "total_questions": len(questions),
-            "questions": questions,
-            "letters": ["A", "B", "C", "D", "E"],
-        }
+class BookletKitPdfView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
-        base_url = str(settings.BASE_DIR / "banco" / "templates" / "pdf")
+    def _get_booklet(self, request, booklet_id):
+        booklet = get_object_or_404(Booklet, id=booklet_id, deleted=False)
+        if not request.user.is_superuser and booklet.created_by != request.user.id:
+            raise PermissionDenied("Você não tem permissão para baixar o kit deste caderno.")
+        return booklet
 
-        if kind == "prova":
-            html_string = render_to_string("pdf/booklet.html", context)
-            filename = f"oferta-{offer.id}-caderno-prova.pdf"
-        elif kind == "cartao-resposta":
-            html_string = render_to_string("pdf/answer_sheet.html", context)
-            filename = f"oferta-{offer.id}-cartao-resposta.pdf"
-        else:
-            raise ValidationError({"detail": "Tipo de kit inválido."})
+    def get(self, request, booklet_id, kind):
+        booklet = self._get_booklet(request, booklet_id)
+        return _render_booklet_kit_pdf(
+            booklet=booklet,
+            kind=kind,
+            kit_name=booklet.name or f"Caderno #{booklet.id}",
+            filename_prefix=f"caderno-{booklet.id}",
+        )
 
-        try:
-            pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
-                stylesheets=[CSS(filename=css_path)]
-            )
-        except Exception as exc:
-            raise ValidationError(
-                {
-                    "detail": (
-                        "Falha ao gerar PDF com WeasyPrint. "
-                        f"Verifique compatibilidade das dependências ({type(exc).__name__}: {exc})."
-                    )
-                }
-            )
-        response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+
+def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
+    try:
+        from weasyprint import CSS, HTML
+    except ModuleNotFoundError:
+        raise ValidationError(
+            {"detail": "WeasyPrint não está disponível neste ambiente do backend."}
+        )
+
+    booklet_items = list(
+        booklet.items.select_related(
+            "question_version",
+            "question_version__skill",
+        )
+        .prefetch_related("question_version__options")
+        .order_by("order", "id")
+    )
+
+    questions = []
+    for index, item in enumerate(booklet_items, start=1):
+        version = item.question_version
+        options = [
+            {"letter": opt.letter, "text": opt.option_text or "-"}
+            for opt in version.options.all().order_by("letter")
+        ]
+        questions.append(
+            {
+                "number": index,
+                "statement": version.command or version.title or "-",
+                "skill_code": getattr(getattr(version, "skill", None), "code", "-"),
+                "options": options,
+            }
+        )
+
+    context = {
+        "offer": {
+            "id": booklet.id,
+            "name": kit_name,
+        },
+        "discipline": "-",
+        "grade": "-",
+        "class_name": "-",
+        "date": timezone.localdate().strftime("%d/%m/%Y"),
+        "total_questions": len(questions),
+        "questions": questions,
+        "letters": ["A", "B", "C", "D", "E"],
+    }
+
+    css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
+    base_url = str(settings.BASE_DIR / "banco" / "templates" / "pdf")
+
+    if kind == "prova":
+        html_string = render_to_string("pdf/booklet.html", context)
+        filename = f"{filename_prefix}-caderno-prova.pdf"
+    elif kind == "cartao-resposta":
+        html_string = render_to_string("pdf/answer_sheet.html", context)
+        filename = f"{filename_prefix}-cartao-resposta.pdf"
+    else:
+        raise ValidationError({"detail": "Tipo de kit inválido."})
+
+    try:
+        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
+            stylesheets=[CSS(filename=css_path)]
+        )
+    except Exception as exc:
+        raise ValidationError(
+            {
+                "detail": (
+                    "Falha ao gerar PDF com WeasyPrint. "
+                    f"Verifique compatibilidade das dependências ({type(exc).__name__}: {exc})."
+                )
+            }
+        )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 class OfferReportSummaryView(APIView):
@@ -1035,8 +1182,240 @@ class OfferReportSummaryView(APIView):
     def get(self, request, offer_id):
         offer = _get_offer_for_reports(request, offer_id)
         class_ref = _parse_class_ref(request.query_params.get("class_ref"))
-        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        payload = _resolve_report_data(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class ReportsOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        offers_qs = Offer.objects.filter(deleted=False)
+        if not request.user.is_superuser:
+            offers_qs = offers_qs.filter(created_by=request.user.id)
+        offers = list(offers_qs.select_related("booklet").order_by("-created_at"))
+
+        today = timezone.localdate()
+        offers_active = sum(1 for offer in offers if offer.start_date <= today <= offer.end_date)
+        offers_closed = sum(1 for offer in offers if offer.end_date < today)
+
+        offer_ids = [offer.id for offer in offers]
+        applications_qs = Application.objects.filter(offer_id__in=offer_ids)
+        applications = list(applications_qs.select_related("offer", "offer__booklet"))
+        application_ids = [application.id for application in applications]
+
+        answered_application_ids = set(
+            StudentAnswer.objects.filter(application_id__in=application_ids)
+            .exclude(selected_option__isnull=True)
+            .exclude(selected_option="")
+            .values_list("application_id", flat=True)
+            .distinct()
+        )
+        answered_total = len(answered_application_ids)
+
+        finalized_total = sum(
+            1
+            for application in applications
+            if bool(application.finalized_at)
+            or (
+                application.id in answered_application_ids
+                and application.offer.booklet.items.count() > 0
+                and application.answers.exclude(selected_option__isnull=True).exclude(selected_option="").count()
+                >= application.offer.booklet.items.count()
+            )
+        )
+        absent_total = sum(1 for application in applications if application.student_absent)
+
+        applications_total = len(applications)
+        finalization_rate_pct = round((finalized_total / applications_total) * 100, 2) if applications_total else 0.0
+
+        offer_metrics = {}
+        offer_answered = {}
+        for application in applications:
+            current = offer_metrics.setdefault(
+                application.offer_id,
+                {"total": 0, "finalized": 0, "label": application.offer.description or f"Oferta #{application.offer_id}"},
+            )
+            current["total"] += 1
+            if application.id in answered_application_ids:
+                offer_answered.setdefault(application.offer_id, 0)
+                offer_answered[application.offer_id] += 1
+            if application.finalized_at:
+                current["finalized"] += 1
+
+        top_offers_finalization = []
+        for offer_id, metrics in offer_metrics.items():
+            total = metrics["total"]
+            finalized = metrics["finalized"]
+            pct = round((finalized / total) * 100, 2) if total else 0.0
+            top_offers_finalization.append(
+                {
+                    "offer_id": offer_id,
+                    "label": metrics["label"],
+                    "finalized_pct": pct,
+                }
+            )
+        top_offers_finalization = sorted(
+            top_offers_finalization,
+            key=lambda row: (row["finalized_pct"], row["offer_id"]),
+            reverse=True,
+        )[:5]
+
+        accuracy_buckets_counts = {
+            "0-25": 0,
+            "25-50": 0,
+            "50-75": 0,
+            "75-100": 0,
+        }
+        considered_students = 0
+        for application in applications:
+            offer = application.offer
+            items_total = offer.booklet.items.count()
+            if items_total <= 0 or application.student_absent:
+                continue
+            answers_qs = application.answers.exclude(selected_option__isnull=True).exclude(selected_option="")
+            answered = list(answers_qs)
+            if not answered:
+                continue
+            considered_students += 1
+            correct = sum(1 for answer in answered if answer.is_correct)
+            pct = (correct / items_total) * 100
+            if pct <= 25:
+                accuracy_buckets_counts["0-25"] += 1
+            elif pct <= 50:
+                accuracy_buckets_counts["25-50"] += 1
+            elif pct <= 75:
+                accuracy_buckets_counts["50-75"] += 1
+            else:
+                accuracy_buckets_counts["75-100"] += 1
+
+        denominator = max(considered_students, 1)
+        accuracy_buckets_overall = [
+            {
+                "range": key,
+                "pct_students": round((value / denominator) * 100, 2),
+                "count_students": value,
+            }
+            for key, value in accuracy_buckets_counts.items()
+        ]
+
+        recent_offers = []
+        for offer in offers[:5]:
+            recent_offers.append(
+                {
+                    "offer_id": offer.id,
+                    "label": offer.description or f"Oferta #{offer.id}",
+                    "booklet_name": offer.booklet.name if offer.booklet else f"Caderno #{offer.booklet_id}",
+                    "start_date": offer.start_date,
+                    "end_date": offer.end_date,
+                    "created_at": offer.created_at,
+                }
+            )
+
+        return Response(
+            {
+                "offers_active": offers_active,
+                "offers_closed": offers_closed,
+                "offers_total": len(offers),
+                "applications_total": applications_total,
+                "answered_total": answered_total,
+                "finalized_total": finalized_total,
+                "absent_total": absent_total,
+                "finalization_rate_pct": finalization_rate_pct,
+                "top_offers_finalization": top_offers_finalization,
+                "accuracy_buckets_overall": accuracy_buckets_overall,
+                "recent_offers": recent_offers,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ReportsByClassView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        items_total = offer.booklet.items.count()
+        applications_qs = Application.objects.filter(offer=offer)
+        if school_ref is not None or serie is not None:
+            filtered_class_refs = _resolve_filtered_class_refs(
+                request,
+                school_ref=school_ref,
+                serie=serie,
+            )
+            applications_qs = applications_qs.filter(class_ref__in=filtered_class_refs)
+
+        applications = list(
+            applications_qs.order_by("class_ref", "student_ref", "id").prefetch_related(
+                Prefetch(
+                    "answers",
+                    queryset=StudentAnswer.objects.only(
+                        "id",
+                        "application_id",
+                        "booklet_item_id",
+                        "selected_option",
+                        "is_correct",
+                    ),
+                )
+            )
+        )
+        class_names = _build_class_names_map(request)
+
+        grouped = {}
+        for application in applications:
+            class_id = int(application.class_ref)
+            if class_id not in grouped:
+                grouped[class_id] = {
+                    "class_id": class_id,
+                    "class_name": class_names.get(class_id, f"Turma {class_id}"),
+                    "total_students": 0,
+                    "correct_sum": 0,
+                    "absent_count": 0,
+                }
+
+            row = grouped[class_id]
+            row["total_students"] += 1
+
+            selected_answers = [
+                answer
+                for answer in application.answers.all()
+                if str(answer.selected_option or "").strip()
+            ]
+            if not selected_answers:
+                row["absent_count"] += 1
+
+            row["correct_sum"] += sum(1 for answer in selected_answers if answer.is_correct)
+
+        payload = []
+        for class_id in sorted(grouped.keys()):
+            row = grouped[class_id]
+            total_students = int(row["total_students"])
+            denominator = total_students * items_total
+            accuracy_percent = round((row["correct_sum"] / denominator) * 100, 2) if denominator > 0 else 0.0
+            absent_percent = round((row["absent_count"] / total_students) * 100, 2) if total_students > 0 else 0.0
+            payload.append(
+                {
+                    "class_id": class_id,
+                    "class_name": row["class_name"],
+                    "total_students": total_students,
+                    "accuracy_percent": accuracy_percent,
+                    "absent_count": int(row["absent_count"]),
+                    "absent_percent": absent_percent,
+                }
+            )
+
+        serializer = ReportByClassRowSerializer(payload, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class OfferReportStudentsCsvView(APIView):
@@ -1045,7 +1424,15 @@ class OfferReportStudentsCsvView(APIView):
     def get(self, request, offer_id):
         offer = _get_offer_for_reports(request, offer_id)
         class_ref = _parse_class_ref(request.query_params.get("class_ref"))
-        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        payload = _resolve_report_data(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
 
         output = StringIO()
         writer = csv.writer(output, delimiter=";")
@@ -1088,7 +1475,15 @@ class OfferReportItemsCsvView(APIView):
     def get(self, request, offer_id):
         offer = _get_offer_for_reports(request, offer_id)
         class_ref = _parse_class_ref(request.query_params.get("class_ref"))
-        payload = _resolve_report_data(request, offer, class_ref=class_ref)
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        payload = _resolve_report_data(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
 
         output = StringIO()
         writer = csv.writer(output, delimiter=";")

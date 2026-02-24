@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Download,
+  Pencil,
+  Search,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import TablePagination from "@/components/ui/TablePagination";
 import { useToast } from "@/components/ui/toast/useToast";
@@ -11,6 +20,10 @@ import {
   deleteBooklet,
   listBooklets,
 } from "@/features/cadernos/services/booklets";
+import {
+  downloadBookletApplicationKit,
+} from "@/features/ofertas/services/offers";
+import { isBookletKitPending, setBookletKitPending } from "@/features/ofertas/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 type SortKey = "name" | "count" | "created_at";
@@ -37,6 +50,7 @@ export default function CadernosList() {
   });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingKitId, setDownloadingKitId] = useState<number | null>(null);
 
   useEffect(() => {
     void load("");
@@ -133,9 +147,30 @@ export default function CadernosList() {
     return sortedItems.slice(start, start + pageSize);
   }, [sortedItems, currentPage]);
 
+  async function onDownloadKit(bookletId: number) {
+    try {
+      setDownloadingKitId(bookletId);
+      await downloadBookletApplicationKit(bookletId);
+      setBookletKitPending(bookletId, false);
+      toast({ type: "success", title: "Kit de aplicação baixado com sucesso" });
+    } catch (error: unknown) {
+      toast({
+        type: "error",
+        title: "Erro ao baixar kit de aplicação",
+        message: getApiErrorMessage(error),
+      });
+    } finally {
+      setDownloadingKitId(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Cadernos de Prova</h1>
+          <p className="mt-1 text-sm text-gray-500">Crie, edite e gerencie seus cadernos.</p>
+        </div>
         <label className="block text-xs font-medium text-slate-500">Buscar cadernos</label>
         <div className="mt-2 flex items-center gap-2">
           <div className="relative flex-1 min-w-0">
@@ -220,12 +255,19 @@ export default function CadernosList() {
             <tbody>
               {paginatedItems.map((item) => {
                 const isMine = Number(item.created_by) === Number(userId);
+                const kitPending = isBookletKitPending(item.id);
                 return (
                   <tr
                     key={item.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
                     <td className="px-5 py-3 text-sm text-slate-800">
+                      {kitPending ? (
+                        <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                          <TriangleAlert className="h-3.5 w-3.5 shrink-0 self-center" />
+                          <span className="leading-none">Download pendente</span>
+                        </div>
+                      ) : null}
                       <Link
                         to={`/cadernos/${item.id}`}
                         className="font-medium text-slate-900 hover:text-emerald-700 hover:underline"
@@ -241,6 +283,16 @@ export default function CadernosList() {
                       <div className="flex items-center gap-1">
                         {isMine && (
                           <>
+                            <button
+                              type="button"
+                              onClick={() => void onDownloadKit(item.id)}
+                              disabled={downloadingKitId === item.id}
+                              className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition disabled:opacity-50"
+                              title="Baixar kit aplicação"
+                              aria-label="Baixar kit aplicação"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
                             <button
                               type="button"
                               onClick={() => navigate(`/cadernos/${item.id}/editar`)}

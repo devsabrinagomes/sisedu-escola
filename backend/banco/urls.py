@@ -5,6 +5,7 @@ from .views import (
     ApplicationAbsentView,
     ApplicationAnswersView,
     BookletAddQuestionView,
+    BookletKitPdfView,
     BookletItemDetailView,
     BookletItemsBulkView,
     BookletItemsView,
@@ -21,6 +22,8 @@ from .views import (
     OfferReportItemsCsvView,
     OfferReportStudentsCsvView,
     OfferReportSummaryView,
+    ReportsByClassView,
+    ReportsOverviewView,
     OfferViewSet,
     QuestionViewSet,
 )
@@ -60,6 +63,16 @@ urlpatterns = [
         name="offer-kit-pdf",
     ),
     path(
+        "booklets/<int:booklet_id>/kit/<str:kind>/",
+        BookletKitPdfView.as_view(),
+        name="booklet-kit-pdf",
+    ),
+    path(
+        "cadernos/<int:booklet_id>/kit/<str:kind>/",
+        BookletKitPdfView.as_view(),
+        name="caderno-kit-pdf",
+    ),
+    path(
         "offers/<int:offer_id>/reports/summary/",
         OfferReportSummaryView.as_view(),
         name="offer-report-summary",
@@ -73,6 +86,16 @@ urlpatterns = [
         "offers/<int:offer_id>/reports/items.csv",
         OfferReportItemsCsvView.as_view(),
         name="offer-report-items-csv",
+    ),
+    path(
+        "reports/overview/",
+        ReportsOverviewView.as_view(),
+        name="reports-overview",
+    ),
+    path(
+        "reports/by-class/<int:offer_id>/",
+        ReportsByClassView.as_view(),
+        name="reports-by-class",
     ),
     path(
         "applications/<int:application_id>/answers/",

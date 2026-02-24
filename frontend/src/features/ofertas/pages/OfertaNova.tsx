@@ -5,7 +5,11 @@ import { useToast } from "@/components/ui/toast/useToast";
 import OfferForm from "@/features/ofertas/components/OfferForm";
 import { createOffer } from "@/features/ofertas/services/offers";
 import type { OfferPayload } from "@/features/ofertas/types";
-import { setOfferKitPending, setOfferSigeSelection, type OfferSigeSelection } from "@/features/ofertas/utils";
+import {
+  setBookletKitPending,
+  setOfferSigeSelection,
+  type OfferSigeSelection,
+} from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function OfertaNova() {
@@ -17,11 +21,9 @@ export default function OfertaNova() {
     try {
       setSaving(true);
       const created = await createOffer(payload);
-      setOfferKitPending(created.id, true);
+      setBookletKitPending(payload.booklet, true);
       setOfferSigeSelection(created.id, sigeSelection);
-      navigate(`/ofertas/${created.id}`, {
-        state: { showKitModal: true },
-      });
+      navigate(`/ofertas/${created.id}`);
     } catch (error: unknown) {
       toast({
         type: "error",

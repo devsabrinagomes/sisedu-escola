@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import TablePagination from "@/components/ui/TablePagination";
 import { listGabaritoOffers } from "@/features/gabaritos/services/gabaritos";
 import type { OfferDTO, OfferFilters, OfferStatus } from "@/features/gabaritos/types";
@@ -10,7 +10,6 @@ import {
   getOfferStatus,
   getOfferStatusBadgeClass,
   getOfferStatusLabel,
-  isOfferKitPending,
 } from "@/features/ofertas/utils";
 
 type SortKey = "offer" | "booklet" | "period" | "status";
@@ -123,6 +122,10 @@ export default function GabaritosList() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Gabaritos</h1>
+          <p className="mt-1 text-sm text-gray-500">Gerencie o preenchimento e correção dos gabaritos.</p>
+        </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
           <div className="lg:col-span-8">
             <label className="mb-1 block text-xs font-medium text-slate-500">Buscar ofertas</label>
@@ -232,19 +235,12 @@ export default function GabaritosList() {
               {sortedItems.map((offer) => {
                 const status = getOfferStatus(offer);
                 const canManage = status === "open";
-                const kitPending = isOfferKitPending(offer.id);
                 return (
                   <tr
                     key={offer.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
                     <td className="px-5 py-3 text-sm text-slate-800">
-                      {kitPending ? (
-                        <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                          <TriangleAlert className="h-3.5 w-3.5" />
-                          Download do kit de aplicação pendente
-                        </div>
-                      ) : null}
                       <Link
                         to={`/gabaritos/ofertas/${offer.id}`}
                         className="block font-medium text-slate-900 hover:text-emerald-700 hover:underline"

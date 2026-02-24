@@ -5,6 +5,8 @@ import QuestionVersionPickerModal from "@/features/cadernos/components/QuestionV
 import type { BookletItemDraft } from "@/features/cadernos/types";
 import { normalizeOrders } from "@/features/cadernos/utils";
 
+const EMPTY_ITEMS: BookletItemDraft[] = [];
+
 type BookletFormProps = {
   mode: "create" | "edit";
   initialName?: string;
@@ -18,7 +20,7 @@ type BookletFormProps = {
 export default function BookletForm({
   mode,
   initialName = "",
-  initialItems = [],
+  initialItems = EMPTY_ITEMS,
   saving = false,
   currentUserId,
   onCancel,
@@ -130,7 +132,7 @@ export default function BookletForm({
 
       <QuestionVersionPickerModal
         open={pickerOpen}
-        initialSelected={[]}
+        initialSelected={items}
         currentUserId={currentUserId}
         onClose={() => setPickerOpen(false)}
         onConfirm={handlePickerConfirm}

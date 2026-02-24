@@ -77,20 +77,20 @@ export function validateOfferDates(startDate: string, endDate: string) {
   return endDate >= startDate;
 }
 
-function offerKitPendingKey(offerId: number) {
-  return `offer:kit:pending:${offerId}`;
+function bookletKitPendingKey(bookletId: number) {
+  return `booklet:kit:pending:${bookletId}`;
 }
 
-export function setOfferKitPending(offerId: number, pending: boolean) {
+export function setBookletKitPending(bookletId: number, pending: boolean) {
   if (pending) {
-    localStorage.setItem(offerKitPendingKey(offerId), "1");
+    localStorage.setItem(bookletKitPendingKey(bookletId), "1");
     return;
   }
-  localStorage.removeItem(offerKitPendingKey(offerId));
+  localStorage.removeItem(bookletKitPendingKey(bookletId));
 }
 
-export function isOfferKitPending(offerId: number) {
-  return localStorage.getItem(offerKitPendingKey(offerId)) === "1";
+export function isBookletKitPending(bookletId: number) {
+  return localStorage.getItem(bookletKitPendingKey(bookletId)) === "1";
 }
 
 function offerSigeSelectionKey(offerId: number) {
