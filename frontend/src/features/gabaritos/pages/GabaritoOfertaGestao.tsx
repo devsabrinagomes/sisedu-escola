@@ -249,7 +249,7 @@ export default function GabaritoOfertaGestao() {
   const offerStatus = useMemo(() => (offer ? getOfferStatus(offer) : "upcoming"), [offer]);
   const canFillAnswers = offerStatus === "open";
 
-  if (offerLoading) return <div className="text-sm text-slate-500">Carregando...</div>;
+  if (offerLoading) return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
 
   return (
     <PageCard
@@ -269,54 +269,54 @@ export default function GabaritoOfertaGestao() {
 
       {!offerError && offer ? (
         <div className="space-y-6">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-4 py-3">
-              <div className="text-xs font-semibold text-slate-700">Resumo da oferta</div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+            <div className="border-b border-slate-100 dark:border-borderDark px-4 py-3">
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">Resumo da oferta</div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2">
               <div>
-                <div className="text-xs font-semibold text-slate-600">Caderno</div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Caderno</div>
+                <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                   <Link
                     to={`/cadernos/${typeof offer.booklet === "number" ? offer.booklet : offer.booklet.id}`}
-                    className="hover:text-emerald-700 hover:underline"
+                    className="hover:text-brand-500 hover:underline"
                   >
                     {getBookletName(offer)}
                   </Link>
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-600">Período</div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Período</div>
+                <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                   {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-600">Escola</div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Escola</div>
+                <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                   {sigeSelection?.school_names?.length
                     ? sigeSelection.school_names.join(", ")
                     : "-"}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-600">Série</div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Série</div>
+                <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                   {sigeSelection?.series_years?.length
                     ? sigeSelection.series_years.map((year) => `${year}ª série`).join(", ")
                     : "-"}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-600">Turma</div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Turma</div>
+                <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                   {sigeSelection?.class_names?.length
                     ? sigeSelection.class_names.join(", ")
                     : "-"}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-600">Status</div>
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Status</div>
                 <span
                   className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(offerStatus)}`}
                 >
@@ -324,7 +324,7 @@ export default function GabaritoOfertaGestao() {
                 </span>
               </div>
             </div>
-            <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+            <div className="border-t border-slate-100 dark:border-borderDark px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
               Quantidade de questões: <span className="font-semibold">{itemsTotal || "-"}</span>
             </div>
           </div>
@@ -342,24 +342,24 @@ export default function GabaritoOfertaGestao() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="border-b border-slate-100 px-4 py-3">
-              <div className="text-sm font-semibold text-slate-900">Alunos</div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+            <div className="border-b border-slate-100 dark:border-borderDark px-4 py-3">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Alunos</div>
             </div>
             {loadingStudents ? (
-              <div className="px-4 py-8 text-sm text-slate-500">Carregando alunos...</div>
+              <div className="px-4 py-8 text-sm text-slate-500 dark:text-slate-400">Carregando alunos...</div>
             ) : applications.length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm text-slate-500">
+              <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
                 Nenhum aluno encontrado nas turmas da oferta.
               </div>
             ) : (
               <div className="space-y-4 px-4 py-4">
                 {groupedBySchoolAndClass.map((schoolGroup) => (
                   <div key={schoolGroup.schoolName} className="rounded-lg border border-slate-200">
-                    <div className="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700">
+                    <div className="border-b border-slate-100 dark:border-borderDark bg-slate-50 dark:bg-surface-2 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
                       {schoolGroup.schoolName}
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
                       {schoolGroup.classes.map((classGroup) => {
                         const isOpen = Boolean(openByClassRef[classGroup.classRef]);
                         return (
@@ -372,31 +372,31 @@ export default function GabaritoOfertaGestao() {
                                   [classGroup.classRef]: !prev[classGroup.classRef],
                                 }))
                               }
-                              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-slate-50"
+                              className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-surface-2"
                             >
                               <div>
-                                <div className="text-sm font-semibold text-slate-900">
+                                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                   {classGroup.className}
                                 </div>
-                                <div className="text-xs text-slate-500">
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
                                   {classGroup.rows.length} aluno(s)
                                 </div>
                               </div>
                               <ChevronDown
-                                className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                className={`h-4 w-4 text-slate-500 dark:text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
                               />
                             </button>
 
                             {isOpen ? (
                               <table className="w-full table-auto border-collapse">
-                                <thead className="border-t border-slate-100 bg-slate-50">
+                                <thead className="border-t border-slate-100 dark:border-borderDark bg-slate-50 dark:bg-surface-2">
                                   <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Aluno</th>
-                                    <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                                    <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 whitespace-nowrap">
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Aluno</th>
+                                    <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                                    <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
                                       Resp./Total
                                     </th>
-                                    <th className="w-64 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                                    <th className="w-64 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">
                                       Ações
                                     </th>
                                   </tr>
@@ -405,26 +405,26 @@ export default function GabaritoOfertaGestao() {
                                   {classGroup.rows.map((application) => (
                                     <tr
                                       key={application.application_id}
-                                      className="border-t border-slate-100 transition hover:bg-slate-50"
+                                      className="border-t border-slate-100 dark:border-borderDark transition hover:bg-slate-50 dark:hover:bg-surface-2"
                                     >
-                                      <td className="min-w-[280px] px-4 py-3 text-sm text-slate-800">{application.student_name}</td>
-                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                      <td className="min-w-[280px] px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{application.student_name}</td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                         <span
                                           className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getApplicationStatusBadgeClass(application.status)}`}
                                         >
                                           {getApplicationStatusLabel(application.status)}
                                         </span>
                                       </td>
-                                      <td className="w-28 whitespace-nowrap px-4 py-3 text-sm text-slate-700">
+                                      <td className="w-28 whitespace-nowrap px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                         {application.correct + application.wrong} / {itemsTotal}
                                       </td>
-                                      <td className="px-4 py-3 text-sm text-slate-700">
+                                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                         <div className="flex items-center gap-3">
                                           <button
                                             type="button"
                                             onClick={() => void onOpenDrawer(application)}
                                             disabled={!canFillAnswers || application.student_absent}
-                                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                                           >
                                             Responder
                                           </button>
@@ -438,7 +438,7 @@ export default function GabaritoOfertaGestao() {
                                               shape="square"
                                               ariaLabel="Marcar ausência"
                                             />
-                                            <span className="text-xs text-slate-600">Ausente</span>
+                                            <span className="text-xs text-slate-600 dark:text-slate-400">Ausente</span>
                                           </div>
                                         </div>
                                       </td>

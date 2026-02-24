@@ -64,7 +64,7 @@ export default function OfertaEditar() {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Carregando...</div>;
+    return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
   }
 
   return (

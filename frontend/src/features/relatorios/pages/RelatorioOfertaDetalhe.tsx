@@ -331,16 +331,16 @@ export default function RelatorioOfertaDetalhe() {
     : "-";
   const headerRightSlot = initialClassRef ? (
     <details className="relative">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2">
         <Download className="h-4 w-4" />
         {downloading ? "Baixando..." : "Baixar"}
       </summary>
-      <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+      <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-1 shadow-lg">
         <button
           type="button"
           onClick={() => void onDownloadStudentsCsv()}
           disabled={downloading !== null}
-          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
         >
           {downloading === "students" ? "Baixando..." : "CSV por aluno"}
         </button>
@@ -348,7 +348,7 @@ export default function RelatorioOfertaDetalhe() {
           type="button"
           onClick={() => void onDownloadItemsCsv()}
           disabled={downloading !== null}
-          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
         >
           {downloading === "items" ? "Baixando..." : "CSV por questão"}
         </button>
@@ -365,7 +365,7 @@ export default function RelatorioOfertaDetalhe() {
       rightSlot={headerRightSlot}
     >
       {offerLoading ? (
-        <div className="text-sm text-slate-500">Carregando...</div>
+        <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>
       ) : offerError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {offerError}
@@ -373,34 +373,34 @@ export default function RelatorioOfertaDetalhe() {
       ) : offer ? (
         <div className="space-y-6">
           {!initialClassRef ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-100 px-4 py-3">
-                <div className="text-xs font-semibold text-slate-700">Resumo da oferta</div>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+              <div className="border-b border-slate-100 dark:border-borderDark px-4 py-3">
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">Resumo da oferta</div>
               </div>
               <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2">
                 <div>
-                  <div className="text-xs font-semibold text-slate-600">Oferta</div>
-                  <div className="mt-1 text-sm text-slate-800">{offer.description?.trim() || `Oferta #${offer.id}`}</div>
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Oferta</div>
+                  <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">{offer.description?.trim() || `Oferta #${offer.id}`}</div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-600">Caderno</div>
-                  <div className="mt-1 text-sm text-slate-800">
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Caderno</div>
+                  <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                     <Link
                       to={`/cadernos/${typeof offer.booklet === "number" ? offer.booklet : offer.booklet.id}`}
-                      className="hover:text-emerald-700 hover:underline"
+                      className="hover:text-brand-500 hover:underline"
                     >
                       {getBookletName(offer)}
                     </Link>
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-600">Período</div>
-                  <div className="mt-1 text-sm text-slate-800">
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Período</div>
+                  <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                     {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-600">Status</div>
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Status</div>
                   <span
                     className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(offerStatus)}`}
                   >
@@ -408,15 +408,15 @@ export default function RelatorioOfertaDetalhe() {
                   </span>
                 </div>
               </div>
-              <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+              <div className="border-t border-slate-100 dark:border-borderDark px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
                 Quantidade de questões: <span className="font-semibold">{summary?.items_total ?? "-"}</span>
               </div>
             </div>
           ) : null}
 
           {!initialClassRef ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="mb-3 text-sm font-semibold text-slate-900">Filtros</div>
+            <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-4">
+              <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Filtros</div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SigeCombobox
                   label="Escola"
@@ -438,10 +438,10 @@ export default function RelatorioOfertaDetalhe() {
                   emptyText="Nenhuma turma disponível para esta escola."
                 />
               </div>
-              <div className="mt-3 text-xs text-slate-500">
-                Escola selecionada: <span className="font-medium text-slate-700">{selectedSchoolLabel}</span>
+              <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                Escola selecionada: <span className="font-medium text-slate-700 dark:text-slate-300">{selectedSchoolLabel}</span>
                 {" | "}
-                Turma selecionada: <span className="font-medium text-slate-700">{selectedClassLabel}</span>
+                Turma selecionada: <span className="font-medium text-slate-700 dark:text-slate-300">{selectedClassLabel}</span>
               </div>
             </div>
           ) : null}
@@ -453,39 +453,39 @@ export default function RelatorioOfertaDetalhe() {
           )}
 
           {summaryLoading ? (
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
+            <div className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-8 text-sm text-slate-500 dark:text-slate-400">
               Carregando relatório...
             </div>
           ) : summary ? (
             <>
               {initialClassRef ? (
                 <>
-                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2 sm:gap-x-6">
+                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2 sm:gap-x-6">
                       <div>
-                        <span className="font-semibold text-slate-900">Escola: </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">Escola: </span>
                         {selectedSchoolLabel}
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-900">Série: </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">Série: </span>
                         {serieLabel}
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-900">Oferta: </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">Oferta: </span>
                         {offer.description?.trim() || `Oferta #${offer.id}`}
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-900">Caderno: </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">Caderno: </span>
                         {getBookletName(offer)}
                       </div>
                       <div>
-                        <span className="font-semibold text-slate-900">Período: </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">Período: </span>
                         {formatDate(offer.start_date)} - {formatDate(offer.end_date)}
                       </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                       <div className="rounded-lg border border-slate-200 p-4">
-                        <div className="mb-3 text-sm font-semibold text-slate-900">
+                        <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                           Percentual de alunos que finalizaram o teste
                         </div>
                         <div className="flex flex-col items-center gap-3">
@@ -552,7 +552,7 @@ export default function RelatorioOfertaDetalhe() {
                             <button
                               type="button"
                               onClick={() => setStudentSelection({ kind: "finalized", label: "Finalizaram" })}
-                              className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                              className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:underline"
                             >
                               <span
                                 className="h-3 w-3 rounded-full"
@@ -563,7 +563,7 @@ export default function RelatorioOfertaDetalhe() {
                             <button
                               type="button"
                               onClick={() => setStudentSelection({ kind: "not_finalized", label: "Não finalizaram" })}
-                              className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                              className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:underline"
                             >
                               <span
                                 className="h-3 w-3 rounded-full"
@@ -572,20 +572,20 @@ export default function RelatorioOfertaDetalhe() {
                               Não finalizaram: {formatPct(summaryNotFinalizedPct)} ({nonFinalizedCount})
                             </button>
                           </div>
-                          <div className="text-xs text-slate-500">Clique no gráfico para ver a lista de alunos.</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Clique no gráfico para ver a lista de alunos.</div>
                         </div>
                       </div>
 
                       <div className="rounded-lg border border-slate-200 p-4">
-                        <div className="mb-3 text-sm font-semibold text-slate-900">
+                        <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                           Percentual de alunos por faixa de acerto
                         </div>
                         <div className="overflow-hidden rounded-lg border border-slate-200">
                           <table className="w-full table-auto border-collapse">
-                            <thead className="bg-slate-50">
+                            <thead className="bg-slate-50 dark:bg-surface-2">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de acerto</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de alunos</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-300">Percentual de acerto</th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-300">Percentual de alunos</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -612,13 +612,13 @@ export default function RelatorioOfertaDetalhe() {
                                     }
                                   >
                                     <td
-                                      className="px-4 py-3 text-sm font-medium text-slate-800"
+                                      className="px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-200"
                                       style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
                                     >
                                       {bucket.range}%
                                     </td>
                                     <td
-                                      className="px-4 py-3 text-sm font-semibold text-slate-800"
+                                      className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200"
                                       style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
                                     >
                                       {formatPct(bucket.pct_students)}
@@ -629,34 +629,34 @@ export default function RelatorioOfertaDetalhe() {
                             </tbody>
                           </table>
                         </div>
-                        <div className="mt-3 text-xs text-slate-500">
+                        <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                           Clique na tabela para ver a lista de alunos.
                         </div>
                       </div>
                   </div>
                   {studentSelection ? (
                     <div className="mt-4 rounded-lg border border-slate-200 p-4">
-                      <div className="mb-3 text-sm font-semibold text-slate-900">
+                      <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         Alunos relacionados: {studentSelection.label}
                       </div>
                       {selectedStudents.length === 0 ? (
-                        <div className="text-sm text-slate-500">Nenhum aluno encontrado para este recorte.</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Nenhum aluno encontrado para este recorte.</div>
                       ) : (
                         <div className="overflow-auto">
                           <table className="w-full table-auto border-collapse">
-                            <thead className="border-b border-slate-200 bg-slate-50">
+                            <thead className="border-b border-slate-200 bg-slate-50 dark:bg-surface-2">
                               <tr>
-                                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Aluno</th>
-                                <th className="w-28 px-3 py-2 text-left text-xs font-semibold text-slate-600">% acerto</th>
-                                <th className="w-40 px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
+                                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Aluno</th>
+                                <th className="w-28 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% acerto</th>
+                                <th className="w-40 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Status</th>
                               </tr>
                             </thead>
                             <tbody>
                               {selectedStudents.map((row) => (
-                                <tr key={`${row.class_ref}-${row.student_ref}`} className="border-t border-slate-100">
-                                  <td className="px-3 py-2 text-sm text-slate-800">{row.name}</td>
-                                  <td className="px-3 py-2 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
-                                  <td className="px-3 py-2 text-sm text-slate-700">
+                                <tr key={`${row.class_ref}-${row.student_ref}`} className="border-t border-slate-100 dark:border-borderDark">
+                                  <td className="px-3 py-2 text-sm text-slate-800 dark:text-slate-200">{row.name}</td>
+                                  <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">{formatPct(row.correct_pct)}</td>
+                                  <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
                                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getReportStudentStatusBadgeClass(row.status)}`}>
                                       {getReportStudentStatusLabel(row.status)}
                                     </span>
@@ -674,35 +674,35 @@ export default function RelatorioOfertaDetalhe() {
 
               {!initialClassRef ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-slate-600">Total alunos</div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">{summary.students_total}</div>
+                  <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Total alunos</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{summary.students_total}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-slate-600">Presentes / Ausentes</div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">
+                  <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Presentes / Ausentes</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                       {presentCount} / {summary.absent_count}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-slate-600">Finalizados / Em andamento</div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">
+                  <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Finalizados / Em andamento</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">
                       {summary.finalized_count} / {summary.in_progress_count}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-slate-600">Média de acertos</div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">{summary.avg_correct.toFixed(2)}</div>
+                  <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Média de acertos</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{summary.avg_correct.toFixed(2)}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <div className="text-xs font-semibold text-slate-600">% acerto</div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">{formatPct(summary.avg_correct_pct)}</div>
+                  <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-3">
+                    <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">% acerto</div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{formatPct(summary.avg_correct_pct)}</div>
                   </div>
                 </div>
               ) : null}
 
               {!initialClassRef ? (
-                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-4">
                   <Tabs<TabValue>
                     tabs={[
                       { value: "overview", label: "Visão geral" },
@@ -717,18 +717,18 @@ export default function RelatorioOfertaDetalhe() {
                 {activeTab === "overview" ? (
                   <div className="space-y-4">
                     <div className="rounded-lg border border-slate-200">
-                      <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
+                      <div className="border-b border-slate-100 dark:border-borderDark bg-slate-50 dark:bg-surface-2 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         Distribuição de acertos
                       </div>
                       {summary.distribution.length === 0 ? (
-                        <div className="px-4 py-6 text-sm text-slate-500">Sem dados de distribuição.</div>
+                        <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400">Sem dados de distribuição.</div>
                       ) : (
                         <table className="w-full table-auto border-collapse">
-                          <thead className="bg-slate-50">
+                          <thead className="bg-slate-50 dark:bg-surface-2">
                             <tr>
-                              <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">Acertos</th>
-                              <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">Alunos</th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Distribuição</th>
+                              <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Acertos</th>
+                              <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Alunos</th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Distribuição</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -736,9 +736,9 @@ export default function RelatorioOfertaDetalhe() {
                               const maxCount = Math.max(...summary.distribution.map((item) => item.count), 1);
                               const widthPct = (bucket.count / maxCount) * 100;
                               return (
-                                <tr key={bucket.correct} className="border-t border-slate-100">
-                                  <td className="px-4 py-3 text-sm text-slate-700">{bucket.correct}</td>
-                                  <td className="px-4 py-3 text-sm text-slate-700">{bucket.count}</td>
+                                <tr key={bucket.correct} className="border-t border-slate-100 dark:border-borderDark">
+                                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{bucket.correct}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{bucket.count}</td>
                                   <td className="px-4 py-3">
                                     <div className="h-2 rounded bg-slate-100">
                                       <div
@@ -760,25 +760,25 @@ export default function RelatorioOfertaDetalhe() {
                     </div>
 
                     <div className="rounded-lg border border-slate-200">
-                      <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
+                      <div className="border-b border-slate-100 dark:border-borderDark bg-slate-50 dark:bg-surface-2 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         Top 5 questões mais erradas
                       </div>
                       {topWrongItems.length === 0 ? (
-                        <div className="px-4 py-6 text-sm text-slate-500">Sem dados por questão.</div>
+                        <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400">Sem dados por questão.</div>
                       ) : (
                         <table className="w-full table-auto border-collapse">
-                          <thead className="bg-slate-50">
+                          <thead className="bg-slate-50 dark:bg-surface-2">
                             <tr>
-                              <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-slate-600">Questão</th>
-                              <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-slate-600">% erro</th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Comparativo</th>
+                              <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Questão</th>
+                              <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% erro</th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Comparativo</th>
                             </tr>
                           </thead>
                           <tbody>
                             {topWrongItems.map((item) => (
-                              <tr key={item.booklet_item_id} className="border-t border-slate-100">
-                                <td className="px-4 py-3 text-sm text-slate-700">{item.order}</td>
-                                <td className="px-4 py-3 text-sm text-slate-700">{formatPct(item.wrong_pct)}</td>
+                              <tr key={item.booklet_item_id} className="border-t border-slate-100 dark:border-borderDark">
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{item.order}</td>
+                                <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatPct(item.wrong_pct)}</td>
                                 <td className="px-4 py-3">
                                   <div className="h-2 rounded bg-slate-100">
                                     <div
@@ -802,40 +802,40 @@ export default function RelatorioOfertaDetalhe() {
 
                 {activeTab === "students" ? (
                   summary.students.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 px-4 py-6 text-sm text-slate-500">
+                    <div className="rounded-lg border border-slate-200 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
                       Nenhum aluno encontrado para o filtro selecionado.
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-lg border border-slate-200">
                       <table className="w-full table-auto border-collapse">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-slate-50 dark:bg-surface-2">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Aluno</th>
-                            <th className="w-44 px-4 py-3 text-left text-xs font-semibold text-slate-600">Acertos/Erros/Brancos/Total</th>
-                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">% acerto</th>
-                            <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                            <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-slate-600">Ação</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Aluno</th>
+                            <th className="w-44 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Acertos/Erros/Brancos/Total</th>
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% acerto</th>
+                            <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Status</th>
+                            <th className="w-32 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Ação</th>
                           </tr>
                         </thead>
                         <tbody>
                           {summary.students.map((row) => (
-                            <tr key={`${row.class_ref}-${row.student_ref}`} className="border-t border-slate-100">
-                              <td className="px-4 py-3 text-sm text-slate-800">{row.name}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                            <tr key={`${row.class_ref}-${row.student_ref}`} className="border-t border-slate-100 dark:border-borderDark">
+                              <td className="px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{row.name}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                 {row.correct}/{row.wrong}/{row.blank}/{row.total}
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatPct(row.correct_pct)}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                 <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getReportStudentStatusBadgeClass(row.status)}`}>
                                   {getReportStudentStatusLabel(row.status)}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                 <button
                                   type="button"
                                   disabled
                                   title="Detalhamento em breve"
-                                  className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500"
+                                  className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"
                                 >
                                   Detalhar
                                 </button>
@@ -850,36 +850,36 @@ export default function RelatorioOfertaDetalhe() {
 
                 {activeTab === "items" ? (
                   summary.items.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 px-4 py-6 text-sm text-slate-500">
+                    <div className="rounded-lg border border-slate-200 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
                       Nenhuma questão encontrada para o filtro selecionado.
                     </div>
                   ) : (
                     <div className="overflow-hidden rounded-lg border border-slate-200">
                       <table className="w-full table-auto border-collapse">
-                        <thead className="bg-slate-50">
+                        <thead className="bg-slate-50 dark:bg-surface-2">
                           <tr>
-                            <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-slate-600">Questão</th>
-                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">% acerto</th>
-                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">% erro</th>
-                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">% branco</th>
-                            <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600">Alternativa mais marcada</th>
-                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600">Total respondidas</th>
-                            <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-slate-600">Ação</th>
+                            <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Questão</th>
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% acerto</th>
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% erro</th>
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">% branco</th>
+                            <th className="w-40 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Alternativa mais marcada</th>
+                            <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Total respondidas</th>
+                            <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">Ação</th>
                           </tr>
                         </thead>
                         <tbody>
                           {summary.items.map((row: ReportItemRowDTO) => (
-                            <tr key={row.booklet_item_id} className="border-t border-slate-100">
-                              <td className="px-4 py-3 text-sm text-slate-800">{row.order}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{formatPct(row.correct_pct)}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{formatPct(row.wrong_pct)}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{formatPct(row.blank_pct)}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{row.most_marked_option || "-"}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">{row.total_answered}</td>
-                              <td className="px-4 py-3 text-sm text-slate-700">
+                            <tr key={row.booklet_item_id} className="border-t border-slate-100 dark:border-borderDark">
+                              <td className="px-4 py-3 text-sm text-slate-800 dark:text-slate-200">{row.order}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatPct(row.correct_pct)}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatPct(row.wrong_pct)}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{formatPct(row.blank_pct)}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{row.most_marked_option || "-"}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{row.total_answered}</td>
+                              <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                 <Link
                                   to={`/questoes/${row.question_id}`}
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                  className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
                                 >
                                   Ver questão
                                 </Link>
@@ -893,14 +893,14 @@ export default function RelatorioOfertaDetalhe() {
                 ) : null}
 
                 {activeTab === "exports" ? (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-3 text-sm font-semibold text-slate-900">Exportações</div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 dark:bg-surface-2 p-4">
+                    <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Exportações</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => void onDownloadStudentsCsv()}
                         disabled={downloading !== null}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {downloading === "students" ? "Baixando..." : "Baixar CSV (por aluno)"}
                       </button>
@@ -908,7 +908,7 @@ export default function RelatorioOfertaDetalhe() {
                         type="button"
                         onClick={() => void onDownloadItemsCsv()}
                         disabled={downloading !== null}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {downloading === "items" ? "Baixando..." : "Baixar CSV (por questão)"}
                       </button>

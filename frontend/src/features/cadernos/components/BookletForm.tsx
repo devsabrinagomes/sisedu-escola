@@ -94,7 +94,7 @@ export default function BookletForm({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Digite o nome do caderno"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-emerald-200"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-brand-500/40"
           />
           {nameError && (
             <p className="mt-1 text-sm text-red-600">{nameError}</p>
@@ -119,7 +119,7 @@ export default function BookletForm({
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
           >
             {saving
               ? "Salvando..."

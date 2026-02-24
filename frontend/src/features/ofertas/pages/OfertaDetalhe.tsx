@@ -83,7 +83,7 @@ export default function OfertaDetalhe() {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Carregando...</div>;
+    return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
   }
 
   return (
@@ -103,24 +103,24 @@ export default function OfertaDetalhe() {
       )}
 
       {!err && item && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="border-b border-slate-100 px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+          <div className="border-b border-slate-100 dark:border-borderDark px-4 py-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="mt-1 text-base font-semibold text-slate-900">
+                <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
                   {item.description?.trim() || `Oferta #${item.id}`}
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   Criada em: {formatDateTime(item.created_at)}
                 </div>
               </div>
 
               {isMine && (
-                <div className="flex items-center gap-1 text-slate-500">
+                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                   <button
                     type="button"
                     onClick={() => navigate(`/ofertas/${item.id}/editar`)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 transition"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 dark:text-slate-400 hover:bg-emerald-50 hover:text-brand-500 transition"
                     title="Editar oferta"
                     aria-label="Editar oferta"
                   >
@@ -142,17 +142,17 @@ export default function OfertaDetalhe() {
 
           <div className="grid grid-cols-1 gap-4 px-4 py-4 sm:grid-cols-2">
             <div>
-              <div className="text-xs font-semibold text-slate-600">Caderno</div>
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Caderno</div>
               <Link
                 to={`/cadernos/${getBookletId(item)}`}
-                className="mt-1 inline-block text-sm text-slate-900 hover:text-emerald-700 hover:underline"
+                className="mt-1 inline-block text-sm text-slate-900 dark:text-slate-100 hover:text-brand-500 hover:underline"
               >
                 {getBookletName(item)}
               </Link>
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Status</div>
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Status</div>
               <span
                 className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getOfferStatusBadgeClass(status)}`}
               >
@@ -161,15 +161,15 @@ export default function OfertaDetalhe() {
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Período</div>
-              <div className="mt-1 text-sm text-slate-800">
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Período</div>
+              <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                 {formatDate(item.start_date)} - {formatDate(item.end_date)}
               </div>
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Escola</div>
-              <div className="mt-1 text-sm text-slate-800">
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Escola</div>
+              <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                 {sigeSelection?.school_names?.length
                   ? sigeSelection.school_names.join(", ")
                   : "-"}
@@ -177,8 +177,8 @@ export default function OfertaDetalhe() {
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Série</div>
-              <div className="mt-1 text-sm text-slate-800">
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Série</div>
+              <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                 {sigeSelection?.series_years?.length
                   ? sigeSelection.series_years.map((year) => `${year}ª série`).join(", ")
                   : "-"}
@@ -186,8 +186,8 @@ export default function OfertaDetalhe() {
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-slate-600">Turma</div>
-              <div className="mt-1 text-sm text-slate-800">
+              <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Turma</div>
+              <div className="mt-1 text-sm text-slate-800 dark:text-slate-200">
                 {sigeSelection?.class_names?.length
                   ? sigeSelection.class_names.join(", ")
                   : "-"}

@@ -23,16 +23,16 @@ export default function TablePagination({
         type="button"
         onClick={onPrevious}
         disabled={!hasPrevious || loading}
-        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
       >
         Página anterior
       </button>
-      <span className="text-sm text-slate-500">Página {page}</span>
+      <span className="text-sm text-slate-500 dark:text-slate-300">Página {page}</span>
       <button
         type="button"
         onClick={onNext}
         disabled={!hasNext || loading}
-        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
       >
         Próxima página
       </button>

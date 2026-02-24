@@ -135,7 +135,7 @@ export function useRichEditor(initialHtml: string) {
           "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2",
           "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2",
           "[&_li]:my-1",
-          "[&_a]:text-emerald-700 [&_a]:underline",
+          "[&_a]:text-brand-500 [&_a]:underline",
         ].join(" "),
       },
     },
@@ -362,7 +362,7 @@ export default function RichEditor({
                 value={latex}
                 onChange={(e) => setLatex(e.target.value)}
                 placeholder={`Ex: \\frac{1}{2}, \\sqrt{2}, x^2, \\sum_{i=1}^{n} i`}
-                className="w-full min-h-[96px] rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full min-h-[96px] rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/40"
               />
 
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 min-h-[52px]">
@@ -387,7 +387,7 @@ export default function RichEditor({
 
                 <button
                   type="button"
-                  className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                  className="px-3 py-2 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60"
                   onClick={insertFormula}
                   disabled={!latex.trim()}
                 >
@@ -435,7 +435,7 @@ export default function RichEditor({
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="ex: https://site.com ou site.com"
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                  className="w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/40"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") applyLink();
@@ -472,7 +472,7 @@ export default function RichEditor({
 
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                    className="px-3 py-2 text-sm rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-60"
                     onClick={applyLink}
                     disabled={!linkUrl.trim()}
                   >
@@ -514,7 +514,7 @@ function Btn({
       className={[
         "rounded-md border p-2 transition flex items-center justify-center",
         "border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
-        active ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "",
+        active ? "bg-emerald-100 text-brand-600 border-emerald-200" : "",
         disabled ? "opacity-40 cursor-not-allowed hover:bg-white" : "",
       ].join(" ")}
     >

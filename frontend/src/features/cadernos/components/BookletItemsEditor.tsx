@@ -49,7 +49,7 @@ export default function BookletItemsEditor({
         <button
           type="button"
           onClick={onAddClick}
-          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600"
         >
           Adicionar questões
         </button>

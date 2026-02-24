@@ -107,7 +107,7 @@ export default function SigeMultiCombobox({
         <div
           className={[
             "flex w-full flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700",
-            "focus-within:ring-2 focus-within:ring-emerald-200",
+            "focus-within:ring-2 focus-within:ring-brand-500/40",
             disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : "",
           ].join(" ")}
         >

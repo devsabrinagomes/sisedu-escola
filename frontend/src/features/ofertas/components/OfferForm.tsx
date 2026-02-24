@@ -218,7 +218,7 @@ export default function OfferForm({
               onChange={(e) => setDescription(e.target.value.slice(0, 500))}
               rows={4}
               placeholder="Nome ou título da oferta"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40"
             />
             {errors.description ? (
               <p className="mt-1 text-xs text-red-600">{errors.description}</p>
@@ -344,7 +344,7 @@ export default function OfferForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
         >
           {saving
             ? mode === "create"

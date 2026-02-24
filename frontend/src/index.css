@@ -2,35 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
-
+/* ================================
+   TOKENS LIGHT
+================================ */
 :root{
+  /* fundo principal light */
+  --bg-light:#fafafa;
+
+  /* chart */
   --chart-border:#cbd5e1;
+
+  /* semantic colors */
   --red-fill:#F28B82; --red-stroke:#D9534F;
   --yellow-fill:#F6E58D; --yellow-stroke:#E1C542;
   --green-fill:#9EDC9A; --green-stroke:#4CAF50;
   --blue-fill:#5FC5FF; --blue-stroke:#009BF5;
+
+  /* timeline */
+  --timeline-neutral-fill:#F1F5F9;
+  --timeline-neutral-stroke:#64748B;
+  --timeline-dot-bg:#F8FAFC;
+  --timeline-dot-border:#CBD5E1;
+  --timeline-dot-icon:#64748B;
 }
 
-body {
-  background:
-    #fafafa;
+/* ================================
+   TOKENS DARK
+================================ */
+.dark{
+  /* fundo principal dark */
+  --bg-dark:#0f1115;
 
-  color: #0f172a;
+  /* chart */
+  --chart-border:#2a2f36;
+
+  /* semantic colors adaptadas p/ dark */
+  --red-fill:#7F1D1D; --red-stroke:#EF4444;
+  --yellow-fill:#3A2F0B; --yellow-stroke:#FACC15;
+  --green-fill:#0B3B2E; --green-stroke:#0DC782;
+  --blue-fill:#0A2E44; --blue-stroke:#38BDF8;
+
+  /* timeline refinada p/ dark premium */
+  --timeline-neutral-fill:#1e2228;
+  --timeline-neutral-stroke:#64748B;
+  --timeline-dot-bg:#171a1f;
+  --timeline-dot-border:#2a2f36;
+  --timeline-dot-icon:#CBD5E1;
+}
+
+/* ================================
+   BASE
+================================ */
+body {
+  @apply bg-[var(--bg-light)] text-slate-900 
+         dark:bg-[var(--bg-dark)] dark:text-slate-100;
 }
 
 html, body, #root { height: 100%; }
 body { margin: 0; }
 #root { min-height: 100vh; }
 
-/* esconde scrollbar (só visual) */
+/* ================================
+   SCROLLBAR
+================================ */
 .scrollbar-hide {
-  -ms-overflow-style: none; /* IE/Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
+/* ================================
+   COMPONENTES BASE
+================================ */
+
+/* botão padrão */
 .btn {
-  @apply px-2 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 transition;
+  @apply rounded-md border border-slate-200 bg-white px-2 py-1 
+         transition-all duration-200 
+         hover:bg-slate-100
+         dark:border-[#2a2f36] 
+         dark:bg-[#171a1f] 
+         dark:text-slate-100 
+         dark:hover:bg-[#1e2228];
+}
+
+/* texto secundário padrão */
+.text-muted {
+  @apply text-slate-600 dark:text-slate-300;
+}
+
+/* card base */
+.card {
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm
+         dark:border-[#2a2f36]
+         dark:bg-[#171a1f]
+         dark:shadow-none;
+}
+
+/* hover suave para cards */
+.card-hover {
+  @apply transition-colors duration-200 
+         hover:bg-slate-50
+         dark:hover:bg-[#1e2228];
 }

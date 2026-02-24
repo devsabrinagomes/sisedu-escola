@@ -1,9 +1,10 @@
 import { Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
-import { Menu, X } from "lucide-react";
-import { links } from "./Sidebar"
+import { Menu, Moon, Sun } from "lucide-react";
 import logo from "../assets/images/logo/logo.png";
+import logoDark from "../assets/images/logo/logo-darkmode.png";
+import { useTheme } from "@/shared/hooks/useTheme";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -11,6 +12,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   // fecha ao apertar ESC
   useEffect(() => {
@@ -22,15 +24,15 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="min-h-screen text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-darkbg dark:text-slate-100">
       {/* HEADER */}
-      <header className="sticky top-0 z-20 h-auto border-b border-green-500 bg-white text-white shadow-md">
+      <header className="sticky top-0 z-20 h-auto border-b border-green-500 bg-white shadow-md dark:border-borderDark dark:bg-surface-1">
         <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             {/* Botão sanduíche: só no mobile */}
             <button
               type="button"
-              className="inline-flex lg:hidden items-center justify-center rounded-lg p-2 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/40"
+              className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 lg:hidden dark:text-slate-100 dark:hover:bg-surface-2 dark:focus-visible:ring-brand-500/40"
               onClick={() => setOpen(true)}
               aria-label="Abrir menu"
             >
@@ -38,11 +40,20 @@ export default function Layout() {
             </button>
 
             <img
-              src={logo}
+              src={theme === "dark" ? logoDark : logo}
               alt="SISEDU Escola"
               className="h-20 w-auto"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:border-borderDark dark:bg-surface-2 dark:text-brand-400 dark:hover:bg-surface-2"
+          >
+            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
         </div>
       </header>
 

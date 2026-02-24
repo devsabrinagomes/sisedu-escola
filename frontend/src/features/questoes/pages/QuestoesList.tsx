@@ -319,7 +319,7 @@ export default function QuestoesList() {
 
   function getSortIcon(column: SortKey) {
     const active = sortByTab[activeTab].key === column;
-    if (!active) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+    if (!active) return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-300" />;
     return sortByTab[activeTab].dir === "asc" ? (
       <ArrowUp className="h-3.5 w-3.5" />
     ) : (
@@ -441,10 +441,10 @@ export default function QuestoesList() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <section className="lg:col-span-9 space-y-4 min-w-0">
         {/* Topo */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1">
           <div className="mb-6">
-            <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Questões</h1>
-            <p className="mt-1 text-sm text-gray-500">Crie, edite e gerencie questões.</p>
+            <h1 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Questões</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">Crie, edite e gerencie questões.</p>
           </div>
           <Tabs
             tabs={[
@@ -453,9 +453,9 @@ export default function QuestoesList() {
             ]}
             active={activeTab}
             onChange={onTabChange}
-            className="mb-4 inline-flex items-center rounded-xl !border-0 bg-slate-100 p-1 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button]:font-medium [&>button]:rounded-lg [&>button]:transition [&>button]:!border-0 [&>button[aria-selected='true']]:bg-white [&>button[aria-selected='true']]:text-slate-900 [&>button[aria-selected='true']]:shadow-sm [&>button[aria-selected='true']]:font-medium [&>button[aria-selected='false']]:text-slate-500 [&>button[aria-selected='false']]:hover:text-slate-700"
+            className="mb-4 inline-flex items-center rounded-xl !border-0 bg-slate-100 p-1 dark:bg-surface-2 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button]:font-medium [&>button]:rounded-lg [&>button]:transition [&>button]:!border-0 [&>button[aria-selected='true']]:bg-white [&>button[aria-selected='true']]:text-slate-900 [&>button[aria-selected='true']]:shadow-sm [&>button[aria-selected='true']]:font-medium dark:[&>button[aria-selected='true']]:bg-surface-1 dark:[&>button[aria-selected='true']]:text-slate-100 [&>button[aria-selected='false']]:text-slate-500 [&>button[aria-selected='false']]:hover:text-slate-700 dark:[&>button[aria-selected='false']]:text-slate-300 dark:[&>button[aria-selected='false']]:hover:text-slate-100"
           />
-          <label className="block text-xs font-medium text-slate-500">
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-300">
             Buscar questões
           </label>
 
@@ -470,7 +470,7 @@ export default function QuestoesList() {
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onEnter}
                 placeholder="Enunciado ou código"
-                className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-100 dark:placeholder:text-slate-400"
               />
 
               {q && (
@@ -487,7 +487,7 @@ export default function QuestoesList() {
 
             <button
               onClick={() => load(q, activeTab)}
-              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:bg-slate-50 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
               type="button"
               aria-label="Buscar"
               title="Buscar"
@@ -500,13 +500,13 @@ export default function QuestoesList() {
             <button
               type="button"
               onClick={() => setFiltersOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
             >
               <Filter className="h-4 w-4" />
               <span>Filtros</span>
 
               {activeFiltersCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-bold text-white">
                   {activeFiltersCount}
                 </span>
               )}
@@ -515,7 +515,7 @@ export default function QuestoesList() {
             {activeTab === "mine" && (
               <Link
                 to="/questoes/nova"
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border dark:border-brand-500/40 dark:bg-brand-400 dark:text-slate-950 dark:hover:bg-brand-500 dark:hover:text-white"
               >
                 + Nova questão
               </Link>
@@ -532,7 +532,7 @@ export default function QuestoesList() {
             {activeTab === "mine" && (
               <Link
                 to="/questoes/nova"
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border dark:border-brand-500/40 dark:bg-brand-400 dark:text-slate-950 dark:hover:bg-brand-500 dark:hover:text-white"
               >
                 + Nova questão
               </Link>
@@ -555,11 +555,11 @@ export default function QuestoesList() {
         {/* MOBILE: cards */}
         <div className="space-y-3 lg:hidden">
           {loading ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm dark:border-borderDark dark:bg-surface-1 dark:text-slate-300">
               Carregando…
             </div>
           ) : sortedItems.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500 text-center shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 shadow-sm dark:border-borderDark dark:bg-surface-1 dark:text-slate-300">
               {emptyMessage}
             </div>
           ) : (
@@ -576,7 +576,7 @@ export default function QuestoesList() {
               return (
                 <div
                   key={it.id}
-                  className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${
+                  className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-borderDark dark:bg-surface-1 ${
                     activeTab === "mine" && v?.annulled ? "opacity-60" : ""
                   }`}
                 >
@@ -591,7 +591,7 @@ export default function QuestoesList() {
 
                       <Link
                         to={`/questoes/${it.id}`}
-                        className="mt-1 block w-full whitespace-normal break-words line-clamp-2 cursor-pointer text-left text-sm font-semibold text-slate-900 hover:text-emerald-700 hover:underline"
+                        className="mt-1 block w-full whitespace-normal break-words line-clamp-2 cursor-pointer text-left text-sm font-semibold text-slate-900 hover:text-brand-500 hover:underline"
                         title={resumo || ""}
                       >
                         {resumo || "—"}
@@ -607,7 +607,7 @@ export default function QuestoesList() {
                       {activeTab === "public" && (
                         <AddToCadernoButton
                           onClick={() => openAddToCadernoModal(it.id)}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600"
                         />
                       )}
                       {activeTab === "mine" && isMine && (
@@ -648,13 +648,13 @@ export default function QuestoesList() {
         </div>
 
         {/* DESKTOP: tabela */}
-        <div className="hidden lg:block rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:block dark:border-borderDark dark:bg-surface-1">
           {loading ? (
-            <div className="px-4 py-8 text-sm text-slate-500">
+            <div className="px-4 py-8 text-sm text-slate-500 dark:text-slate-300">
               Carregando…
             </div>
           ) : sortedItems.length === 0 ? (
-            <div className="px-4 py-10 text-sm text-slate-500 text-center">
+            <div className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-300">
               {emptyMessage}
             </div>
           ) : (
@@ -665,10 +665,10 @@ export default function QuestoesList() {
                 <col className="w-32" />
                 <col className="w-36" />
               </colgroup>
-              <thead className="border-b border-slate-200 bg-slate-50">
+              <thead className="border-b border-slate-200 bg-slate-50 dark:border-borderDark dark:bg-surface-2">
                 <tr>
                   <th
-                    className="w-14 px-5 py-3 text-left text-xs font-semibold text-slate-600"
+                    className="w-14 px-5 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300"
                     aria-sort={
                       sortByTab[activeTab].key === "code"
                         ? sortByTab[activeTab].dir === "asc"
@@ -680,7 +680,7 @@ export default function QuestoesList() {
                     <button
                       type="button"
                       onClick={() => toggleSort("code")}
-                      className="inline-flex items-center gap-1 hover:text-slate-900"
+                      className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100"
                       title="Ordenar"
                     >
                       Código
@@ -688,7 +688,7 @@ export default function QuestoesList() {
                     </button>
                   </th>
                   <th
-                    className="w-full px-5 py-3 text-left text-xs font-semibold text-slate-600"
+                    className="w-full px-5 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300"
                     aria-sort={
                       sortByTab[activeTab].key === "title"
                         ? sortByTab[activeTab].dir === "asc"
@@ -700,7 +700,7 @@ export default function QuestoesList() {
                     <button
                       type="button"
                       onClick={() => toggleSort("title")}
-                      className="inline-flex items-center gap-1 hover:text-slate-900"
+                      className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100"
                       title="Ordenar"
                     >
                       Enunciado
@@ -708,7 +708,7 @@ export default function QuestoesList() {
                     </button>
                   </th>
                   <th
-                    className="w-28 px-5 py-3 text-left text-xs font-semibold text-slate-600"
+                    className="w-28 px-5 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300"
                     aria-sort={
                       sortByTab[activeTab].key === "subject"
                         ? sortByTab[activeTab].dir === "asc"
@@ -720,14 +720,14 @@ export default function QuestoesList() {
                     <button
                       type="button"
                       onClick={() => toggleSort("subject")}
-                      className="inline-flex items-center gap-1 hover:text-slate-900"
+                      className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100"
                       title="Ordenar"
                     >
                       Disciplina
                       {getSortIcon("subject")}
                     </button>
                   </th>
-                  <th className="w-36 whitespace-nowrap px-5 py-3 text-left text-xs font-semibold text-slate-600">
+                  <th className="w-36 whitespace-nowrap px-5 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
                     {activeTab === "mine" ? (
                       "Ações"
                     ) : (
@@ -748,33 +748,33 @@ export default function QuestoesList() {
                   return (
                     <tr
                       key={it.id}
-                      className={`border-t border-slate-100 hover:bg-slate-50 transition ${
+                      className={`border-t border-slate-100 transition hover:bg-slate-50 dark:border-borderDark dark:hover:bg-surface-2 ${
                         activeTab === "mine" && isAnnulled ? "opacity-60" : ""
                       }`}
                     >
-                      <td className="w-14 px-5 py-3 align-middle text-sm text-slate-700">
+                      <td className="w-14 px-5 py-3 align-middle text-sm text-slate-700 dark:text-slate-300">
                         {it.id}
                       </td>
-                      <td className="w-full px-5 py-3 align-middle text-sm text-slate-700">
+                      <td className="w-full px-5 py-3 align-middle text-sm text-slate-700 dark:text-slate-300">
                         <Link
                           to={`/questoes/${it.id}`}
-                          className="block w-full whitespace-normal break-words line-clamp-2 cursor-pointer text-slate-900 hover:text-emerald-700 hover:underline"
+                          className="block w-full whitespace-normal break-words line-clamp-2 cursor-pointer text-slate-900 dark:text-slate-100 hover:text-brand-500 hover:underline"
                           title={enunciado}
                         >
                           {enunciado || "—"}
                         </Link>
                         {activeTab === "mine" && isAnnulled && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                          <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-surface-2 dark:text-slate-200">
                             Anulada
                           </span>
                         )}
                       </td>
-                      <td className="w-28 px-5 py-3 align-middle text-sm text-slate-700">
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
+                      <td className="w-28 px-5 py-3 align-middle text-sm text-slate-700 dark:text-slate-300">
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 dark:bg-surface-2 dark:text-slate-100">
                           {subjectLabel}
                         </span>
                       </td>
-                      <td className="w-36 whitespace-nowrap px-5 py-3 align-middle text-sm text-slate-700">
+                      <td className="w-36 whitespace-nowrap px-5 py-3 align-middle text-sm text-slate-700 dark:text-slate-300">
                         {activeTab === "mine" ? (
                           <QuestionActions
                             isMine={isMine}
@@ -789,7 +789,7 @@ export default function QuestoesList() {
                         ) : (
                           <AddToCadernoButton
                             onClick={() => openAddToCadernoModal(it.id)}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-brand-500 hover:text-brand-600"
                           />
                         )}
                       </td>
@@ -815,8 +815,8 @@ export default function QuestoesList() {
 
       {/* FILTROS (desktop) */}
       <aside className="hidden lg:block lg:col-span-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
             Filtros
           </div>
 
@@ -880,7 +880,7 @@ export default function QuestoesList() {
                 setCriadoEm("qualquer");
                 setQ("");
               }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
             >
               Limpar filtros
             </button>
@@ -899,7 +899,7 @@ export default function QuestoesList() {
           />
 
           <div className="absolute inset-x-0 bottom-0">
-            <div className="rounded-t-2xl bg-white shadow-2xl border-t border-slate-200">
+            <div className="rounded-t-2xl border-t border-slate-200 bg-white shadow-2xl dark:border-borderDark dark:bg-surface-1">
               <div className="flex justify-center pt-3">
                 <div className="h-1 w-12 rounded-full bg-slate-200" />
               </div>
@@ -908,7 +908,7 @@ export default function QuestoesList() {
                 <div className="text-sm font-semibold text-slate-900">
                   Filtros
                   {activeFiltersCount > 0 && (
-                    <span className="ml-2 text-xs font-semibold text-emerald-700">
+                    <span className="ml-2 text-xs font-semibold text-brand-500">
                       ({activeFiltersCount})
                     </span>
                   )}
@@ -980,7 +980,7 @@ export default function QuestoesList() {
                 </div>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4">
+              <div className="absolute inset-x-0 bottom-0 border-t border-slate-200 bg-white p-4 dark:border-borderDark dark:bg-surface-1">
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -990,7 +990,7 @@ export default function QuestoesList() {
                       setQ("");
                       setFiltersOpen(false);
                     }}
-                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
                   >
                     Limpar
                   </button>
@@ -998,7 +998,7 @@ export default function QuestoesList() {
                   <button
                     type="button"
                     onClick={() => setFiltersOpen(false)}
-                    className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+                    className="flex-1 rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition"
                   >
                     Aplicar
                   </button>
@@ -1051,7 +1051,7 @@ function FilterGroup({
 }) {
   return (
     <div>
-      <div className="text-xs font-semibold text-slate-700 mb-2">{title}</div>
+      <div className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{title}</div>
       <div className="space-y-1">{children}</div>
     </div>
   );
@@ -1072,8 +1072,8 @@ function FilterLink({
       onClick={onClick}
       className={`block w-full text-left rounded px-2 py-1 ${
         active
-          ? "text-slate-900 font-semibold bg-slate-100"
-          : "text-slate-600 hover:bg-slate-50"
+          ? "bg-slate-100 text-slate-900 font-semibold dark:bg-surface-2 dark:text-slate-100"
+          : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-surface-2"
       }`}
     >
       {children}

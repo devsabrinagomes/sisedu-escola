@@ -169,7 +169,7 @@ function RichTextField({
   return (
     <div
       className={[
-        "mt-1 rounded-lg border border-slate-200 bg-white",
+        "mt-1 rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1",
         disabled ? "opacity-70" : "",
       ].join(" ")}
     >
@@ -486,16 +486,16 @@ export default function QuestaoForm({
       )}
 
       {/* PRIVACIDADE */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-900">Visibilidade</div>
-            <div className="text-xs text-slate-500">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Visibilidade</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               Pública aparece pra todos; privada só pra você.
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+          <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
             <CheckToggle
               checked={isPrivate}
               onChange={setIsPrivate}
@@ -509,13 +509,13 @@ export default function QuestaoForm({
       </div>
 
       {/* CURRÍCULO */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-        <div className="text-sm font-semibold text-slate-900">Classificação</div>
+      <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-5 shadow-sm space-y-4">
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Classificação</div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* SUBJECT */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Disciplina</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Disciplina</label>
             <select
               value={subjectId}
               onChange={(e) => {
@@ -524,7 +524,7 @@ export default function QuestaoForm({
                 setDescriptorId("");
                 setSkillId("");
               }}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
             >
               <option value="">Selecione…</option>
               {subjects.map((s) => (
@@ -537,7 +537,7 @@ export default function QuestaoForm({
 
           {/* DESCRIPTOR */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Descritor</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descritor</label>
             <select
               value={descriptorId}
               onChange={(e) => {
@@ -546,7 +546,7 @@ export default function QuestaoForm({
                 setSkillId("");
               }}
               disabled={!subjectId}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 disabled:bg-slate-50 dark:disabled:bg-surface-2"
             >
               <option value="">(Opcional) Selecione…</option>
               {descriptors.map((d) => (
@@ -559,7 +559,7 @@ export default function QuestaoForm({
 
           {/* SKILL */}
           <div>
-            <label className="text-xs font-semibold text-slate-700">Habilidade</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Habilidade</label>
             <select
               value={skillId}
               onChange={(e) => {
@@ -567,7 +567,7 @@ export default function QuestaoForm({
                 setSkillId(v as any);
               }}
               disabled={!descriptorId}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 disabled:bg-slate-50 dark:disabled:bg-surface-2"
             >
               <option value="">(Opcional) Selecione…</option>
               {skills.map((s) => (
@@ -581,11 +581,11 @@ export default function QuestaoForm({
       </div>
 
       {/* CONTEÚDO */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-        <div className="text-sm font-semibold text-slate-900">Conteúdo</div>
+      <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-5 shadow-sm space-y-4">
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Conteúdo</div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700">Enunciado</label>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Enunciado</label>
           <RichTextField
             value={title}
             onChange={setTitle}
@@ -594,7 +594,7 @@ export default function QuestaoForm({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-700">Comando</label>
+          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Comando</label>
           <RichTextField
             value={command}
             onChange={setCommand}
@@ -602,14 +602,14 @@ export default function QuestaoForm({
           />
         </div>
 
-        <details className="rounded-xl border border-slate-200 bg-slate-50/40 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+        <details className="rounded-xl border border-slate-200 dark:border-borderDark bg-slate-50/40 dark:bg-surface-2/60 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-900 dark:text-slate-100">
             Apoio (opcional)
           </summary>
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-700">Texto de apoio</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Texto de apoio</label>
               <RichTextField
                 value={supportText}
                 onChange={setSupportText}
@@ -618,19 +618,19 @@ export default function QuestaoForm({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700">Imagem de apoio</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Imagem de apoio</label>
 
               {mode === "edit" && latest?.support_image && !removeSupportImage && (
                 <div className="mt-2 flex items-center gap-3">
                   <img
                     src={latest.support_image}
                     alt="Imagem atual"
-                    className="h-16 w-16 rounded-lg border border-slate-200 object-cover bg-white"
+                    className="h-16 w-16 rounded-lg border border-slate-200 dark:border-borderDark object-cover bg-white dark:bg-surface-1"
                   />
                   <button
                     type="button"
                     onClick={() => setRemoveSupportImage(true)}
-                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    className="rounded-lg border border-red-200 bg-white dark:bg-surface-1 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     Remover imagem atual
                   </button>
@@ -638,7 +638,7 @@ export default function QuestaoForm({
               )}
 
               {removeSupportImage && (
-                <div className="mt-2 text-xs text-slate-600">
+                <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
                   ✅ Vai remover a imagem atual ao salvar.
                   <button
                     type="button"
@@ -659,11 +659,11 @@ export default function QuestaoForm({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-700">Referência da imagem</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Referência da imagem</label>
               <input
                 value={imageReference}
                 onChange={(e) => setImageReference(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
                 placeholder="Fonte/URL/créditos…"
               />
             </div>
@@ -672,16 +672,16 @@ export default function QuestaoForm({
       </div>
 
       {/* ALTERNATIVAS */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-900">Alternativas</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Alternativas</div>
 
           <div className="flex items-center gap-2">
             {options.length < 5 ? (
               <button
                 type="button"
                 onClick={addOption}
-                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600"
               >
                 + Adicionar alternativa (E)
               </button>
@@ -689,7 +689,7 @@ export default function QuestaoForm({
               <button
                 type="button"
                 onClick={removeLastOption}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
               >
                 - Remover alternativa (E)
               </button>
@@ -701,15 +701,17 @@ export default function QuestaoForm({
           {options.map((opt) => (
             <div
               key={opt.letter}
-              className={[
-                "rounded-xl bg-white p-4",
-                opt.correct ? "border-2 border-emerald-500" : "border border-slate-200",
+                className={[
+                "rounded-xl bg-white dark:bg-surface-1 p-4",
+                opt.correct
+                  ? "border-2 border-emerald-500 dark:border-brand-500/50"
+                  : "border border-slate-200 dark:border-borderDark",
               ].join(" ")}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-slate-900">{opt.letter})</div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{opt.letter})</div>
 
-                <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <CheckToggle
                     checked={opt.correct}
                     onChange={() => setCorrect(opt.letter)}
@@ -721,7 +723,7 @@ export default function QuestaoForm({
                 </div>
               </div>
 
-              <div className="mt-2 inline-flex rounded-lg border border-slate-200 p-1">
+              <div className="mt-2 inline-flex rounded-lg border border-slate-200 dark:border-borderDark p-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -741,8 +743,8 @@ export default function QuestaoForm({
                   className={[
                     "rounded-md px-2 py-1 text-xs font-semibold transition",
                     opt.input_mode === "text"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "text-slate-600 hover:bg-slate-100",
+                      ? "bg-emerald-100 text-brand-500 dark:bg-brand-500/20 dark:text-brand-400"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-surface-2",
                   ].join(" ")}
                 >
                   Texto
@@ -766,8 +768,8 @@ export default function QuestaoForm({
                   className={[
                     "rounded-md px-2 py-1 text-xs font-semibold transition",
                     opt.input_mode === "image"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "text-slate-600 hover:bg-slate-100",
+                      ? "bg-emerald-100 text-brand-500 dark:bg-brand-500/20 dark:text-brand-400"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-surface-2",
                   ].join(" ")}
                 >
                   Imagem
@@ -796,7 +798,7 @@ export default function QuestaoForm({
               />
 
               <div className="mt-2">
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Imagem
                 </label>
                 <input
@@ -826,14 +828,14 @@ export default function QuestaoForm({
               {(!!opt.file || (!!opt.currentUrl && !opt.remove)) && (
                 <div className="mt-2 flex items-center gap-3">
                   {opt.file ? (
-                    <div className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                    <div className="rounded-md bg-slate-100 dark:bg-surface-2 px-2 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Nova imagem selecionada
                     </div>
                   ) : (
                     <img
                       src={opt.currentUrl as string}
                       alt={`Imagem ${opt.letter}`}
-                      className="h-16 w-16 rounded-lg border border-slate-200 object-cover bg-white"
+                      className="h-16 w-16 rounded-lg border border-slate-200 dark:border-borderDark object-cover bg-white dark:bg-surface-1"
                     />
                   )}
                   <button
@@ -847,7 +849,7 @@ export default function QuestaoForm({
                         )
                       );
                     }}
-                    className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                    className="rounded-lg border border-red-200 bg-white dark:bg-surface-1 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     Remover imagem
                   </button>
@@ -855,7 +857,7 @@ export default function QuestaoForm({
               )}
 
               {optionIsEmpty(opt) && (
-                <div className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                <div className="mt-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-900/25 dark:text-amber-300">
                   Preencha o texto ou envie uma imagem.
                 </div>
               )}
@@ -870,14 +872,14 @@ export default function QuestaoForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
           >
             Cancelar
           </button>
         ) : (
           <Link
             to="/questoes"
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
           >
             Cancelar
           </Link>
@@ -886,7 +888,7 @@ export default function QuestaoForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 dark:border dark:border-brand-500/40 dark:bg-brand-600 dark:hover:bg-brand-500 disabled:opacity-60"
         >
           {saving ? "Salvando…" : mode === "create" ? "Criar questão" : "Salvar nova versão"}
         </button>

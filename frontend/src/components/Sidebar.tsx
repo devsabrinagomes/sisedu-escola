@@ -18,7 +18,12 @@ type Tone = "red" | "yellow" | "green" | "blue";
 export const links: Array<{
   to: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+    className?: string;
+  }>;
   tone: Tone;
 }> = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, tone: "green" },
@@ -40,11 +45,11 @@ export default function Sidebar({
 }) {
   return (
     <aside className="w-full">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-borderDark dark:bg-surface-1">
         {(showTitle || headerRight) && (
           <div className="flex items-center justify-between">
             {showTitle ? (
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
                 Navegação
               </div>
             ) : (
@@ -69,10 +74,10 @@ export default function Sidebar({
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cx(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition",
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors duration-200",
                     isActive
-                      ? "bg-emerald-600 text-white"
-                      : "text-slate-700 hover:bg-slate-100"
+                      ? "bg-brand-500 text-white hover:bg-brand-600 dark:bg-brand-500/15 dark:text-brand-400 dark:hover:bg-brand-500/25"
+                      : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-surface-2"
                   )
                 }
               >
@@ -80,8 +85,10 @@ export default function Sidebar({
                   <>
                     <span
                       className={cx(
-                        "grid h-8 w-8 place-items-center rounded-lg border transition",
-                        isActive ? "border-white/25 bg-white/15" : "border-slate-200"
+                        "grid h-8 w-8 place-items-center rounded-lg border transition-colors duration-200",
+                        isActive
+                          ? "border-white/25 bg-white/15 dark:border-brand-500/25 dark:bg-brand-500/10"
+                          : "border-slate-200 dark:border-borderDark"
                       )}
                       style={{ background: isActive ? undefined : fillVar }}
                       aria-hidden
@@ -89,7 +96,8 @@ export default function Sidebar({
                       <Icon
                         size={18}
                         strokeWidth={2}
-                        style={{ color: isActive ? "white" : strokeVar }}
+                        className={isActive ? "text-white dark:text-brand-400" : undefined}
+                        style={isActive ? undefined : { color: strokeVar }}
                       />
                     </span>
 

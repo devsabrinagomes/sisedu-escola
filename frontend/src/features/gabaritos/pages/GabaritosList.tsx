@@ -85,7 +85,7 @@ export default function GabaritosList() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1">
         <div className="mb-6">
           <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Gabaritos</h1>
           <p className="mt-1 text-sm text-gray-500">Gerencie o preenchimento e correção dos gabaritos.</p>
@@ -103,7 +103,7 @@ export default function GabaritosList() {
                   setFilters((prev) => ({ ...prev, search: e.target.value, page: 1 }))
                 }
                 placeholder="Descrição da oferta ou caderno"
-                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40"
               />
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function GabaritosList() {
             <select
               value={filters.status || "all"}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40"
             >
               <option value="all">Todos</option>
               <option value="upcoming">Em breve</option>
@@ -149,7 +149,7 @@ export default function GabaritosList() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-borderDark dark:bg-surface-1">
         {loading ? (
           <div className="px-4 py-8 text-sm text-slate-500">Carregando...</div>
         ) : sortedItems.length === 0 ? (
@@ -158,7 +158,7 @@ export default function GabaritosList() {
           </div>
         ) : (
           <table className="w-full table-auto border-collapse">
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-slate-200 bg-slate-50 dark:border-borderDark dark:bg-surface-2">
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600">
                   <button
@@ -207,7 +207,7 @@ export default function GabaritosList() {
                     <td className="px-5 py-3 text-sm text-slate-800">
                       <Link
                         to={`/gabaritos/ofertas/${offer.id}`}
-                        className="block font-medium text-slate-900 hover:text-emerald-700 hover:underline"
+                        className="block font-medium text-slate-900 hover:text-brand-500 hover:underline"
                       >
                         {offer.description?.trim() || `Oferta #${offer.id}`}
                       </Link>
@@ -228,7 +228,7 @@ export default function GabaritosList() {
                       {canManage ? (
                         <Link
                           to={`/gabaritos/ofertas/${offer.id}`}
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600"
                         >
                           Gerenciar gabaritos
                         </Link>

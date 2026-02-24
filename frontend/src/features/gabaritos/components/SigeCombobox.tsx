@@ -119,7 +119,7 @@ export default function SigeCombobox({
         <div
           className={[
             "flex w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700",
-            "focus-within:ring-2 focus-within:ring-emerald-200",
+            "focus-within:ring-2 focus-within:ring-brand-500/40",
             disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : "",
           ].join(" ")}
         >

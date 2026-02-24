@@ -9,7 +9,7 @@ export function getApplicationStatusLabel(status: ApplicationStatus) {
 
 export function getApplicationStatusBadgeClass(status: ApplicationStatus) {
   if (status === "ABSENT") return "bg-amber-50 text-amber-700 border border-amber-100";
-  if (status === "FINALIZED") return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+  if (status === "FINALIZED") return "bg-emerald-50 text-brand-500 border border-emerald-100";
   if (status === "RECOGNIZED") return "bg-indigo-50 text-indigo-700 border border-indigo-100";
   return "bg-slate-100 text-slate-700 border border-slate-200";
 }

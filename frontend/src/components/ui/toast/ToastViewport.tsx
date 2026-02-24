@@ -17,7 +17,7 @@ function toastTone(type: ToastType) {
   if (type === "success") {
     return {
       icon: CheckCircle,
-      className: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      className: "bg-emerald-50 border-emerald-200 text-brand-600",
     };
   }
   if (type === "error") {

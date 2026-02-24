@@ -63,23 +63,23 @@ export default function RelatorioTurmasList() {
       ) : null}
 
       {loading ? (
-        <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
+        <div className="rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 px-4 py-8 text-sm text-slate-500 dark:text-slate-400">
           Carregando turmas...
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((row) => (
-            <div key={row.class_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="bg-emerald-600 px-4 py-3 text-sm font-semibold text-white">{row.class_name}</div>
+            <div key={row.class_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1 shadow-sm">
+              <div className="bg-brand-500 px-4 py-3 text-sm font-semibold text-white">{row.class_name}</div>
               <div className="space-y-3 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumo</div>
-                <div className="text-sm text-slate-700">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Resumo</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300">
                   Total de alunos avaliados:{" "}
-                  <span className="font-semibold text-slate-900">{row.total_students}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{row.total_students}</span>
                 </div>
-                <div className="text-sm text-slate-700">
+                <div className="text-sm text-slate-700 dark:text-slate-300">
                   Percentual de acerto:{" "}
-                  <span className="font-semibold text-slate-900">{formatPct(row.accuracy_percent)}</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatPct(row.accuracy_percent)}</span>
                 </div>
                 {row.absent_count > 0 ? (
                   <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -93,7 +93,7 @@ export default function RelatorioTurmasList() {
                       `/relatorios/ofertas/${offerId}?class_ref=${row.class_id}&class_name=${encodeURIComponent(row.class_name)}`,
                     )
                   }
-                  className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  className="w-full rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
                 >
                   Acessar
                 </button>
@@ -101,7 +101,7 @@ export default function RelatorioTurmasList() {
             </div>
           ))}
           {rows.length === 0 ? (
-            <div className="col-span-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+            <div className="col-span-full rounded-lg border border-slate-200 bg-slate-50 dark:bg-surface-2 px-4 py-6 text-sm text-slate-600 dark:text-slate-400">
               Nenhuma turma vinculada a esta oferta.
             </div>
           ) : null}

@@ -169,7 +169,7 @@ export default function AnswersDrawer({
                                 className={[
                                   "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                                   checked
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    ? "border-emerald-200 bg-emerald-50 text-brand-500"
                                     : "border-slate-200 text-slate-700 hover:bg-slate-50",
                                 ].join(" ")}
                               >
@@ -231,7 +231,7 @@ export default function AnswersDrawer({
                   <button
                     type="button"
                     onClick={() => void onSave(true)}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
                     disabled={saving}
                   >
                     {saving ? "Salvando..." : "Salvar e voltar"}

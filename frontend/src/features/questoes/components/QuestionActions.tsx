@@ -27,7 +27,7 @@ export default function QuestionActions({
       <button
         type="button"
         onClick={onEdit}
-        className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+        className="p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:text-brand-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
         title="Editar"
         aria-label="Editar"
       >
@@ -39,8 +39,8 @@ export default function QuestionActions({
         onClick={onToggleAnnulled}
         className={
           annulled
-            ? "p-2 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition"
-            : "p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+            ? "p-2 rounded-lg text-slate-400 dark:text-slate-300 hover:text-brand-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
+            : "p-2 rounded-lg text-slate-400 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition"
         }
         title={annulled ? "Reativar questão" : "Anular questão"}
         aria-label={annulled ? "Reativar questão" : "Anular questão"}
@@ -52,7 +52,7 @@ export default function QuestionActions({
         <button
           type="button"
           onClick={onAddToCaderno}
-          className="p-2 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+          className="p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:text-brand-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition"
           title="Adicionar ao caderno"
           aria-label="Adicionar ao caderno"
         >
@@ -61,7 +61,7 @@ export default function QuestionActions({
       ) : (
         <button
           type="button"
-          className="p-2 rounded-lg text-slate-300 cursor-not-allowed"
+          className="cursor-not-allowed rounded-lg p-2 text-slate-300 dark:text-slate-600"
           title="Questão anulada não pode ser adicionada ao caderno"
           aria-label="Questão anulada não pode ser adicionada ao caderno"
         >
@@ -72,7 +72,7 @@ export default function QuestionActions({
       <button
         type="button"
         onClick={onRemove}
-        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+        className="p-2 rounded-lg text-slate-400 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition"
         title="Remover definitivamente"
         aria-label="Remover definitivamente"
       >

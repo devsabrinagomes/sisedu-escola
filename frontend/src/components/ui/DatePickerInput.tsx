@@ -108,7 +108,7 @@ export default function DatePickerInput({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 outline-none transition hover:bg-slate-50 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 outline-none transition hover:bg-slate-50 focus:ring-2 focus:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className={value ? "text-slate-700" : "text-slate-400"}>
           {formatDisplayDate(value) || placeholder}
@@ -166,10 +166,10 @@ export default function DatePickerInput({
                   className={[
                     "h-8 rounded-md text-sm transition",
                     isSelected
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      ? "bg-brand-500 text-white hover:bg-brand-600"
                       : "text-slate-700 hover:bg-slate-100",
                     !inCurrentMonth && !isSelected ? "text-slate-300" : "",
-                    isToday && !isSelected ? "ring-1 ring-emerald-200" : "",
+                    isToday && !isSelected ? "ring-1 ring-brand-500/40" : "",
                   ].join(" ")}
                 >
                   {date.getDate()}
@@ -189,7 +189,7 @@ export default function DatePickerInput({
             <button
               type="button"
               onClick={() => selectDate(today)}
-              className="rounded-md px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50"
+              className="rounded-md px-2 py-1 text-xs font-medium text-brand-500 hover:bg-emerald-50"
             >
               Hoje
             </button>

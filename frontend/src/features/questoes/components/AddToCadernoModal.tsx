@@ -150,7 +150,7 @@ export default function AddToCadernoModal({
             type="button"
             onClick={onConfirm}
             disabled={!selectedCadernoId || adding}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
           >
             {adding ? "Adicionando..." : "Adicionar"}
           </button>
