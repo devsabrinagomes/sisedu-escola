@@ -19,7 +19,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -731,6 +731,87 @@ class SkillViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(descriptor__topic__subject_id=subject_id)
 
         return qs
+
+
+def _get_sisedu_report_base_url():
+    value = str(getattr(settings, "SISEDU_REPORT_BASE_URL", "") or "").strip()
+    return value.rstrip("/")
+
+
+def _proxy_sisedu_report_get(request, endpoint, allowed_params):
+    base_url = _get_sisedu_report_base_url()
+    if not base_url:
+        raise ValidationError({"detail": "SISEDU_REPORT_BASE_URL não configurada."})
+
+    query_items = []
+    for key in allowed_params:
+        value = request.query_params.get(key)
+        if value not in (None, ""):
+            query_items.append((key, value))
+
+    query_string = urllib_parse.urlencode(query_items, doseq=True)
+    path = f"/{str(endpoint).lstrip('/')}"
+    url = f"{base_url}{path}"
+    if query_string:
+        url = f"{url}?{query_string}"
+
+    headers = {"Accept": "application/json"}
+    cookie = request.META.get("HTTP_COOKIE")
+    if cookie:
+        headers["Cookie"] = cookie
+    csrf_token = request.META.get("HTTP_X_CSRFTOKEN")
+    if csrf_token:
+        headers["X-CSRFToken"] = csrf_token
+
+    req = urllib_request.Request(url, method="GET", headers=headers)
+    try:
+        with urllib_request.urlopen(req, timeout=30) as response:
+            raw = response.read().decode("utf-8", errors="ignore")
+            status_code = int(getattr(response, "status", status.HTTP_200_OK))
+    except urllib_error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="ignore") if hasattr(exc, "read") else ""
+        status_code = int(exc.code)
+    except urllib_error.URLError as exc:
+        raise ValidationError({"detail": f"Falha ao consumir Sisedu: {exc}"})
+
+    try:
+        payload = json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        payload = {"detail": raw or "Resposta inválida do Sisedu."}
+    return Response(payload, status=status_code)
+
+
+class SiseduReportDisciplinasView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return _proxy_sisedu_report_get(request, "/api/report/disciplinas/", allowed_params=())
+
+
+class SiseduReportDescritoresView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        if not request.query_params.get("disciplina"):
+            raise ValidationError({"detail": "Parâmetro obrigatório: disciplina."})
+        return _proxy_sisedu_report_get(
+            request,
+            "/api/report/descritores/",
+            allowed_params=("disciplina", "topico"),
+        )
+
+
+class SiseduReportNiveisDesempenhoView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        if not request.query_params.get("disciplina"):
+            raise ValidationError({"detail": "Parâmetro obrigatório: disciplina."})
+        return _proxy_sisedu_report_get(
+            request,
+            "/api/report/niveis_desempenho/",
+            allowed_params=("disciplina", "serie", "nivel"),
+        )
 
 
 class QuestionViewSet(viewsets.ModelViewSet):

@@ -1,6 +1,6 @@
 export const EP = {
-  subjects: "/subjects/",
-  descriptors: "/descriptors/",
-  skills: "/skills/",
+  subjects: "/report/disciplinas/",
+  descriptors: "/report/descritores/",
+  skills: "/report/niveis_desempenho/",
   questions: "/questions/",
 };

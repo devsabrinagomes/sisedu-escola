@@ -11,6 +11,7 @@ import AddToCadernoModal from "@/features/questoes/components/AddToCadernoModal"
 import QuestionActions from "@/features/questoes/components/QuestionActions";
 import { useToast } from "@/components/ui/toast/useToast";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
+import { getSubjects, type Subject } from "@/features/relatorios/services/siseduReports";
 
 function stripHtml(html: string) {
   const tmp = document.createElement("div");
@@ -24,8 +25,6 @@ type SortDir = "asc" | "desc";
 type ActiveTab = "mine" | "public";
 
 // ===== DTOs =====
-type SubjectDTO = { id: number; name: string };
-
 type QuestionOptionDTO = {
   id: number;
   letter: "A" | "B" | "C" | "D" | "E";
@@ -103,7 +102,7 @@ export default function QuestoesList() {
   const userId = Number(auth?.userId ?? auth?.id);
 
   const [items, setItems] = useState<QuestionDTO[]>([]);
-  const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -217,14 +216,11 @@ export default function QuestoesList() {
     }
   }
 
-  // carrega subjects (suporta paginado OU array)
+  // carrega disciplinas via Sisedu
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get<Paginated<SubjectDTO> | SubjectDTO[]>(
-          "/subjects/",
-        );
-        const list = Array.isArray(data) ? data : (data?.results ?? []);
+        const list = await getSubjects();
         setSubjects(list);
       } catch {
         setSubjects([]);

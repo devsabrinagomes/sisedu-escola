@@ -24,6 +24,9 @@ from .views import (
     OfferReportSummaryView,
     ReportsByClassView,
     ReportsOverviewView,
+    SiseduReportDescritoresView,
+    SiseduReportDisciplinasView,
+    SiseduReportNiveisDesempenhoView,
     OfferViewSet,
     QuestionViewSet,
 )
@@ -41,6 +44,13 @@ router.register(r"ofertas", OfferViewSet, basename="oferta")
 
 urlpatterns = [
     *router.urls,
+    path("report/disciplinas/", SiseduReportDisciplinasView.as_view(), name="sisedu-report-disciplinas"),
+    path("report/descritores/", SiseduReportDescritoresView.as_view(), name="sisedu-report-descritores"),
+    path(
+        "report/niveis_desempenho/",
+        SiseduReportNiveisDesempenhoView.as_view(),
+        name="sisedu-report-niveis-desempenho",
+    ),
     path("mock/sige/schools/", MockSigeSchoolsView.as_view(), name="mock-sige-schools"),
     path(
         "mock/sige/schools/<int:school_ref>/classes/",

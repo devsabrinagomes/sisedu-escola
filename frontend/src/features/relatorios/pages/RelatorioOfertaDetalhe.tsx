@@ -6,6 +6,7 @@ import Tabs from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/toast/useToast";
 import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
 import { listMockSigeSchoolClasses } from "@/features/gabaritos/services/gabaritos";
+import DisciplinaSaberHabilidadeForm from "@/features/relatorios/components/DisciplinaSaberHabilidadeForm";
 import {
   downloadReportItemsCsv,
   downloadReportStudentsCsv,
@@ -86,6 +87,14 @@ export default function RelatorioOfertaDetalhe() {
   const classNameFromQuery = String(searchParams.get("class_name") || "").trim();
   const schoolRefFromQueryRaw = searchParams.get("school_ref");
   const serieFromQueryRaw = searchParams.get("serie");
+  const topicoFromQueryRaw = searchParams.get("topico");
+  const nivelFromQueryRaw = searchParams.get("nivel");
+  const topicoFromQuery = Number(topicoFromQueryRaw || "");
+  const topicoId = Number.isFinite(topicoFromQuery) && topicoFromQuery > 0 ? topicoFromQuery : undefined;
+  const serieFromQuery = Number(serieFromQueryRaw || "");
+  const serieId = Number.isFinite(serieFromQuery) && serieFromQuery > 0 ? serieFromQuery : undefined;
+  const nivelFromQuery = Number(nivelFromQueryRaw || "");
+  const nivelId = Number.isFinite(nivelFromQuery) && nivelFromQuery > 0 ? nivelFromQuery : undefined;
 
   const [offer, setOffer] = useState<OfferDTO | null>(null);
   const [offerLoading, setOfferLoading] = useState(true);
@@ -472,6 +481,8 @@ export default function RelatorioOfertaDetalhe() {
               </div>
             </div>
           ) : null}
+
+          {!initialClassRef ? <DisciplinaSaberHabilidadeForm topicoId={topicoId} serie={serieId} nivel={nivelId} /> : null}
 
           {summaryError && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

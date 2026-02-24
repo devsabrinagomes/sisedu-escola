@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import {
+  getDescriptors,
+  getSkills,
+  getSubjects,
+  resolveSiseduContextFilters,
+  type Descriptor,
+  type Skill,
+  type Subject,
+} from "@/features/relatorios/services/siseduReports";
 import RichEditor, {
   hasMeaningfulHtml,
   normalizeHtml,
@@ -9,11 +18,6 @@ import RichEditor, {
 import CheckToggle from "@/components/ui/CheckToggle";
 
 export type Alternativa = "A" | "B" | "C" | "D" | "E";
-
-type SubjectDTO = { id: number; name: string };
-type TopicDTO = { id: number; subject: number };
-type DescriptorDTO = { id: number; topic: number; code: string; name: string };
-type SkillDTO = { id: number; descriptor: number; code: string; name: string };
 
 type QuestionOptionDTO = {
   id: number;
@@ -120,13 +124,6 @@ function toFriendlySaveError(e: any): string {
   return fallback || "Não foi possível salvar.";
 }
 
-async function fetchList<T>(url: string): Promise<T[]> {
-  const { data } = await api.get(url);
-  if (Array.isArray(data)) return data as T[];
-  if (data && Array.isArray(data.results)) return data.results as T[];
-  return [];
-}
-
 function RichTextField({
   value,
   onChange,
@@ -188,11 +185,12 @@ export default function QuestaoForm({
     () => pickLatestVersion(initialData?.versions),
     [initialData]
   );
+  const siseduContext = useMemo(() => resolveSiseduContextFilters(), []);
 
   // ====== catálogo ======
-  const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
-  const [descriptors, setDescriptors] = useState<DescriptorDTO[]>([]);
-  const [skills, setSkills] = useState<SkillDTO[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [descriptors, setDescriptors] = useState<Descriptor[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
 
   // ====== form fields ======
   const [isPrivate, setIsPrivate] = useState<boolean>(
@@ -268,7 +266,7 @@ export default function QuestaoForm({
   useEffect(() => {
     (async () => {
       try {
-        const list = await fetchList<SubjectDTO>("/subjects/");
+        const list = await getSubjects();
         setSubjects(list);
       } catch {
         setSubjects([]);
@@ -276,7 +274,7 @@ export default function QuestaoForm({
     })();
   }, []);
 
-  // ====== load topics/descriptors when subject changes ======
+  // ====== load descriptors (saberes) via Sisedu when subject changes ======
   useEffect(() => {
     (async () => {
       if (!subjectId) {
@@ -285,19 +283,10 @@ export default function QuestaoForm({
         return;
       }
       try {
-        const [topicList, descriptorList] = await Promise.all([
-          fetchList<TopicDTO>("/topics/"),
-          fetchList<DescriptorDTO>("/descriptors/"),
-        ]);
-        const topicIdsForSubject = new Set(
-          topicList
-            .filter((t) => t.subject === Number(subjectId))
-            .map((t) => t.id)
-        );
-        const filteredDescriptors = descriptorList.filter((d) =>
-          topicIdsForSubject.has(d.topic)
-        );
-
+        const filteredDescriptors = await getDescriptors({
+          disciplinaId: Number(subjectId),
+          topicoId: siseduContext.topicoId,
+        });
         setDescriptors(filteredDescriptors);
 
         const current = Number(descriptorId || 0);
@@ -310,19 +299,22 @@ export default function QuestaoForm({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjectId]);
+  }, [subjectId, siseduContext.topicoId]);
 
-  // ====== load skills when descriptor changes ======
+  // ====== load skills (habilidades) via Sisedu when subject changes ======
   useEffect(() => {
     (async () => {
-      if (!descriptorId) {
+      if (!subjectId) {
         setSkills([]);
         if (mode === "create") setSkillId("");
         return;
       }
       try {
-        const list = await fetchList<SkillDTO>("/skills/");
-        const filtered = list.filter((s) => s.descriptor === Number(descriptorId));
+        const filtered = await getSkills({
+          disciplinaId: Number(subjectId),
+          serie: siseduContext.serie,
+          nivel: siseduContext.nivel,
+        });
         setSkills(filtered);
 
         const current = Number(skillId || 0);
@@ -335,7 +327,7 @@ export default function QuestaoForm({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [descriptorId]);
+  }, [subjectId, siseduContext.nivel, siseduContext.serie]);
 
   // ====== options helpers ======
   function setCorrect(letter: Alternativa) {
@@ -551,7 +543,7 @@ export default function QuestaoForm({
               <option value="">(Opcional) Selecione…</option>
               {descriptors.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.code} — {d.name}
+                  {d.code ? `${d.code} — ` : ""}{d.name}
                 </option>
               ))}
             </select>
@@ -566,13 +558,13 @@ export default function QuestaoForm({
                 const v = e.target.value ? Number(e.target.value) : "";
                 setSkillId(v as any);
               }}
-              disabled={!descriptorId}
+              disabled={!subjectId}
               className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
             >
               <option value="">(Opcional) Selecione…</option>
               {skills.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.code} — {s.name}
+                  {s.code ? `${s.code} — ` : ""}{s.name}
                 </option>
               ))}
             </select>

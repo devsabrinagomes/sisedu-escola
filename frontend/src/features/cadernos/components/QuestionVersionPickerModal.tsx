@@ -7,13 +7,13 @@ import type {
   BookletItemDraft,
   Paginated,
   QuestionDTO,
-  SubjectDTO,
 } from "@/features/cadernos/types";
 import {
   normalizeOrders,
   toBookletDraftFromQuestion,
   toSubjectsMap,
 } from "@/features/cadernos/utils";
+import { getSubjects, type Subject } from "@/features/relatorios/services/siseduReports";
 
 type ActiveTab = "mine" | "public";
 
@@ -52,7 +52,7 @@ export default function QuestionVersionPickerModal({
   const [count, setCount] = useState(0);
   const [next, setNext] = useState<string | null>(null);
   const [previous, setPrevious] = useState<string | null>(null);
-  const [subjects, setSubjects] = useState<SubjectDTO[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedByVersionId, setSelectedByVersionId] = useState<
     Record<number, BookletItemDraft>
   >({});
@@ -86,11 +86,8 @@ export default function QuestionVersionPickerModal({
     let alive = true;
     (async () => {
       try {
-        const { data } = await api.get<Paginated<SubjectDTO> | SubjectDTO[]>(
-          "/subjects/",
-        );
         if (!alive) return;
-        const list = Array.isArray(data) ? data : (data?.results ?? []);
+        const list = await getSubjects();
         setSubjects(list);
       } catch {
         if (!alive) return;
