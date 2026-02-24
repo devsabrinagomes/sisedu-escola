@@ -21,6 +21,7 @@ export type OfferDTO = {
   id: number;
   booklet: OfferBookletRef;
   booklet_name?: string | null;
+  created_by_name?: string | null;
   start_date: string;
   end_date: string;
   description?: string | null;

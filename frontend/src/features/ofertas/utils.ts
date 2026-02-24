@@ -1,4 +1,12 @@
-﻿import type { OfferDTO, OfferStatus } from "@/features/ofertas/types";
+import type { OfferDTO, OfferStatus } from "@/features/ofertas/types";
+
+export type OfferSigeSelection = {
+  school_refs?: number[];
+  school_names?: string[];
+  series_years?: number[];
+  class_refs?: number[];
+  class_names?: string[];
+};
 
 export function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -83,4 +91,63 @@ export function setOfferKitPending(offerId: number, pending: boolean) {
 
 export function isOfferKitPending(offerId: number) {
   return localStorage.getItem(offerKitPendingKey(offerId)) === "1";
+}
+
+function offerSigeSelectionKey(offerId: number) {
+  return `offer:sige:selection:${offerId}`;
+}
+
+export function setOfferSigeSelection(offerId: number, selection: OfferSigeSelection) {
+  const hasAny =
+    (selection.school_refs?.length || 0) > 0 ||
+    (selection.school_names?.length || 0) > 0 ||
+    (selection.series_years?.length || 0) > 0 ||
+    (selection.class_refs?.length || 0) > 0 ||
+    (selection.class_names?.length || 0) > 0;
+
+  if (!hasAny) {
+    localStorage.removeItem(offerSigeSelectionKey(offerId));
+    return;
+  }
+
+  localStorage.setItem(offerSigeSelectionKey(offerId), JSON.stringify(selection));
+}
+
+export function getOfferSigeSelection(offerId: number): OfferSigeSelection | null {
+  const raw = localStorage.getItem(offerSigeSelectionKey(offerId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as
+      | OfferSigeSelection
+      | {
+          school_ref?: number;
+          school_name?: string;
+          series_year?: number;
+          class_ref?: number;
+          class_name?: string;
+        };
+
+    // Backward compatibility: migrate formato antigo (single) para novo (multi)
+    if ("school_ref" in parsed || "class_ref" in parsed || "series_year" in parsed) {
+      const legacy = parsed as {
+        school_ref?: number;
+        school_name?: string;
+        series_year?: number;
+        class_ref?: number;
+        class_name?: string;
+      };
+      const normalized: OfferSigeSelection = {
+        school_refs: legacy.school_ref ? [legacy.school_ref] : [],
+        school_names: legacy.school_name ? [legacy.school_name] : [],
+        series_years: legacy.series_year ? [legacy.series_year] : [],
+        class_refs: legacy.class_ref ? [legacy.class_ref] : [],
+        class_names: legacy.class_name ? [legacy.class_name] : [],
+      };
+      return normalized;
+    }
+
+    return parsed as OfferSigeSelection;
+  } catch {
+    return null;
+  }
 }
