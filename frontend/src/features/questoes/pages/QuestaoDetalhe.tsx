@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import {
   ArrowLeft,
   Image as ImageIcon,
@@ -13,6 +14,7 @@ import AddToCadernoModal from "@/features/questoes/components/AddToCadernoModal"
 import QuestionActions from "@/features/questoes/components/QuestionActions";
 import { useToast } from "@/components/ui/toast/useToast";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 type OptionDTO = {
   id: number;
@@ -88,6 +90,7 @@ export default function QuestaoDetalhe() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cadernoModalOpen, setCadernoModalOpen] = useState(false);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     (async () => {
@@ -253,18 +256,24 @@ export default function QuestaoDetalhe() {
     );
   }, [v]);
 
-  if (loading) return <div className="text-sm text-slate-500">Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
+  }
 
   if (err)
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
 
         <Link
           to="/questoes"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
@@ -273,11 +282,11 @@ export default function QuestaoDetalhe() {
     );
 
   if (!item || !v)
-    return <div className="text-sm text-slate-500">{"N\u00e3o encontrado."}</div>;
+    return <div className="text-sm text-slate-500 dark:text-slate-400">{"N\u00e3o encontrado."}</div>;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+    <div className="bg-white dark:bg-surface-1 border border-slate-200 dark:border-borderDark rounded-2xl shadow-sm p-4 sm:p-6">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-borderDark pb-4 mb-4">
         <div className="space-y-3">
           <Breadcrumb
             items={[
@@ -287,21 +296,21 @@ export default function QuestaoDetalhe() {
           />
 
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">
+            <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {"Detalhes da quest\u00e3o"}
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {"Visualiza\u00e7\u00e3o somente leitura."}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+      <div className="bg-white dark:bg-surface-1 border border-slate-200 dark:border-borderDark rounded-2xl shadow-sm">
         <div className="px-6 pt-6 pb-4 flex items-start justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+              <span className="rounded-full bg-slate-100 dark:bg-surface-2 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                 {item.subject_name || "—"}
               </span>
 
@@ -309,25 +318,25 @@ export default function QuestaoDetalhe() {
                 className={[
                   "rounded-full px-3 py-1 text-xs font-medium",
                   item.private
-                    ? "bg-red-100 text-red-700"
-                    : "bg-emerald-100 text-emerald-700",
+                    ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+                    : "bg-emerald-100 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400",
                 ].join(" ")}
               >
                 {item.private ? "Privada" : "P\u00fablica"}
               </span>
 
               {correta && (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
                   Correta: {correta.letter}
                 </span>
               )}
               {v.annulled && (
-                <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+                <span className="rounded-full bg-slate-200 dark:bg-surface-2 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Anulada
                 </span>
               )}
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               {metadataLabel}
             </div>
           </div>
@@ -349,7 +358,7 @@ export default function QuestaoDetalhe() {
               onClick={() => setCadernoModalOpen(true)}
               title="Adicionar ao caderno"
               aria-label="Adicionar ao caderno"
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition shrink-0"
+              className="inline-flex items-center gap-2 rounded-lg btn-primary px-3 py-2 text-sm font-semibold shrink-0"
             >
               <Plus size={18} />
               <span>Adicionar ao caderno</span>
@@ -357,27 +366,27 @@ export default function QuestaoDetalhe() {
           )}
         </div>
 
-        <div className="border-t border-slate-100" />
+        <div className="border-t border-slate-100 dark:border-borderDark" />
 
         <div className="px-4 sm:px-6 py-4 sm:py-6 space-y-6">
           {/* Enunciado (title) */}
           <div>
-            <div className="text-xs font-semibold text-slate-700 mb-2">
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Enunciado
             </div>
-            <div className="text-slate-900">{v.title || "(Sem enunciado)"}</div>
+            <div className="text-slate-900 dark:text-slate-100">{v.title || "(Sem enunciado)"}</div>
           </div>
 
           {/* Apoio (opcional) */}
           {showApoio && (
-            <details className="group rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+            <details className="group rounded-xl border border-slate-200 dark:border-borderDark bg-slate-50/50 dark:bg-surface-2/60 p-4">
               <summary className="cursor-pointer list-none">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-slate-900">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       Apoio
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {"Texto + imagem + refer\u00eancia (se houver)"}
                     </div>
                   </div>
@@ -390,10 +399,10 @@ export default function QuestaoDetalhe() {
               <div className="mt-4 space-y-4">
                 {hasMeaningfulText(v.support_text) && (
                   <div>
-                    <div className="text-xs font-semibold text-slate-700 mb-2">
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                       Texto de apoio
                     </div>
-                    <div className="text-slate-800 whitespace-pre-wrap">
+                    <div className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
                       {v.support_text}
                     </div>
                   </div>
@@ -401,24 +410,24 @@ export default function QuestaoDetalhe() {
 
                 {v.support_image && (
                   <div>
-                    <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-slate-500" />
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                       Imagem de apoio
                     </div>
                     <img
                       src={v.support_image}
                       alt="Imagem de apoio"
-                      className="max-h-[320px] w-auto rounded-xl border border-slate-200 bg-white"
+                      className="max-h-[320px] w-auto rounded-xl border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1"
                     />
                   </div>
                 )}
 
                 {hasMeaningfulText(v.image_reference || "") && (
                   <div>
-                    <div className="text-xs font-semibold text-slate-700 mb-1">
+                    <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       {"Refer\u00eancia da imagem"}
                     </div>
-                    <div className="text-sm text-slate-700 break-words">
+                    <div className="text-sm text-slate-700 dark:text-slate-300 break-words">
                       {v.image_reference}
                     </div>
                   </div>
@@ -429,22 +438,22 @@ export default function QuestaoDetalhe() {
 
           {/* Comando */}
           <div>
-            <div className="text-xs font-semibold text-slate-700 mb-2">
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
               Comando
             </div>
-            <div className="text-slate-800 whitespace-pre-wrap">
+            <div className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
               {v.command || "—"}
             </div>
           </div>
 
           {/* Alternativas */}
           <div>
-            <div className="text-xs font-semibold text-slate-700 mb-3">
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Alternativas
             </div>
 
             {optionsSorted.length === 0 ? (
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
                 Nenhuma alternativa cadastrada.
               </div>
             ) : (
@@ -455,34 +464,34 @@ export default function QuestaoDetalhe() {
                     className={[
                       "rounded-xl border p-4 transition",
                       o.correct
-                        ? "border-emerald-300 bg-emerald-50 shadow-sm"
-                        : "border-slate-200 bg-white",
+                        ? "border-emerald-300 bg-emerald-50 shadow-sm dark:border-brand-500/40 dark:bg-brand-500/10"
+                        : "border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1",
                     ].join(" ")}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="text-sm font-semibold text-slate-900">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {o.letter})
                       </div>
                       {o.correct && (
-                        <span className="text-xs font-semibold text-emerald-700">
+                        <span className="text-xs font-semibold text-brand-500">
                           ✔ Alternativa correta
                         </span>
                       )}
                     </div>
 
                     {hasMeaningfulText(o.option_text) ? (
-                      <div className="text-slate-800 whitespace-pre-wrap">
+                      <div className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
                         {o.option_text}
                       </div>
                     ) : (
-                      <div className="text-sm text-slate-500">(Sem texto)</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">(Sem texto)</div>
                     )}
 
                     {o.option_image && (
                       <img
                         src={o.option_image}
                         alt={`Imagem alternativa ${o.letter}`}
-                        className="mt-3 max-h-[260px] w-auto rounded-lg border border-slate-200 bg-white"
+                        className="mt-3 max-h-[260px] w-auto rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1"
                       />
                     )}
                   </div>

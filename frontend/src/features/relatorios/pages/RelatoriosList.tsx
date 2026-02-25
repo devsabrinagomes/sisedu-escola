@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Download, RefreshCw } from "lucide-react";
+import { Download } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import { listMockSigeSchoolClasses, listMockSigeSchools } from "@/features/gabaritos/services/gabaritos";
 import {
   downloadReportItemsCsv,
@@ -19,8 +21,13 @@ import type {
   ReportsOverviewDTO,
   ReportSummaryDTO,
   ReportStudentRowDTO,
-  ReportStudentStatus,
 } from "@/features/relatorios/types";
+import {
+  formatPct,
+  getReportStudentStatusBadgeClass,
+  getReportStudentStatusLabel,
+  isInBucketRange,
+} from "@/features/relatorios/utils";
 import { formatDate, getBookletName, getOfferSigeSelection } from "@/features/ofertas/utils";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import { useToast } from "@/components/ui/toast/useToast";
@@ -51,40 +58,6 @@ function extractSerie(value: string | null | undefined) {
   if (!match) return undefined;
   const parsed = Number(match[1]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function formatPct(value: number) {
-  return `${Number(value || 0).toFixed(2)}%`;
-}
-
-function getStudentStatusLabel(status: ReportStudentStatus) {
-  if (status === "FINALIZED") return "Finalizado";
-  if (status === "ABSENT") return "Ausente";
-  if (status === "RECOGNIZED") return "Em andamento";
-  return "Sem respostas";
-}
-
-function getStudentStatusBadgeClass(status: ReportStudentStatus) {
-  if (status === "ABSENT") return "border border-amber-100 bg-amber-50 text-amber-700";
-  if (status === "FINALIZED") return "border border-emerald-100 bg-emerald-50 text-emerald-700";
-  if (status === "RECOGNIZED") return "border border-indigo-100 bg-indigo-50 text-indigo-700";
-  return "border border-slate-200 bg-slate-100 text-slate-700";
-}
-
-function parseBucketRange(range: string) {
-  const match = String(range).match(/(\d+)\s*-\s*(\d+)/);
-  if (!match) return null;
-  const min = Number(match[1]);
-  const max = Number(match[2]);
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  return { min, max };
-}
-
-function isInBucketRange(correctPct: number, range: string) {
-  const parsed = parseBucketRange(range);
-  if (!parsed) return false;
-  if (parsed.max >= 100) return correctPct >= parsed.min && correctPct <= parsed.max;
-  return correctPct >= parsed.min && correctPct < parsed.max;
 }
 
 type StudentSelection =
@@ -122,6 +95,8 @@ export default function RelatoriosList() {
   const [classReports, setClassReports] = useState<ReportByClassRowDTO[]>([]);
   const [studentSelection, setStudentSelection] = useState<StudentSelection>(null);
   const [downloading, setDownloading] = useState<"students" | "items" | null>(null);
+  const showSummaryLoading = useDelayedLoading(summaryLoading);
+  const showOverviewLoading = useDelayedLoading(overviewLoading);
   const selectedStudentsCardRef = useRef<HTMLDivElement | null>(null);
   const classReportsSectionRef = useRef<HTMLDivElement | null>(null);
   const initializedFromQueryRef = useRef(false);
@@ -520,12 +495,12 @@ export default function RelatoriosList() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-5 shadow-sm">
         <div className="mb-6">
-          <h1 className="text-lg sm:text-xl font-semibold text-slate-900">Relatórios</h1>
-          <p className="mt-1 text-sm text-gray-500">Acompanhe indicadores e resultados das ofertas.</p>
+          <h1 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">Relatórios</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">Acompanhe indicadores e resultados das ofertas.</p>
         </div>
-        <div className="mb-3 text-sm font-semibold text-slate-900">Filtros</div>
+        <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Filtros</div>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <div className="min-w-0">
               <SigeCombobox
@@ -565,16 +540,16 @@ export default function RelatoriosList() {
             <button
               type="button"
               onClick={() => void onLoadReport()}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
               disabled={summaryLoading}
             >
-              {summaryLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+              {summaryLoading && showSummaryLoading ? <EqualizerLoader size={16} /> : null}
               Carregar relatórios
             </button>
             <button
               type="button"
               onClick={onClearFilters}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
             >
               Limpar
             </button>
@@ -583,9 +558,9 @@ export default function RelatoriosList() {
 
       {loadedFilters ? (
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <h2 className="text-base font-semibold text-slate-900">Relatório da oferta</h2>
+          <div className="rounded-xl border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-borderDark pb-3">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Relatório da oferta</h2>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -595,21 +570,21 @@ export default function RelatoriosList() {
                       block: "start",
                     })
                   }
-                  className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  className="inline-flex items-center rounded-lg btn-primary px-3 py-2 text-sm font-semibold"
                 >
                   Ver por turmas
                 </button>
                 <details className="relative">
-                  <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2">
                     <Download className="h-4 w-4" />
                     Baixar
                   </summary>
-                  <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-1 shadow-lg">
                     <button
                       type="button"
                       onClick={() => void onDownloadStudentsCsv()}
                       disabled={downloading !== null}
-                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
                     >
                       {downloading === "students" ? "Baixando..." : "CSV por aluno"}
                     </button>
@@ -617,7 +592,7 @@ export default function RelatoriosList() {
                       type="button"
                       onClick={() => void onDownloadItemsCsv()}
                       disabled={downloading !== null}
-                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
                     >
                       {downloading === "items" ? "Baixando..." : "CSV por questão"}
                     </button>
@@ -625,33 +600,33 @@ export default function RelatoriosList() {
                 </details>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2 sm:gap-x-6">
+            <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 dark:text-slate-300 sm:grid-cols-2 sm:gap-x-6">
               <div>
-                <span className="font-semibold text-slate-900">Escola: </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Escola: </span>
                 {loadedFilters.schoolLabel}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Série: </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Série: </span>
                 {loadedFilters.serieLabel}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Oferta: </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Oferta: </span>
                 {loadedFilters.offer.description?.trim() || `Oferta #${loadedFilters.offer.id}`}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Caderno: </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Caderno: </span>
                 {getBookletName(loadedFilters.offer)}
               </div>
               <div>
-                <span className="font-semibold text-slate-900">Período: </span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Período: </span>
                 {formatDate(loadedFilters.offer.start_date)} - {formatDate(loadedFilters.offer.end_date)}
               </div>
             </div>
             {summary ? (
-              <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="mt-4 border-t border-slate-100 dark:border-borderDark pt-4">
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 p-4">
-                    <div className="mb-3 text-sm font-semibold text-slate-900">
+                  <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
+                    <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                       Percentual de alunos que finalizaram o teste
                     </div>
                     <div className="flex flex-col items-center gap-3">
@@ -712,13 +687,13 @@ export default function RelatoriosList() {
                           className="cursor-pointer"
                           onClick={() => setStudentSelection({ kind: "not_finalized", label: "Não finalizaram" })}
                         />
-                        <circle cx={pieCenter} cy={pieCenter} r={18} fill="white" />
+                        <circle cx={pieCenter} cy={pieCenter} r={18} fill="var(--timeline-dot-bg)" />
                       </svg>
                       <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
                         <button
                           type="button"
                           onClick={() => setStudentSelection({ kind: "finalized", label: "Finalizaram" })}
-                          className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                          className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:underline"
                         >
                           <span
                             className="h-3 w-3 rounded-full"
@@ -729,7 +704,7 @@ export default function RelatoriosList() {
                         <button
                           type="button"
                           onClick={() => setStudentSelection({ kind: "not_finalized", label: "Não finalizaram" })}
-                          className="inline-flex items-center gap-2 text-slate-700 hover:underline"
+                          className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:underline"
                         >
                           <span
                             className="h-3 w-3 rounded-full"
@@ -738,20 +713,20 @@ export default function RelatoriosList() {
                           Não finalizaram: {formatPct(summaryNotFinalizedPct)} ({nonFinalizedCount})
                         </button>
                       </div>
-                      <div className="text-xs text-slate-500">Clique no gráfico para ver a lista de alunos.</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-300">Clique no gráfico para ver a lista de alunos.</div>
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 p-4">
-                    <div className="mb-3 text-sm font-semibold text-slate-900">
+                  <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
+                    <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                       Percentual de alunos por faixa de acerto
                     </div>
-                    <div className="overflow-hidden rounded-lg border border-slate-200">
-                      <table className="w-full table-auto border-collapse">
-                        <thead className="bg-slate-50">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-borderDark lg:overflow-visible">
+                      <table className="w-full min-w-[760px] lg:min-w-0 table-auto border-collapse">
+                        <thead className="bg-slate-50 dark:bg-surface-2">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de acerto</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700">Percentual de alunos</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-300">Percentual de acerto</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-300">Percentual de alunos</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -778,13 +753,13 @@ export default function RelatoriosList() {
                                 }
                               >
                                 <td
-                                  className="px-4 py-3 text-sm font-medium text-slate-800"
+                                  className="px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-200"
                                   style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
                                 >
                                   {bucket.range}%
                                 </td>
                                 <td
-                                  className="px-4 py-3 text-sm font-semibold text-slate-800"
+                                  className="px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200"
                                   style={{ borderTop: `1px solid ${bucketColor.stroke}` }}
                                 >
                                   {formatPct(bucket.pct_students)}
@@ -795,39 +770,39 @@ export default function RelatoriosList() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="mt-3 text-xs text-slate-500">
+                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-300">
                       Clique na tabela para ver a lista de alunos.
                     </div>
                   </div>
                 </div>
                 <div ref={classReportsSectionRef} className="mt-4">
-                  <h2 className="text-sm font-semibold text-slate-900">Relatórios por turma</h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Relatórios por turma</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
                     {loadedFilters.offer.description?.trim() || `Oferta #${loadedFilters.offer.id}`} •{" "}
                     {getBookletName(loadedFilters.offer)}
                   </p>
-                  <div className="my-4 border-t border-slate-100" />
+                  <div className="my-4 border-t border-slate-100 dark:border-borderDark" />
                   {classReportsDisplay.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-slate-50 dark:bg-surface-2 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                       Nenhuma turma vinculada a esta oferta.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {classReportsDisplay.map((row) => (
-                        <div key={row.class_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="bg-emerald-600 px-4 py-3 text-sm font-semibold text-white">{row.class_name}</div>
+                        <div key={row.class_id} className="overflow-hidden rounded-xl border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 shadow-sm">
+                          <div className="bg-brand-600 dark:bg-emerald-700 px-4 py-3 text-sm font-semibold text-white">{row.class_name}</div>
                           <div className="space-y-3 p-4">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumo</div>
-                            <div className="text-sm text-slate-700">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Resumo</div>
+                            <div className="text-sm text-slate-700 dark:text-slate-300">
                               Total de alunos avaliados:{" "}
-                              <span className="font-semibold text-slate-900">{row.total_students}</span>
+                              <span className="font-semibold text-slate-900 dark:text-slate-100">{row.total_students}</span>
                             </div>
-                            <div className="text-sm text-slate-700">
+                            <div className="text-sm text-slate-700 dark:text-slate-300">
                               Percentual de acerto:{" "}
-                              <span className="font-semibold text-slate-900">{formatPct(row.accuracy_percent)}</span>
+                              <span className="font-semibold text-slate-900 dark:text-slate-100">{formatPct(row.accuracy_percent)}</span>
                             </div>
                             {row.absent_count > 0 ? (
-                              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
                                 {row.absent_count} aluno(s) sem respostas ({formatPct(row.absent_percent)}).
                               </div>
                             ) : null}
@@ -838,7 +813,7 @@ export default function RelatoriosList() {
                                   `/relatorios/ofertas/${loadedFilters.offer.id}?class_ref=${row.class_id}&class_name=${encodeURIComponent(row.class_name)}${loadedFilters.schoolRef ? `&school_ref=${loadedFilters.schoolRef}` : ""}${loadedFilters.serie ? `&serie=${loadedFilters.serie}` : ""}`,
                                 )
                               }
-                              className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                              className="w-full rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
                             >
                               Acessar
                             </button>
@@ -849,45 +824,45 @@ export default function RelatoriosList() {
                   )}
                 </div>
                 {studentSelection ? (
-                  <div ref={selectedStudentsCardRef} className="mt-4 rounded-lg border border-slate-200 p-4">
+                  <div ref={selectedStudentsCardRef} className="mt-4 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
-                      <div className="text-sm font-semibold text-slate-900">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         Alunos relacionados: {studentSelection.label}
                       </div>
                       <button
                         type="button"
                         onClick={() => setStudentSelection(null)}
-                        className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        className="rounded-md border border-slate-200 dark:border-borderDark px-2 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2"
                       >
                         Limpar seleção
                       </button>
                     </div>
                     {selectedStudents.length === 0 ? (
-                      <div className="text-sm text-slate-500">Nenhum aluno encontrado para este recorte.</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-300">Nenhum aluno encontrado para este recorte.</div>
                     ) : (
-                      <div className="overflow-auto">
-                        <table className="w-full table-auto border-collapse">
-                          <thead className="border-b border-slate-200 bg-slate-50">
+                      <div className="overflow-auto lg:overflow-visible">
+                        <table className="w-full min-w-[760px] lg:min-w-0 table-auto border-collapse">
+                          <thead className="border-b border-slate-200 dark:border-borderDark bg-slate-50 dark:bg-surface-2">
                             <tr>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Aluno</th>
-                              <th className="w-28 px-3 py-2 text-left text-xs font-semibold text-slate-600">% acerto</th>
-                              <th className="w-40 px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
-                              <th className="w-44 px-3 py-2 text-left text-xs font-semibold text-slate-600">Acertos/Erros/Brancos</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">Aluno</th>
+                              <th className="w-28 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">% acerto</th>
+                              <th className="w-40 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">Status</th>
+                              <th className="w-44 px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">Acertos/Erros/Brancos</th>
                             </tr>
                           </thead>
                           <tbody>
                             {selectedStudents.map((student: ReportStudentRowDTO) => (
-                              <tr key={`${student.class_ref}-${student.student_ref}`} className="border-t border-slate-100">
-                                <td className="px-3 py-2 text-sm text-slate-800">{student.name}</td>
-                                <td className="px-3 py-2 text-sm text-slate-700">{formatPct(student.correct_pct)}</td>
-                                <td className="px-3 py-2 text-sm text-slate-700">
+                              <tr key={`${student.class_ref}-${student.student_ref}`} className="border-t border-slate-100 dark:border-borderDark">
+                                <td className="px-3 py-2 text-sm text-slate-800 dark:text-slate-200">{student.name}</td>
+                                <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">{formatPct(student.correct_pct)}</td>
+                                <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
                                   <span
-                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStudentStatusBadgeClass(student.status)}`}
+                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getReportStudentStatusBadgeClass(student.status)}`}
                                   >
-                                    {getStudentStatusLabel(student.status)}
+                                    {getReportStudentStatusLabel(student.status)}
                                   </span>
                                 </td>
-                                <td className="px-3 py-2 text-sm text-slate-700">
+                                <td className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
                                   {student.correct}/{student.wrong}/{student.blank}
                                 </td>
                               </tr>
@@ -903,14 +878,14 @@ export default function RelatoriosList() {
           </div>
 
           {summaryError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
               {summaryError}
             </div>
           ) : null}
 
           {summaryLoading ? (
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
-              Carregando relatório...
+            <div className="flex items-center justify-center rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-4 py-8" aria-busy="true">
+              {showSummaryLoading ? <EqualizerLoader size={36} /> : null}
             </div>
           ) : null}
 
@@ -918,19 +893,21 @@ export default function RelatoriosList() {
       ) : (
         <div className="space-y-4">
           {overviewError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
               {overviewError}
             </div>
           ) : null}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 text-sm font-semibold text-slate-900">Informações gerais</div>
+          <div className="rounded-xl border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-5 shadow-sm">
+            <div className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">Informações gerais</div>
             {overviewLoading ? (
-              <div className="text-sm text-slate-500">Carregando...</div>
+              <div className="flex items-center justify-center py-4" aria-busy="true">
+                {showOverviewLoading ? <EqualizerLoader size={48} /> : null}
+              </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 p-4">
-                  <div className="mb-3 text-sm font-semibold text-slate-900">
+                <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
+                  <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Composição das aplicações
                   </div>
                   <div className="flex items-center gap-4">
@@ -1009,53 +986,53 @@ export default function RelatoriosList() {
                         strokeDashoffset={-(overviewFinalizedStroke + overviewInProgressStroke)}
                         transform={`rotate(-90 ${pieCenter} ${pieCenter})`}
                       />
-                      <circle cx={pieCenter} cy={pieCenter} r={18} fill="white" />
+                      <circle cx={pieCenter} cy={pieCenter} r={18} fill="var(--timeline-dot-bg)" />
                     </svg>
                     <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2 text-slate-700">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: "var(--green-fill)", border: "1px solid var(--green-stroke)" }}
                         />
                         Finalizados: {overviewFinalized} ({formatPct(pieFinalizedPct)})
                       </div>
-                      <div className="flex items-center gap-2 text-slate-700">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: "var(--blue-fill)", border: "1px solid var(--blue-stroke)" }}
                         />
                         Em andamento: {overviewInProgress} ({formatPct(pieInProgressPct)})
                       </div>
-                      <div className="flex items-center gap-2 text-slate-700">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                         <span
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: "var(--yellow-fill)", border: "1px solid var(--yellow-stroke)" }}
                         />
                         Ausentes: {overviewAbsent} ({formatPct(pieAbsentPct)})
                       </div>
-                      <div className="pt-1 font-semibold text-slate-900">
+                      <div className="pt-1 font-semibold text-slate-900 dark:text-slate-100">
                         Total de aplicações: {overviewApplicationsTotal}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-slate-200 p-4">
-                  <div className="mb-3 text-sm font-semibold text-slate-900">
+                <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
+                  <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Distribuição de acertos
                   </div>
                   {overviewBars.length === 0 ? (
-                    <div className="text-sm text-slate-500">Sem dados para exibir.</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-300">Sem dados para exibir.</div>
                   ) : (
-                    <div className="flex h-44 items-end gap-4 border-b border-slate-200 pb-1">
+                    <div className="flex h-44 items-end gap-4 border-b border-slate-200 dark:border-borderDark pb-1">
                       {overviewBars.map((bucket, index) => {
                         const color = chartPalette[index % chartPalette.length];
                         return (
                         <div key={bucket.range} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                          <div className="text-[11px] font-semibold text-slate-600">
+                          <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                             {formatPct(bucket.pct_students)}
                           </div>
-                          <div className="flex h-28 w-full items-end rounded bg-slate-100 px-1">
+                          <div className="flex h-28 w-full items-end rounded border border-slate-200 dark:border-borderDark bg-slate-100 dark:bg-surface-2 px-1">
                             <div
                               className="w-full rounded-t transition-all"
                               style={{
@@ -1065,7 +1042,7 @@ export default function RelatoriosList() {
                               }}
                             />
                           </div>
-                          <div className="text-[11px] text-slate-600">{bucket.range}%</div>
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300">{bucket.range}%</div>
                         </div>
                         );
                       })}

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 type Option = {
   value: number;
@@ -33,6 +35,7 @@ export default function SigeMultiCombobox({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const showLoading = useDelayedLoading(loading);
 
   const normalizedValues = useMemo(() => Array.from(new Set(values)), [values]);
   const selectedSet = useMemo(() => new Set(normalizedValues), [normalizedValues]);
@@ -102,25 +105,25 @@ export default function SigeMultiCombobox({
 
   return (
     <div ref={rootRef}>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{label}</label>
       <div className="relative">
         <div
           className={[
-            "flex w-full flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700",
-            "focus-within:ring-2 focus-within:ring-emerald-200",
-            disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : "",
+            "flex w-full flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300",
+            "focus-within:ring-2 focus-within:ring-brand-500/40",
+            disabled ? "cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-surface-2 dark:text-slate-500" : "",
           ].join(" ")}
         >
           <Search className="h-4 w-4 text-slate-400" />
           {selectedOptions.map((option) => (
             <span
               key={option.value}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:border-borderDark dark:bg-surface-2 dark:text-slate-300"
             >
               <button
                 type="button"
                 onClick={() => toggleValue(option.value)}
-                className="text-slate-500 hover:text-slate-700"
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 title={`Remover ${option.label}`}
                 aria-label={`Remover ${option.label}`}
               >
@@ -140,7 +143,7 @@ export default function SigeMultiCombobox({
               if (!open) setOpen(true);
             }}
             placeholder={selectedOptions.length === 0 ? placeholder : ""}
-            className="min-w-[10ch] flex-1 bg-transparent outline-none placeholder:text-slate-400"
+            className="min-w-[10ch] flex-1 bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
 
           {normalizedValues.length > 0 ? (
@@ -150,7 +153,7 @@ export default function SigeMultiCombobox({
                 onChange([]);
                 setQuery("");
               }}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-surface-2 dark:hover:text-slate-200"
               title="Limpar seleção"
               aria-label="Limpar seleção"
             >
@@ -161,21 +164,23 @@ export default function SigeMultiCombobox({
         </div>
 
         {open ? (
-          <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+          <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-borderDark dark:bg-surface-1">
             {loading ? (
-              <div className="px-3 py-2 text-sm text-slate-500">Carregando...</div>
+              <div className="flex items-center justify-center px-3 py-3" aria-busy="true">
+                {showLoading ? <EqualizerLoader size={16} /> : null}
+              </div>
             ) : (
               <>
                 <button
                   type="button"
                   onClick={toggleAll}
-                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                  className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-surface-2"
                 >
                   <span>{selectAllLabel}</span>
-                  {allSelected ? <Check className="h-4 w-4 text-emerald-600" /> : null}
+                  {allSelected ? <Check className="h-4 w-4 text-brand-500 dark:text-brand-400" /> : null}
                 </button>
                 {filtered.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-slate-500">{emptyText}</div>
+                  <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">{emptyText}</div>
                 ) : (
                   filtered.map((option) => {
                     const isSelected = selectedSet.has(option.value);
@@ -184,10 +189,10 @@ export default function SigeMultiCombobox({
                         key={option.value}
                         type="button"
                         onClick={() => toggleValue(option.value)}
-                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                        className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-surface-2"
                       >
                         <span className="truncate">{option.label}</span>
-                        {isSelected ? <Check className="h-4 w-4 text-emerald-600" /> : null}
+                        {isSelected ? <Check className="h-4 w-4 text-brand-500 dark:text-brand-400" /> : null}
                       </button>
                     );
                   })

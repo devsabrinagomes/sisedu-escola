@@ -51,12 +51,12 @@ export function getOfferStatusLabel(status: OfferStatus) {
 
 export function getOfferStatusBadgeClass(status: OfferStatus) {
   if (status === "upcoming") {
-    return "bg-amber-50 text-amber-700 border border-amber-100";
+    return "bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40";
   }
   if (status === "open") {
-    return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+    return "bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-brand-500/15 dark:text-brand-400 dark:border-brand-500/30";
   }
-  return "bg-slate-100 text-slate-700 border border-slate-200";
+  return "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-surface-2 dark:text-slate-200 dark:border-borderDark";
 }
 
 export function getBookletId(offer: OfferDTO) {

@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import QuestaoForm, { type QuestionDTO } from "@/features/questoes/components/QuestaoForm";
 import { useAuth } from "@/auth/AuthContext";
 import PageCard from "@/components/layout/PageCard";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 export default function QuestaoEditar() {
   const { id } = useParams();
@@ -13,6 +15,7 @@ export default function QuestaoEditar() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<QuestionDTO | null>(null);
   const [err, setErr] = useState("");
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     (async () => {
@@ -83,7 +86,13 @@ export default function QuestaoEditar() {
     }
   }
 
-  if (loading) return <div className="text-sm text-slate-500">Carregando…</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
+  }
 
   return (
     <PageCard
@@ -99,7 +108,7 @@ export default function QuestaoEditar() {
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-red-200 bg-white dark:border-red-900/50 dark:bg-surface-1 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             Excluir questão
           </button>
@@ -107,7 +116,7 @@ export default function QuestaoEditar() {
       }
     >
       {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
       )}

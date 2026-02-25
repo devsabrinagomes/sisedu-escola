@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
+import { Check, ChevronDown, Search, X } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import { getBooklet, searchBooklets } from "@/features/cadernos/services/booklets";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 export type BookletDTO = {
   id: number;
@@ -23,6 +25,7 @@ export default function BookletCombobox({ value, onChange, disabled }: Props) {
   const [loading, setLoading] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [selectedName, setSelectedName] = useState("");
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!open) return;
@@ -152,9 +155,9 @@ export default function BookletCombobox({ value, onChange, disabled }: Props) {
     <div ref={rootRef} className="relative">
       <div
         className={[
-          "flex w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700",
-          "focus-within:ring-2 focus-within:ring-emerald-200",
-          disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : "",
+          "flex w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300",
+          "focus-within:ring-2 focus-within:ring-brand-500/40",
+          disabled ? "cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-surface-2 dark:text-slate-500" : "",
         ].join(" ")}
       >
         <Search className="mr-2 h-4 w-4 text-slate-400" />
@@ -171,7 +174,7 @@ export default function BookletCombobox({ value, onChange, disabled }: Props) {
           }}
           onKeyDown={onKeyDown}
           placeholder="Selecione um caderno"
-          className="w-full bg-transparent outline-none placeholder:text-slate-400"
+          className="w-full bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
           aria-expanded={open}
           aria-autocomplete="list"
           role="combobox"
@@ -182,29 +185,28 @@ export default function BookletCombobox({ value, onChange, disabled }: Props) {
           <button
             type="button"
             onClick={clearSelection}
-            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-surface-2 dark:hover:text-slate-200"
             title="Limpar seleção"
             aria-label="Limpar seleção"
           >
             <X className="h-4 w-4" />
           </button>
         ) : null}
-        <ChevronDown className="ml-1 h-4 w-4 text-slate-400" />
+        <ChevronDown className="ml-1 h-4 w-4 text-slate-400 dark:text-slate-500" />
       </div>
 
       {open ? (
         <div
           id="booklet-combobox-list"
           role="listbox"
-          className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+          className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-borderDark dark:bg-surface-1"
         >
           {loading ? (
-            <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando cadernos...
+            <div className="flex items-center justify-center px-3 py-3" aria-busy="true">
+              {showLoading ? <EqualizerLoader size={16} /> : null}
             </div>
           ) : options.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-slate-500">
+            <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
               Nenhum caderno encontrado
             </div>
           ) : (
@@ -221,11 +223,13 @@ export default function BookletCombobox({ value, onChange, disabled }: Props) {
                   onClick={() => selectItem(option)}
                   className={[
                     "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm",
-                    highlighted ? "bg-slate-100 text-slate-900" : "text-slate-700",
+                    highlighted
+                      ? "bg-slate-100 text-slate-900 dark:bg-surface-2 dark:text-slate-100"
+                      : "text-slate-700 dark:text-slate-300",
                   ].join(" ")}
                 >
                   <span className="truncate">{option.name}</span>
-                  {selected ? <Check className="h-4 w-4 text-emerald-600" /> : null}
+                  {selected ? <Check className="h-4 w-4 text-brand-500 dark:text-brand-400" /> : null}
                 </button>
               );
             })

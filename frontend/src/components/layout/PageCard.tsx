@@ -21,8 +21,8 @@ export default function PageCard({
   children,
 }: PageCardProps) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6">
-      <div className="border-b border-slate-100 pb-4 mb-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-borderDark dark:bg-surface-1 sm:p-6">
+      <div className="mb-4 border-b border-slate-100 pb-4 dark:border-borderDark">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -30,7 +30,7 @@ export default function PageCard({
                 <button
                   type="button"
                   onClick={onBack}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-surface-2 dark:hover:text-slate-200"
                   aria-label="Voltar"
                   title="Voltar"
                 >
@@ -41,8 +41,8 @@ export default function PageCard({
             </div>
 
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-              {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+              <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h1>
+              {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">{subtitle}</p>}
             </div>
           </div>
 

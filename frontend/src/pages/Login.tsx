@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
+import LoadingButton from "@/components/ui/LoadingButton";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 
 export default function Login() {
@@ -14,14 +15,8 @@ export default function Login() {
 
 const inputBase =
   "h-11 w-full rounded-xl border border-slate-200 bg-white/90 px-4 text-slate-900 " +
-  "placeholder:text-slate-400 shadow-sm " +
-  "focus:outline-none focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500";
-
-
-  const btnBase =
-    "h-11 w-full rounded-xl font-semibold shadow-sm transition " +
-    "focus:outline-none focus:ring-4 focus:ring-emerald-200 " +
-    "disabled:opacity-60 disabled:cursor-not-allowed";
+  "placeholder:text-slate-400 shadow-sm dark:border-borderDark dark:bg-surface-2 dark:text-slate-100 " +
+  "focus:outline-none focus:ring-4 focus:ring-brand-500/40 focus:border-brand-500";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,27 +33,28 @@ const inputBase =
   }
 
 return (
-<div className="w-full max-w-md mx-auto rounded-2xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur overflow-hidden">
-    <div className="p-6 border-b border-slate-100">
+<div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur dark:border-borderDark dark:bg-surface-1">
+    <div className="border-b border-slate-100 p-6 dark:border-borderDark">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white grid place-items-center font-bold">
+        <div className="h-10 w-10 rounded-xl bg-brand-600 text-white grid place-items-center font-bold">
           S
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">SISEDU Escola</h1>
-          <p className="text-xs text-slate-500">Acesso ao sistema</p>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">SISEDU Escola</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-300">Acesso ao sistema</p>
         </div>
       </div>
     </div>
 
     <form onSubmit={onSubmit} className="p-6 space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
         Use um usuário do seed (ex.: <b>prof1</b> / <b>123456</b>)
       </p>
 
       <div>
-        <label className="text-xs font-medium text-slate-600">Usuário</label>
+        <label htmlFor="login-username" className="text-xs font-medium text-slate-600 dark:text-slate-300">Usuário</label>
         <input
+          id="login-username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className={`${inputBase} mt-1`}
@@ -67,8 +63,9 @@ return (
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-600">Senha</label>
+        <label htmlFor="login-password" className="text-xs font-medium text-slate-600 dark:text-slate-300">Senha</label>
         <input
+          id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -78,19 +75,19 @@ return (
       </div>
 
       {err && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
       )}
 
-      <button
-        disabled={loading}
-        className="h-11 w-full rounded-xl bg-emerald-600 text-white font-semibold shadow-sm hover:bg-emerald-700 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-60"
+      <LoadingButton
+        loading={loading}
+        className="h-11 w-full rounded-xl btn-primary font-semibold shadow-sm active:scale-[0.99] focus:ring-4"
       >
-        {loading ? "Entrando..." : "Entrar"}
-      </button>
+        Entrar
+      </LoadingButton>
 
-      <p className="text-center text-xs text-slate-400">
+      <p className="text-center text-xs text-slate-400 dark:text-slate-500">
         © {new Date().getFullYear()} SISEDU
       </p>
     </form>

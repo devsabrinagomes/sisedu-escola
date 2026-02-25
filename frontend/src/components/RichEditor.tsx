@@ -40,7 +40,7 @@ function MathInlineView({ node }: any) {
     <NodeViewWrapper
       as="span"
       data-math-inline="true"
-      className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 align-middle"
+      className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 align-middle dark:border-borderDark dark:bg-surface-2"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -135,7 +135,7 @@ export function useRichEditor(initialHtml: string) {
           "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2",
           "[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2",
           "[&_li]:my-1",
-          "[&_a]:text-emerald-700 [&_a]:underline",
+          "[&_a]:text-brand-500 [&_a]:underline",
         ].join(" "),
       },
     },
@@ -226,9 +226,9 @@ export default function RichEditor({
   }, [latex]);
 
   return (
-    <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 p-2">
+      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 p-2 dark:border-borderDark dark:bg-surface-2">
         <Btn
           title="Negrito"
           active={editor.isActive("bold")}
@@ -261,7 +261,7 @@ export default function RichEditor({
           <Highlighter size={16} />
         </Btn>
 
-        <span className="mx-1 h-4 w-px bg-slate-200" />
+        <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-borderDark" />
 
         <Btn
           title="Lista com marcadores"
@@ -279,7 +279,7 @@ export default function RichEditor({
           <ListOrdered size={16} />
         </Btn>
 
-        <span className="mx-1 h-4 w-px bg-slate-200" />
+        <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-borderDark" />
 
         <Btn
           title="Alinhar à esquerda"
@@ -305,7 +305,7 @@ export default function RichEditor({
           <AlignRight size={16} />
         </Btn>
 
-        <span className="mx-1 h-4 w-px bg-slate-200" />
+        <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-borderDark" />
 
         <Btn title="Inserir fórmula (LaTeX)" onClick={() => setOpenFormula(true)}>
           <Sigma size={16} />
@@ -334,49 +334,49 @@ export default function RichEditor({
       </div>
 
       {/* Conteúdo */}
-      <div className="bg-white">
+      <div className="bg-white dark:bg-surface-1">
         <EditorContent editor={editor} />
       </div>
 
       {/* Modal Fórmula */}
       {openFormula && (
-        <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
-          <div className="w-full max-w-[520px] rounded-xl bg-white border border-slate-200 shadow-lg overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
-              <div className="text-sm font-semibold text-slate-800">Inserir fórmula (LaTeX)</div>
+        <div className="fixed inset-0 z-50 grid place-items-start bg-black/40 p-4 sm:place-items-center sm:p-6">
+          <div className="w-full max-w-[520px] max-h-[calc(100dvh-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-borderDark dark:bg-surface-1 sm:max-h-[calc(100dvh-4rem)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-borderDark">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Inserir fórmula (LaTeX)</div>
               <button
                 type="button"
                 onClick={() => {
                   setOpenFormula(false);
                   setLatex("");
                 }}
-                className="rounded-md p-1 text-slate-600 hover:bg-slate-100"
+                className="rounded-md p-1 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-surface-2"
                 aria-label="Fechar"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="max-h-[calc(100dvh-10rem)] space-y-3 overflow-y-auto p-4 sm:max-h-[calc(100dvh-12rem)]">
               <textarea
                 value={latex}
                 onChange={(e) => setLatex(e.target.value)}
                 placeholder={`Ex: \\frac{1}{2}, \\sqrt{2}, x^2, \\sum_{i=1}^{n} i`}
-                className="w-full min-h-[96px] rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full min-h-[96px] rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200"
               />
 
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 min-h-[52px]">
+              <div className="min-h-[52px] rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-borderDark dark:bg-surface-2">
                 {previewHtml ? (
                   <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
                 ) : (
-                  <div className="text-sm text-slate-400">Pré-visualização da fórmula…</div>
+                  <div className="text-sm text-slate-400 dark:text-slate-500">Pré-visualização da fórmula…</div>
                 )}
               </div>
 
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
                   onClick={() => {
                     setOpenFormula(false);
                     setLatex("");
@@ -387,7 +387,7 @@ export default function RichEditor({
 
                 <button
                   type="button"
-                  className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                  className="px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-600 disabled:opacity-60"
                   onClick={insertFormula}
                   disabled={!latex.trim()}
                 >
@@ -395,12 +395,12 @@ export default function RichEditor({
                 </button>
               </div>
 
-              <div className="text-xs text-slate-500">
-                Dica: use comandos como <code className="px-1 py-0.5 rounded bg-white border">\frac</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border">\sqrt</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border">\sum</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border">^</code> e{" "}
-                <code className="px-1 py-0.5 rounded bg-white border">_</code>.
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Dica: use comandos como <code className="rounded border border-slate-200 bg-white px-1 py-0.5 dark:border-borderDark dark:bg-surface-1">\frac</code>,{" "}
+                <code className="rounded border border-slate-200 bg-white px-1 py-0.5 dark:border-borderDark dark:bg-surface-1">\sqrt</code>,{" "}
+                <code className="rounded border border-slate-200 bg-white px-1 py-0.5 dark:border-borderDark dark:bg-surface-1">\sum</code>,{" "}
+                <code className="rounded border border-slate-200 bg-white px-1 py-0.5 dark:border-borderDark dark:bg-surface-1">^</code> e{" "}
+                <code className="rounded border border-slate-200 bg-white px-1 py-0.5 dark:border-borderDark dark:bg-surface-1">_</code>.
               </div>
             </div>
           </div>
@@ -409,10 +409,10 @@ export default function RichEditor({
 
       {/* Modal Link */}
       {openLink && (
-        <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
-          <div className="w-full max-w-[520px] rounded-xl bg-white border border-slate-200 shadow-lg overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
-              <div className="text-sm font-semibold text-slate-800">
+        <div className="fixed inset-0 z-50 grid place-items-start bg-black/40 p-4 sm:place-items-center sm:p-6">
+          <div className="w-full max-w-[520px] max-h-[calc(100dvh-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-borderDark dark:bg-surface-1 sm:max-h-[calc(100dvh-4rem)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-borderDark">
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {linkActive ? "Editar link" : "Inserir link"}
               </div>
               <button
@@ -421,21 +421,21 @@ export default function RichEditor({
                   setOpenLink(false);
                   setLinkUrl("");
                 }}
-                className="rounded-md p-1 text-slate-600 hover:bg-slate-100"
+                className="rounded-md p-1 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-surface-2"
                 aria-label="Fechar"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="max-h-[calc(100dvh-10rem)] space-y-3 overflow-y-auto p-4 sm:max-h-[calc(100dvh-12rem)]">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500">URL</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">URL</label>
                 <input
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="ex: https://site.com ou site.com"
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+                  className="w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200"
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter") applyLink();
@@ -447,7 +447,7 @@ export default function RichEditor({
               <div className="flex justify-between gap-2 pt-2">
                 <button
                   type="button"
-                  className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-60 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
                   onClick={() => {
                     editor.chain().focus().unsetLink().run();
                     setOpenLink(false);
@@ -461,7 +461,7 @@ export default function RichEditor({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:bg-slate-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
                     onClick={() => {
                       setOpenLink(false);
                       setLinkUrl("");
@@ -472,7 +472,7 @@ export default function RichEditor({
 
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                    className="px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-600 disabled:opacity-60"
                     onClick={applyLink}
                     disabled={!linkUrl.trim()}
                   >
@@ -513,9 +513,9 @@ function Btn({
       onClick={onClick}
       className={[
         "rounded-md border p-2 transition flex items-center justify-center",
-        "border-slate-200 bg-white text-slate-700 hover:bg-slate-100",
-        active ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "",
-        disabled ? "opacity-40 cursor-not-allowed hover:bg-white" : "",
+        "border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2",
+        active ? "bg-emerald-100 text-brand-600 border-emerald-200 dark:bg-brand-500/20 dark:text-brand-400 dark:border-brand-500/40" : "",
+        disabled ? "opacity-40 cursor-not-allowed hover:bg-white dark:hover:bg-surface-1" : "",
       ].join(" ")}
     >
       {children}

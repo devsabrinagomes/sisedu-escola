@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { downloadBlob } from "@/lib/downloadBlob";
 import { getOffer, listOffers } from "@/features/ofertas/services/offers";
 import type {
   OfferFilters,
@@ -66,17 +67,6 @@ export async function getOfferReportSummary(
   return data;
 }
 
-function triggerBlobDownload(blob: Blob, filename: string) {
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.URL.revokeObjectURL(url);
-}
-
 export async function downloadReportStudentsCsv(
   offerId: number,
   filters?: ReportSummaryFilters | number,
@@ -86,7 +76,7 @@ export async function downloadReportStudentsCsv(
     params,
     responseType: "blob",
   });
-  triggerBlobDownload(response.data, `oferta-${offerId}-relatorio-alunos.csv`);
+  downloadBlob(response.data, `oferta-${offerId}-relatorio-alunos.csv`);
 }
 
 export async function downloadReportItemsCsv(
@@ -98,5 +88,5 @@ export async function downloadReportItemsCsv(
     params,
     responseType: "blob",
   });
-  triggerBlobDownload(response.data, `oferta-${offerId}-relatorio-questoes.csv`);
+  downloadBlob(response.data, `oferta-${offerId}-relatorio-questoes.csv`);
 }

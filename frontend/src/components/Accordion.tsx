@@ -32,22 +32,22 @@ export default function Accordion({
   }, [open]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden dark:border-borderDark dark:bg-surface-1">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full px-5 py-4 flex items-center justify-between gap-3 hover:bg-slate-50 transition"
+        className="w-full px-5 py-4 flex items-center justify-between gap-3 hover:bg-slate-50 transition dark:hover:bg-surface-2"
         aria-expanded={open}
       >
         <div className="min-w-0 text-left">
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
           {subtitle && (
-            <div className="mt-0.5 text-xs text-slate-500">{subtitle}</div>
+            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">{subtitle}</div>
           )}
         </div>
 
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${
+          className={`h-4 w-4 shrink-0 text-slate-500 dark:text-slate-300 transition-transform duration-200 ${
             open ? "rotate-180" : "rotate-0"
           }`}
         />

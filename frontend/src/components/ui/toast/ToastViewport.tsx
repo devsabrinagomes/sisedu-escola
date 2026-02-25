@@ -17,24 +17,28 @@ function toastTone(type: ToastType) {
   if (type === "success") {
     return {
       icon: CheckCircle,
-      className: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      className:
+        "bg-emerald-50 border-emerald-200 text-brand-600 dark:bg-brand-500/15 dark:border-brand-500/30 dark:text-brand-400",
     };
   }
   if (type === "error") {
     return {
       icon: XCircle,
-      className: "bg-red-50 border-red-200 text-red-800",
+      className:
+        "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-900/50 dark:text-red-300",
     };
   }
   if (type === "warning") {
     return {
       icon: AlertTriangle,
-      className: "bg-amber-50 border-amber-200 text-amber-800",
+      className:
+        "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700/40 dark:text-amber-300",
     };
   }
   return {
     icon: Info,
-    className: "bg-blue-50 border-blue-200 text-blue-800",
+    className:
+      "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/35 dark:border-blue-700/40 dark:text-blue-300",
   };
 }
 
@@ -98,4 +102,3 @@ export default function ToastViewport({ items, onClose }: ToastViewportProps) {
     </div>
   );
 }
-

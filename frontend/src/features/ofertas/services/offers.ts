@@ -1,4 +1,6 @@
 import { api } from "@/lib/api";
+import { downloadBlob } from "@/lib/downloadBlob";
+import { getWithFallback, isNotFound } from "@/lib/httpFallback";
 import type {
   OfferDTO,
   OfferFilters,
@@ -19,11 +21,6 @@ export type OfferClassDTO = {
   etapa_aplicacao?: string | number | null;
   serie?: string | null;
 };
-
-function isNotFound(error: unknown) {
-  const status = (error as { response?: { status?: number } })?.response?.status;
-  return status === 404;
-}
 
 function isPaginated<T>(data: unknown): data is Paginated<T> {
   if (!data || typeof data !== "object") return false;
@@ -84,17 +81,6 @@ function toPaginated<T>(data: Paginated<T> | T[], page: number): Paginated<T> {
   };
 }
 
-async function getWithFallback<T>(primaryUrl: string, fallbackUrl: string, params?: Record<string, unknown>) {
-  try {
-    const { data } = await api.get<T>(primaryUrl, { params });
-    return data;
-  } catch (error) {
-    if (!isNotFound(error)) throw error;
-    const { data } = await api.get<T>(fallbackUrl, { params });
-    return data;
-  }
-}
-
 export async function listOffers(filters?: OfferFilters) {
   const page = filters?.page ?? 1;
   const params: Record<string, unknown> = {
@@ -110,7 +96,7 @@ export async function listOffers(filters?: OfferFilters) {
   const data = await getWithFallback<Paginated<OfferDTO> | OfferDTO[]>(
     "/offers/",
     "/ofertas/",
-    params,
+    { params },
   );
 
   const paginated = isPaginated<OfferDTO>(data) ? data : toPaginated(data, page);
@@ -172,50 +158,30 @@ export async function listOfferSchoolClasses(schoolRef: number) {
   return data;
 }
 
-function triggerBlobDownload(blob: Blob, filename: string) {
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.URL.revokeObjectURL(url);
-}
-
 export async function downloadOfferApplicationKit(offerId: number) {
   const [proofResponse, answerSheetResponse] = await Promise.all([
     api.get<Blob>(`/offers/${offerId}/kit/prova/`, { responseType: "blob" }),
     api.get<Blob>(`/offers/${offerId}/kit/cartao-resposta/`, { responseType: "blob" }),
   ]);
 
-  triggerBlobDownload(proofResponse.data, `oferta-${offerId}-caderno-prova.pdf`);
-  triggerBlobDownload(answerSheetResponse.data, `oferta-${offerId}-cartao-resposta.pdf`);
+  downloadBlob(proofResponse.data, `oferta-${offerId}-caderno-prova.pdf`);
+  downloadBlob(answerSheetResponse.data, `oferta-${offerId}-cartao-resposta.pdf`);
 }
 
 export async function downloadBookletApplicationKit(bookletId: number) {
-  async function getBlobWithFallback(primaryUrl: string, fallbackUrl: string) {
-    try {
-      const { data } = await api.get<Blob>(primaryUrl, { responseType: "blob" });
-      return data;
-    } catch (error) {
-      if (!isNotFound(error)) throw error;
-      const { data } = await api.get<Blob>(fallbackUrl, { responseType: "blob" });
-      return data;
-    }
-  }
-
   const [proofBlob, answerSheetBlob] = await Promise.all([
-    getBlobWithFallback(
+    getWithFallback<Blob>(
       `/booklets/${bookletId}/kit/prova/`,
       `/cadernos/${bookletId}/kit/prova/`,
+      { responseType: "blob" },
     ),
-    getBlobWithFallback(
+    getWithFallback<Blob>(
       `/booklets/${bookletId}/kit/cartao-resposta/`,
       `/cadernos/${bookletId}/kit/cartao-resposta/`,
+      { responseType: "blob" },
     ),
   ]);
 
-  triggerBlobDownload(proofBlob, `caderno-${bookletId}-caderno-prova.pdf`);
-  triggerBlobDownload(answerSheetBlob, `caderno-${bookletId}-cartao-resposta.pdf`);
+  downloadBlob(proofBlob, `caderno-${bookletId}-caderno-prova.pdf`);
+  downloadBlob(answerSheetBlob, `caderno-${bookletId}-cartao-resposta.pdf`);
 }

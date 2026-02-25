@@ -24,7 +24,7 @@ type StepItem = {
   key: StepKey;
   titulo: React.ReactNode;
   tooltip: string;
-  Icon: React.ComponentType<{ className?: string }>;
+  Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   tone: Tone;
 };
 
@@ -107,7 +107,7 @@ const stepToRoute: Partial<Record<StepKey, string>> = {
 };
 
 export default function Home() {
-  // ✅ refs separados (desktop/mobile)
+  // refs separados (desktop/mobile)
   const desktopContainerRef = useRef<HTMLDivElement | null>(null);
   const mobileContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -250,12 +250,12 @@ export default function Home() {
       {/* ORIENTAÇÃO / TIMELINE */}
       <section className="mb-8">
         {/* ================= DESKTOP ================= */}
-        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 overflow-hidden">
+        <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1 md:block sm:p-6">
           <div className="mb-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-1">
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 mb-1">
               Ciclo de Avaliação 
             </h3>
-            <p className="flex items-start gap-2 text-sm text-slate-500">
+            <p className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-300">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 A sequência abaixo é apenas uma recomendação. As funcionalidades podem ser acessadas de forma independente.
@@ -268,7 +268,7 @@ export default function Home() {
             {/* linha base */}
             {baseLength > 0 && (
               <div
-                className="absolute bg-slate-300 z-0"
+                className="absolute bg-slate-300 dark:bg-borderDark z-0"
                 style={{
                   left: startX,
                   top: LINE_Y,
@@ -282,7 +282,7 @@ export default function Home() {
             {/* linha animada */}
             {baseLength > 0 && (
               <div
-                className="absolute bg-emerald-500 z-0"
+                className="absolute bg-brand-600 dark:bg-brand-400 z-0"
                 style={{
                   left: startX,
                   top: LINE_Y,
@@ -312,11 +312,11 @@ export default function Home() {
 
         {/* ================= MOBILE ================= */}
         <div className="md:hidden">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 overflow-hidden">
-            <h3 className="text-base font-semibold text-slate-900 mb-1">
-              Como funciona no sistema
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+             Ciclo de Avaliação
             </h3>
-            <p className="text-sm text-slate-600 mb-3">
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
               Deslize para ver todas as etapas.
             </p>
 
@@ -324,12 +324,9 @@ export default function Home() {
               ref={mobileContainerRef}
               className="relative overflow-x-auto scrollbar-hide"
             >
-              {/* indicador visual lateral */}
-              <div className="absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white to-transparent pointer-events-none" />
-
               {baseLength > 0 && (
                 <div
-                  className="absolute bg-slate-300 z-0"
+                  className="absolute bg-slate-300 dark:bg-borderDark z-0"
                   style={{
                     left: startX,
                     top: LINE_Y,
@@ -342,7 +339,7 @@ export default function Home() {
 
               {baseLength > 0 && (
                 <div
-                  className="absolute bg-emerald-500 z-0"
+                  className="absolute bg-brand-600 dark:bg-brand-400 z-0"
                   style={{
                     left: startX,
                     top: LINE_Y,
@@ -445,9 +442,9 @@ function FlowStep({
   const tooltipText = item.tooltip;
 
   const strokeVar =
-    item.tone === "neutral" ? "#64748B" : `var(--${item.tone}-stroke)`;
+    item.tone === "neutral" ? "var(--timeline-neutral-stroke)" : `var(--${item.tone}-stroke)`;
   const fillVar =
-    item.tone === "neutral" ? "#F1F5F9" : `var(--${item.tone}-fill)`;
+    item.tone === "neutral" ? "var(--timeline-neutral-fill)" : `var(--${item.tone}-fill)`;
 
   const handlers = {
     onMouseEnter: onEnter,
@@ -462,19 +459,19 @@ function FlowStep({
         ref={dotRef}
         className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-3 transition-all duration-200"
         style={{
-          background: active ? fillVar : "#F1F5F9",
-          borderColor: active ? strokeVar : "#CBD5E1",
+          background: active ? fillVar : "var(--timeline-dot-bg)",
+          borderColor: active ? strokeVar : "var(--timeline-dot-border)",
         }}
       >
-        <Icon className="w-6 h-6" style={{ color: strokeVar }} />
+        <Icon className="w-6 h-6" style={{ color: active ? strokeVar : "var(--timeline-dot-icon)" }} />
       </div>
 
       <span
         className={[
           "text-sm text-center leading-tight transition-colors duration-200",
           active
-            ? "font-semibold text-emerald-600"
-            : "font-medium text-slate-700",
+            ? "font-semibold text-brand-600 dark:text-brand-400"
+            : "font-medium text-slate-700 dark:text-slate-300",
         ].join(" ")}
       >
         {item.titulo}
@@ -499,7 +496,7 @@ function FlowStep({
     return (
       <Link
         to={to}
-        className="outline-none rounded-xl focus:ring-2 focus:ring-emerald-200"
+        className="outline-none rounded-xl focus:ring-2 focus:ring-brand-500/40"
         aria-label={`${String(item.titulo).replace(/\s+/g, " ")}. ${item.tooltip}`}
         title={tooltipText}
         {...handlers}
@@ -540,10 +537,10 @@ function ActionCard({
     <Link
       to={to}
       className={[
-        "block bg-white rounded-xl shadow-sm border border-slate-200 p-6 transition",
+        "block rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition dark:border-borderDark dark:bg-surface-1",
         "hover:-translate-y-1 hover:shadow-md",
-        "focus:outline-none focus:ring-2 focus:ring-emerald-200",
-        highlighted ? "ring-2 ring-emerald-200 shadow-md" : "",
+        "focus:outline-none focus:ring-2 focus:ring-brand-500/40",
+        highlighted ? "ring-2 ring-brand-500/40 shadow-md" : "",
       ].join(" ")}
     >
       <div className="flex items-start gap-4">
@@ -552,8 +549,8 @@ function ActionCard({
         </div>
 
         <div className="flex-1">
-          <h4 className="text-lg font-bold text-slate-900 mb-2">{title}</h4>
-          <p className="text-sm text-slate-600">{desc}</p>
+          <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">{title}</h4>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{desc}</p>
         </div>
       </div>
     </Link>
