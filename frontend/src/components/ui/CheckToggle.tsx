@@ -38,7 +38,9 @@ export default function CheckToggle({
         "inline-flex items-center justify-center border transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60",
         sizeClass.box,
         shape === "circle" ? "rounded-full" : "rounded",
-        checked ? "border-emerald-500 bg-emerald-500" : "border-slate-300 bg-white",
+        checked
+          ? "border-emerald-500 bg-emerald-500"
+          : "border-slate-300 bg-white dark:border-borderDark dark:bg-surface-1",
         className,
       ].join(" ")}
     >
@@ -52,4 +54,3 @@ export default function CheckToggle({
     </button>
   );
 }
-

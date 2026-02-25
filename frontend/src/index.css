@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -54,13 +56,17 @@
    BASE
 ================================ */
 body {
-  @apply bg-[var(--bg-light)] text-slate-900 
+  @apply font-sans bg-[var(--bg-light)] text-slate-900
          dark:bg-[var(--bg-dark)] dark:text-slate-100;
 }
 
 html, body, #root { height: 100%; }
 body { margin: 0; }
-#root { min-height: 100vh; }
+#root { min-height: 100dvh; }
+
+:focus-visible {
+  @apply outline-none ring-2 ring-brand-500/40;
+}
 
 /* ================================
    SCROLLBAR
@@ -82,10 +88,19 @@ body { margin: 0; }
   @apply rounded-md border border-slate-200 bg-white px-2 py-1 
          transition-all duration-200 
          hover:bg-slate-100
-         dark:border-[#2a2f36] 
-         dark:bg-[#171a1f] 
+         dark:border-borderDark 
+         dark:bg-surface-1 
          dark:text-slate-100 
-         dark:hover:bg-[#1e2228];
+         dark:hover:bg-surface-2;
+}
+
+/* botão primário padrão */
+.btn-primary {
+  @apply bg-brand-600 text-white transition-colors
+         hover:bg-brand-600
+         focus:outline-none focus:ring-2 focus:ring-brand-500/40
+         disabled:cursor-not-allowed disabled:opacity-60
+         dark:bg-emerald-700 dark:hover:bg-emerald-800 dark:focus:ring-emerald-700/40;
 }
 
 /* texto secundário padrão */
@@ -96,8 +111,8 @@ body { margin: 0; }
 /* card base */
 .card {
   @apply rounded-xl border border-slate-200 bg-white shadow-sm
-         dark:border-[#2a2f36]
-         dark:bg-[#171a1f]
+         dark:border-borderDark
+         dark:bg-surface-1
          dark:shadow-none;
 }
 
@@ -105,5 +120,52 @@ body { margin: 0; }
 .card-hover {
   @apply transition-colors duration-200 
          hover:bg-slate-50
-         dark:hover:bg-[#1e2228];
+         dark:hover:bg-surface-2;
+}
+
+/* ================================
+   EQUALIZER LOADER
+================================ */
+.eq-bar {
+  display: inline-block;
+  border-radius: 999px;
+  transform-origin: bottom center;
+  animation: eqBounce 0.95s ease-in-out infinite;
+}
+
+.eq-bar:nth-child(1) {
+  background: var(--red-fill);
+  animation-delay: 0s;
+}
+
+.eq-bar:nth-child(2) {
+  background: var(--yellow-fill);
+  animation-delay: 0.12s;
+}
+
+.eq-bar:nth-child(3) {
+  background: var(--green-fill);
+  animation-delay: 0.24s;
+}
+
+.eq-bar:nth-child(4) {
+  background: var(--blue-fill);
+  animation-delay: 0.36s;
+}
+
+@keyframes eqBounce {
+  0%,
+  100% {
+    transform: scaleY(0.45);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar {
+    animation: none;
+    transform: scaleY(0.75);
+  }
 }

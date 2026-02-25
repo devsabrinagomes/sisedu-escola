@@ -19,6 +19,10 @@ import GabaritosList from "./features/gabaritos/pages/GabaritosList";
 import GabaritoOfertaGestao from "./features/gabaritos/pages/GabaritoOfertaGestao";
 import RelatoriosList from "./features/relatorios/pages/RelatoriosList";
 import RelatorioOfertaDetalhe from "./features/relatorios/pages/RelatorioOfertaDetalhe";
+import Suporte from "./pages/Suporte";
+import Acessibilidade from "./pages/Acessibilidade";
+import Privacidade from "./pages/Privacidade";
+import Ajuda from "./pages/Ajuda";
 import "katex/dist/katex.min.css";
 
 
@@ -53,6 +57,10 @@ export default function App() {
         <Route path="/gabaritos/ofertas/:offerId" element={<GabaritoOfertaGestao />} />
         <Route path="/relatorios" element={<RelatoriosList />} />
         <Route path="/relatorios/ofertas/:offerId" element={<RelatorioOfertaDetalhe />} />
+        <Route path="/suporte" element={<Suporte />} />
+        <Route path="/acessibilidade" element={<Acessibilidade />} />
+        <Route path="/privacidade" element={<Privacidade />} />
+        <Route path="/ajuda" element={<Ajuda />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

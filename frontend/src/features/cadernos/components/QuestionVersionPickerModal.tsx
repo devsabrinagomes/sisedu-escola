@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import Tabs from "@/components/ui/Tabs";
 import CheckToggle from "@/components/ui/CheckToggle";
 import { api } from "@/lib/api";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import type {
   BookletItemDraft,
   Paginated,
@@ -57,6 +59,7 @@ export default function QuestionVersionPickerModal({
     Record<number, BookletItemDraft>
   >({});
   const debounceRef = useRef<number | null>(null);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!open) return;
@@ -225,21 +228,26 @@ export default function QuestionVersionPickerModal({
         aria-label="Fechar modal"
       />
 
-      <div className="relative mx-auto flex h-full max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="question-picker-title"
+        className="relative mx-auto flex w-full max-w-6xl min-h-0 max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-borderDark dark:bg-surface-1"
+      >
+        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4 dark:border-borderDark dark:bg-surface-1">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 id="question-picker-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
                 Adicionar questões
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Selecione uma ou mais questões para incluir no caderno.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-surface-2 dark:hover:text-slate-100"
               aria-label="Fechar"
             >
               <X className="h-4 w-4" />
@@ -254,7 +262,7 @@ export default function QuestionVersionPickerModal({
               ]}
               active={activeTab}
               onChange={setActiveTab}
-              className="inline-flex items-center rounded-xl !border-0 bg-slate-100 p-1 [&>button]:rounded-lg [&>button]:!border-0 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button[aria-selected='false']]:text-slate-500 [&>button[aria-selected='true']]:bg-white [&>button[aria-selected='true']]:font-medium [&>button[aria-selected='true']]:text-slate-900 [&>button[aria-selected='true']]:shadow-sm"
+              className="inline-flex items-center rounded-xl !border-0 bg-slate-100 p-1 dark:bg-surface-2 [&>button]:rounded-lg [&>button]:!border-0 [&>button]:px-4 [&>button]:py-2 [&>button]:text-sm [&>button[aria-selected='false']]:text-slate-500 dark:[&>button[aria-selected='false']]:text-slate-300 [&>button[aria-selected='true']]:bg-white dark:[&>button[aria-selected='true']]:bg-surface-1 [&>button[aria-selected='true']]:font-medium [&>button[aria-selected='true']]:text-slate-900 dark:[&>button[aria-selected='true']]:text-slate-100 [&>button[aria-selected='true']]:shadow-sm"
             />
 
             <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -266,13 +274,13 @@ export default function QuestionVersionPickerModal({
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Buscar por enunciado ou código"
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-500/40"
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200"
                 />
                 {q && (
                   <button
                     type="button"
                     onClick={() => setQ("")}
-                    className="absolute inset-y-0 right-2 grid place-items-center rounded-md px-2 text-slate-400 hover:text-slate-700"
+                    className="absolute inset-y-0 right-2 grid place-items-center rounded-md px-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                     aria-label="Limpar busca"
                   >
                     ✕
@@ -286,7 +294,7 @@ export default function QuestionVersionPickerModal({
                     e.target.value === "todos" ? "todos" : Number(e.target.value),
                   )
                 }
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40 sm:max-w-xs"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40 sm:max-w-xs dark:border-borderDark dark:bg-surface-1 dark:text-slate-200"
               >
                 <option value="todos">Todas as disciplinas</option>
                 {subjects.map((subject) => (
@@ -298,31 +306,31 @@ export default function QuestionVersionPickerModal({
             </div>
           </div>
 
-          <div className="mt-3 text-xs text-slate-500">
-            {loading ? "Carregando..." : `${count} resultado(s) • ${selectedCount} selecionada(s)`}
+          <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            {loading ? (showLoading ? <EqualizerLoader size={16} /> : null) : `${count} resultado(s) • ${selectedCount} selecionada(s)`}
           </div>
         </div>
 
         <div className="flex-1 overflow-auto">
           {error && (
-            <div className="m-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="m-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
               {error}
             </div>
           )}
 
           <div className="px-5 py-4">
             {loading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-                Carregando...
+              <div className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-6 dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+                {showLoading ? <EqualizerLoader size={36} /> : null}
               </div>
             ) : pageDrafts.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-borderDark dark:bg-surface-1 dark:text-slate-400">
                 Nenhuma questão encontrada com os filtros atuais.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <table className="w-full table-auto border-collapse">
-                  <thead className="border-b border-slate-200 bg-slate-50">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+                <table className="w-full min-w-[840px] table-auto border-collapse">
+                  <thead className="border-b border-slate-200 bg-slate-50 dark:border-borderDark dark:bg-surface-2">
                     <tr>
                       <th className="w-12 px-4 py-3 text-left">
                         <CheckToggle
@@ -333,13 +341,13 @@ export default function QuestionVersionPickerModal({
                           ariaLabel="Selecionar todos desta página"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
                         Questão
                       </th>
-                      <th className="w-56 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                      <th className="w-56 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
                         Disciplina
                       </th>
-                      <th className="w-52 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                      <th className="w-52 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300">
                         Metadados
                       </th>
                     </tr>
@@ -352,7 +360,7 @@ export default function QuestionVersionPickerModal({
                       return (
                         <tr
                           key={item.question_version_id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50"
+                          className="border-t border-slate-100 transition hover:bg-slate-50 dark:border-borderDark dark:hover:bg-surface-2"
                         >
                           <td className="px-4 py-3 align-top">
                             <CheckToggle
@@ -364,17 +372,17 @@ export default function QuestionVersionPickerModal({
                               ariaLabel={`Selecionar versão ${item.question_version_id}`}
                             />
                           </td>
-                          <td className="px-4 py-3 align-top text-sm text-slate-800">
+                          <td className="px-4 py-3 align-top text-sm text-slate-800 dark:text-slate-200">
                             <div className="line-clamp-2">
                               {item.title || "Sem enunciado"}
                             </div>
                           </td>
-                          <td className="px-4 py-3 align-top text-sm text-slate-700">
-                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
+                          <td className="px-4 py-3 align-top text-sm text-slate-700 dark:text-slate-300">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700 dark:bg-surface-2 dark:text-slate-300">
                               {item.subject_name || "-"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 align-top text-xs text-slate-500">
+                          <td className="px-4 py-3 align-top text-xs text-slate-500 dark:text-slate-400">
                             <div>{item.descriptor_label || "-"}</div>
                             <div>{item.skill_label || "-"}</div>
                           </td>
@@ -388,25 +396,25 @@ export default function QuestionVersionPickerModal({
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 border-t border-slate-200 bg-white px-5 py-4">
+        <div className="sticky bottom-0 z-10 border-t border-slate-200 bg-white px-5 py-4 dark:border-borderDark dark:bg-surface-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-600">{selectedCount} selecionada(s)</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300">{selectedCount} selecionada(s)</div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setPage((prevPage) => Math.max(1, prevPage - 1))}
                 disabled={!previous || loading}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
               >
                 Página anterior
               </button>
-              <span className="text-xs text-slate-500">Página {page}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Página {page}</span>
               <button
                 type="button"
                 onClick={() => setPage((prevPage) => prevPage + 1)}
                 disabled={!next || loading}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
               >
                 Próxima página
               </button>
@@ -416,7 +424,7 @@ export default function QuestionVersionPickerModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
               >
                 Cancelar
               </button>
@@ -424,7 +432,7 @@ export default function QuestionVersionPickerModal({
                 type="button"
                 onClick={handleConfirm}
                 disabled={selectedCount === 0}
-                className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg btn-primary px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Adicionar selecionadas
               </button>

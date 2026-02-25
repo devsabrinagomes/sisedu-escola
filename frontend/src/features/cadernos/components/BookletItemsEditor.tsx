@@ -38,18 +38,18 @@ export default function BookletItemsEditor({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+    <div className="rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-borderDark">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Questões adicionadas</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Questões adicionadas</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-300">
             Arraste para reordenar. O salvamento respeita a ordem exibida.
           </p>
         </div>
         <button
           type="button"
           onClick={onAddClick}
-          className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+          className="rounded-lg btn-primary px-3 py-2 text-sm font-semibold"
         >
           Adicionar questões
         </button>
@@ -57,29 +57,29 @@ export default function BookletItemsEditor({
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-          <p className="text-sm text-slate-500">Nenhuma questão adicionada ainda.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-300">Nenhuma questão adicionada ainda.</p>
         </div>
       ) : (
         <div className="overflow-auto">
-          <table className="w-full table-auto border-collapse">
+          <table className="w-full min-w-[760px] table-auto border-collapse">
             <colgroup>
               <col className="w-16" />
               <col />
               <col className="w-44" />
               <col className="w-16" />
             </colgroup>
-            <thead className="border-b border-slate-200 bg-slate-50">
+            <thead className="border-b border-slate-200 bg-slate-50 dark:border-borderDark dark:bg-surface-2">
               <tr>
-                <th className="w-14 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-14 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200">
                   Ordem
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200">
                   Questão
                 </th>
-                <th className="w-44 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-44 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200">
                   Metadados
                 </th>
-                <th className="w-16 px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                <th className="w-16 px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-200">
                   Ações
                 </th>
               </tr>
@@ -103,24 +103,27 @@ export default function BookletItemsEditor({
                     event.preventDefault();
                     event.dataTransfer.dropEffect = "move";
                     event.currentTarget.classList.add("bg-emerald-50");
+                    event.currentTarget.classList.add("dark:bg-brand-500/15");
                   }}
                   onDragLeave={(event) => {
                     event.currentTarget.classList.remove("bg-emerald-50");
+                    event.currentTarget.classList.remove("dark:bg-brand-500/15");
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
                     event.currentTarget.classList.remove("bg-emerald-50");
+                    event.currentTarget.classList.remove("dark:bg-brand-500/15");
                     const fromId =
                       event.dataTransfer.getData("text/plain") || draggingIdRef.current;
                     moveItem(fromId, item.local_id);
                   }}
-                  className="border-t border-slate-100 transition hover:bg-slate-50"
+                  className="border-t border-slate-100 transition hover:bg-slate-50 dark:border-borderDark dark:hover:bg-surface-2"
                 >
-                  <td className="px-4 py-3 align-top text-sm text-slate-700">
+                  <td className="px-4 py-3 align-top text-sm text-slate-700 dark:text-slate-100">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="cursor-grab rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                        className="cursor-grab rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-300 dark:hover:bg-surface-2 dark:hover:text-slate-100"
                         title="Arrastar para reordenar"
                         aria-label="Arrastar para reordenar"
                       >
@@ -129,10 +132,10 @@ export default function BookletItemsEditor({
                       <span>{index + 1}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 align-top text-sm text-slate-800">
+                  <td className="px-4 py-3 align-top text-sm text-slate-800 dark:text-slate-100">
                     <div className="line-clamp-2">{item.title || "Sem enunciado"}</div>
                   </td>
-                  <td className="px-4 py-3 align-top text-xs text-slate-500">
+                  <td className="px-4 py-3 align-top text-xs text-slate-500 dark:text-slate-300">
                     <div>{item.subject_name || "-"}</div>
                     <div>{item.descriptor_label || "-"}</div>
                     <div>{item.skill_label || "-"}</div>
@@ -141,7 +144,7 @@ export default function BookletItemsEditor({
                     <button
                       type="button"
                       onClick={() => setRemoveTarget(item)}
-                      className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                      className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-300 dark:hover:bg-red-500/15 dark:hover:text-red-300"
                       title="Remover"
                       aria-label="Remover"
                     >

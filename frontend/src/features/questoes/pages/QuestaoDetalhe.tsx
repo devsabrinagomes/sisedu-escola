@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import {
   ArrowLeft,
   Image as ImageIcon,
@@ -13,6 +14,7 @@ import AddToCadernoModal from "@/features/questoes/components/AddToCadernoModal"
 import QuestionActions from "@/features/questoes/components/QuestionActions";
 import { useToast } from "@/components/ui/toast/useToast";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 type OptionDTO = {
   id: number;
@@ -88,6 +90,7 @@ export default function QuestaoDetalhe() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [cadernoModalOpen, setCadernoModalOpen] = useState(false);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     (async () => {
@@ -253,12 +256,18 @@ export default function QuestaoDetalhe() {
     );
   }, [v]);
 
-  if (loading) return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
+  }
 
   if (err)
     return (
       <div className="space-y-3">
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
 
@@ -309,7 +318,7 @@ export default function QuestaoDetalhe() {
                 className={[
                   "rounded-full px-3 py-1 text-xs font-medium",
                   item.private
-                    ? "bg-red-100 text-red-700"
+                    ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
                     : "bg-emerald-100 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400",
                 ].join(" ")}
               >
@@ -349,7 +358,7 @@ export default function QuestaoDetalhe() {
               onClick={() => setCadernoModalOpen(true)}
               title="Adicionar ao caderno"
               aria-label="Adicionar ao caderno"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 transition shrink-0"
+              className="inline-flex items-center gap-2 rounded-lg btn-primary px-3 py-2 text-sm font-semibold shrink-0"
             >
               <Plus size={18} />
               <span>Adicionar ao caderno</span>

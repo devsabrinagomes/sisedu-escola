@@ -107,7 +107,7 @@ const stepToRoute: Partial<Record<StepKey, string>> = {
 };
 
 export default function Home() {
-  // ✅ refs separados (desktop/mobile)
+  // refs separados (desktop/mobile)
   const desktopContainerRef = useRef<HTMLDivElement | null>(null);
   const mobileContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -282,7 +282,7 @@ export default function Home() {
             {/* linha animada */}
             {baseLength > 0 && (
               <div
-                className="absolute bg-brand-500 dark:bg-brand-400 z-0"
+                className="absolute bg-brand-600 dark:bg-brand-400 z-0"
                 style={{
                   left: startX,
                   top: LINE_Y,
@@ -314,7 +314,7 @@ export default function Home() {
         <div className="md:hidden">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-borderDark dark:bg-surface-1">
             <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
-              Como funciona no sistema
+             Ciclo de Avaliação
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
               Deslize para ver todas as etapas.
@@ -324,9 +324,6 @@ export default function Home() {
               ref={mobileContainerRef}
               className="relative overflow-x-auto scrollbar-hide"
             >
-              {/* indicador visual lateral */}
-              <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white to-transparent dark:from-slate-800" />
-
               {baseLength > 0 && (
                 <div
                   className="absolute bg-slate-300 dark:bg-borderDark z-0"
@@ -342,7 +339,7 @@ export default function Home() {
 
               {baseLength > 0 && (
                 <div
-                  className="absolute bg-brand-500 dark:bg-brand-400 z-0"
+                  className="absolute bg-brand-600 dark:bg-brand-400 z-0"
                   style={{
                     left: startX,
                     top: LINE_Y,
@@ -473,7 +470,7 @@ function FlowStep({
         className={[
           "text-sm text-center leading-tight transition-colors duration-200",
           active
-            ? "font-semibold text-brand-500 dark:text-brand-400"
+            ? "font-semibold text-brand-600 dark:text-brand-400"
             : "font-medium text-slate-700 dark:text-slate-300",
         ].join(" ")}
       >

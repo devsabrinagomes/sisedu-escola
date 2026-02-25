@@ -7,6 +7,7 @@ import RichEditor, {
   useRichEditor,
 } from "@/components/RichEditor";
 import CheckToggle from "@/components/ui/CheckToggle";
+import LoadingButton from "@/components/ui/LoadingButton";
 
 export type Alternativa = "A" | "B" | "C" | "D" | "E";
 
@@ -480,7 +481,11 @@ export default function QuestaoForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+        >
           {err}
         </div>
       )}
@@ -537,7 +542,7 @@ export default function QuestaoForm({
 
           {/* DESCRIPTOR */}
           <div>
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descritor</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Saber</label>
             <select
               value={descriptorId}
               onChange={(e) => {
@@ -654,7 +659,7 @@ export default function QuestaoForm({
                 type="file"
                 accept="image/*"
                 onChange={(e) => setSupportImageFile(e.target.files?.[0] ?? null)}
-                className="mt-2 block w-full text-sm"
+                className="mt-2 block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-3 file:rounded-md file:border file:border-slate-300 dark:file:border-borderDark file:bg-slate-100 dark:file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 dark:file:text-slate-200 hover:file:bg-slate-200 dark:hover:file:bg-surface-1"
               />
             </div>
 
@@ -681,7 +686,7 @@ export default function QuestaoForm({
               <button
                 type="button"
                 onClick={addOption}
-                className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+                className="rounded-lg btn-primary px-3 py-2 text-xs font-semibold"
               >
                 + Adicionar alternativa (E)
               </button>
@@ -821,7 +826,7 @@ export default function QuestaoForm({
                       )
                     );
                   }}
-                  className="mt-1 block w-full text-sm disabled:opacity-50"
+                  className="mt-1 block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-3 file:rounded-md file:border file:border-slate-300 dark:file:border-borderDark file:bg-slate-100 dark:file:bg-surface-2 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 dark:file:text-slate-200 hover:file:bg-slate-200 dark:hover:file:bg-surface-1 disabled:opacity-50"
                 />
               </div>
 
@@ -885,13 +890,13 @@ export default function QuestaoForm({
           </Link>
         )}
 
-        <button
+        <LoadingButton
           type="submit"
-          disabled={saving}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 dark:border dark:border-brand-500/40 dark:bg-brand-600 dark:hover:bg-brand-500 disabled:opacity-60"
+          loading={saving}
+          className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
         >
-          {saving ? "Salvando…" : mode === "create" ? "Criar questão" : "Salvar nova versão"}
-        </button>
+          {mode === "create" ? "Criar questão" : "Salvar nova versão"}
+        </LoadingButton>
       </div>
     </form>
   );

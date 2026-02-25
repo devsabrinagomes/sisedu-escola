@@ -2,7 +2,9 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import PageCard from "@/components/layout/PageCard";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import { useToast } from "@/components/ui/toast/useToast";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import OfferForm from "@/features/ofertas/components/OfferForm";
 import { getOffer, updateOffer } from "@/features/ofertas/services/offers";
 import type { OfferDTO, OfferPayload } from "@/features/ofertas/types";
@@ -21,6 +23,7 @@ export default function OfertaEditar() {
   const [err, setErr] = useState("");
   const [item, setItem] = useState<OfferDTO | null>(null);
   const [sigeSelection, setSigeSelection] = useState<OfferSigeSelection | null>(null);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!offerId) return;
@@ -64,7 +67,11 @@ export default function OfertaEditar() {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
   }
 
   return (
@@ -78,13 +85,13 @@ export default function OfertaEditar() {
       onBack={() => navigate(`/ofertas/${offerId}`)}
     >
       {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
       )}
 
       {!err && item && !canEdit && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
           Você não tem permissão para editar esta oferta.
         </div>
       )}

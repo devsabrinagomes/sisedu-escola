@@ -4,7 +4,9 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import PageCard from "@/components/layout/PageCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import { useToast } from "@/components/ui/toast/useToast";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import {
   deleteOffer,
   getOffer,
@@ -35,6 +37,7 @@ export default function OfertaDetalhe() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [sigeSelection, setSigeSelection] = useState<ReturnType<typeof getOfferSigeSelection>>(null);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!offerId) return;
@@ -83,7 +86,11 @@ export default function OfertaDetalhe() {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
   }
 
   return (
@@ -97,7 +104,7 @@ export default function OfertaDetalhe() {
       onBack={() => navigate("/ofertas")}
     >
       {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
       )}
@@ -129,7 +136,7 @@ export default function OfertaDetalhe() {
                   <button
                     type="button"
                     onClick={() => setDeleteOpen(true)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 hover:text-red-600 transition"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-300 transition"
                     title="Remover oferta"
                     aria-label="Remover oferta"
                   >

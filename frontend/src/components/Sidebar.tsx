@@ -44,7 +44,7 @@ export default function Sidebar({
   headerRight?: React.ReactNode;
 }) {
   return (
-    <aside className="w-full">
+    <aside className="w-full overflow-y-auto">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-borderDark dark:bg-surface-1">
         {(showTitle || headerRight) && (
           <div className="flex items-center justify-between">
@@ -76,7 +76,7 @@ export default function Sidebar({
                   cx(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors duration-200",
                     isActive
-                      ? "bg-brand-500 text-white hover:bg-brand-600 dark:bg-brand-500/15 dark:text-brand-400 dark:hover:bg-brand-500/25"
+                      ? "bg-brand-600 text-white hover:bg-brand-600 dark:bg-brand-500/15 dark:text-brand-400 dark:hover:bg-brand-500/25"
                       : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-surface-2"
                   )
                 }

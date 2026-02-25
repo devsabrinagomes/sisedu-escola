@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import LoadingButton from "@/components/ui/LoadingButton";
 import { useToast } from "@/components/ui/toast/useToast";
 import BookletItemsEditor from "@/features/cadernos/components/BookletItemsEditor";
 import QuestionVersionPickerModal from "@/features/cadernos/components/QuestionVersionPickerModal";
@@ -87,17 +88,21 @@ export default function BookletForm({
     <>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="mb-1 block text-xs font-semibold text-slate-700">
+          <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-200">
             Nome <span className="text-red-500">*</span>
           </label>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Digite o nome do caderno"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-brand-500/40"
+            aria-invalid={Boolean(nameError)}
+            aria-describedby={nameError ? "booklet-name-error" : undefined}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-100"
           />
           {nameError && (
-            <p className="mt-1 text-sm text-red-600">{nameError}</p>
+            <p id="booklet-name-error" className="mt-1 text-sm text-red-600">
+              {nameError}
+            </p>
           )}
         </div>
 
@@ -107,26 +112,22 @@ export default function BookletForm({
           onAddClick={() => setPickerOpen(true)}
         />
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-4 dark:border-borderDark">
           <button
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-borderDark dark:bg-surface-1 dark:text-slate-200 dark:hover:bg-surface-2"
           >
             Cancelar
           </button>
-          <button
+          <LoadingButton
             type="submit"
-            disabled={saving}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+            loading={saving}
+            className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
           >
-            {saving
-              ? "Salvando..."
-              : mode === "create"
-                ? "Salvar caderno"
-                : "Salvar alterações"}
-          </button>
+            {mode === "create" ? "Salvar caderno" : "Salvar alterações"}
+          </LoadingButton>
         </div>
       </form>
 

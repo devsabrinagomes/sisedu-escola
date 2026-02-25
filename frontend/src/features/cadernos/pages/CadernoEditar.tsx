@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import PageCard from "@/components/layout/PageCard";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import { useToast } from "@/components/ui/toast/useToast";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import { getApiErrorMessage } from "@/lib/getApiErrorMessage";
 import BookletForm from "@/features/cadernos/components/BookletForm";
 import type {
@@ -41,6 +43,7 @@ export default function CadernoEditar() {
   const [name, setName] = useState("");
   const [initialItems, setInitialItems] = useState<BookletItemDraft[]>([]);
   const [persistedItems, setPersistedItems] = useState<BookletItemDraft[]>([]);
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!bookletId) return;
@@ -162,7 +165,11 @@ export default function CadernoEditar() {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500 dark:text-slate-400">Carregando...</div>;
+    return (
+      <div className="flex min-h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-borderDark dark:bg-surface-1" aria-busy="true">
+        {showLoading ? <EqualizerLoader size={48} /> : null}
+      </div>
+    );
   }
 
   return (
@@ -176,7 +183,7 @@ export default function CadernoEditar() {
       onBack={() => navigate(`/cadernos/${bookletId}`)}
     >
       {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
           {err}
         </div>
       )}

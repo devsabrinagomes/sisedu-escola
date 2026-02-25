@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
+import LoadingButton from "@/components/ui/LoadingButton";
 import { useToast } from "@/components/ui/toast/useToast";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import {
   getApplicationAnswers,
   saveApplicationAnswers,
@@ -37,6 +40,7 @@ export default function AnswersDrawer({
   const [err, setErr] = useState("");
   const [payload, setPayload] = useState<ApplicationAnswersResponseDTO | null>(null);
   const [answers, setAnswers] = useState<Record<number, string | null>>({});
+  const showLoading = useDelayedLoading(loading);
 
   useEffect(() => {
     if (!open || !application) return;
@@ -109,17 +113,24 @@ export default function AnswersDrawer({
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
-      <aside className="absolute right-0 top-0 h-full w-full max-w-2xl border-l border-slate-200 bg-white shadow-xl">
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="answers-drawer-title"
+        className="absolute right-0 top-0 h-full w-full max-w-2xl border-l border-slate-200 bg-white shadow-xl dark:border-borderDark dark:bg-surface-1"
+      >
         <div className="flex h-full flex-col">
-          <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-start justify-between border-b border-slate-200 dark:border-borderDark px-5 py-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">{application.student_name}</h3>
-              <p className="mt-1 text-sm text-slate-500">{className}</p>
+              <h3 id="answers-drawer-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {application.student_name}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{className}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-surface-2 dark:hover:text-slate-100"
               aria-label="Fechar"
             >
               <X className="h-4 w-4" />
@@ -127,17 +138,19 @@ export default function AnswersDrawer({
           </div>
 
           {loading ? (
-            <div className="px-5 py-6 text-sm text-slate-500">Carregando respostas...</div>
+            <div className="flex items-center justify-center px-5 py-6" aria-busy="true">
+              {showLoading ? <EqualizerLoader size={18} /> : null}
+            </div>
           ) : err ? (
             <div className="p-5">
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
                 {err}
               </div>
             </div>
           ) : payload ? (
             <>
-              <div className="border-b border-slate-100 px-5 py-3 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">Resumo:</span>{" "}
+              <div className="border-b border-slate-100 px-5 py-3 text-sm text-slate-700 dark:border-borderDark dark:text-slate-300">
+                <span className="font-semibold text-slate-900 dark:text-slate-100">Resumo:</span>{" "}
                 {currentSummary?.correct ?? 0} acertos • {currentSummary?.wrong ?? 0} erros •{" "}
                 {currentSummary?.blank ?? 0} brancos • {payload.items_total} total
               </div>
@@ -149,12 +162,12 @@ export default function AnswersDrawer({
                     return (
                       <div
                         key={item.id}
-                        className="rounded-lg border border-slate-200 bg-white px-4 py-3"
+                        className="rounded-lg border border-slate-200 dark:border-borderDark bg-white px-4 py-3 dark:bg-surface-1"
                       >
-                        <div className="mb-2 text-sm font-semibold text-slate-900">
+                        <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                           Questão {String(item.order).padStart(2, "0")}
                         </div>
-                        <div className="mb-3 text-sm text-slate-600">
+                        <div className="mb-3 text-sm text-slate-600 dark:text-slate-400">
                           {summarizeQuestionPreview(
                             item.question_version?.title,
                             item.question_version?.command,
@@ -170,7 +183,7 @@ export default function AnswersDrawer({
                                   "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                                   checked
                                     ? "border-emerald-200 bg-emerald-50 text-brand-500"
-                                    : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                                    : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-borderDark dark:text-slate-300 dark:hover:bg-surface-2",
                                 ].join(" ")}
                               >
                                 <input
@@ -189,8 +202,8 @@ export default function AnswersDrawer({
                             className={[
                               "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                               selectedOption === null
-                                ? "border-slate-300 bg-slate-100 text-slate-800"
-                                : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                                ? "border-slate-300 bg-slate-100 text-slate-800 dark:border-borderDark dark:bg-surface-2 dark:text-slate-200"
+                                : "border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-borderDark dark:text-slate-300 dark:hover:bg-surface-2",
                             ].join(" ")}
                           >
                             <input
@@ -210,37 +223,37 @@ export default function AnswersDrawer({
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 px-5 py-4">
+              <div className="border-t border-slate-200 dark:border-borderDark px-5 py-4">
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-200 dark:border-borderDark bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
                     disabled={saving}
                   >
                     Cancelar
                   </button>
-                  <button
+                  <LoadingButton
                     type="button"
                     onClick={() => void onSave(false)}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                    disabled={saving}
+                    className="rounded-lg border border-slate-200 dark:border-borderDark bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
+                    loading={saving}
                   >
-                    {saving ? "Salvando..." : "Salvar"}
-                  </button>
-                  <button
+                    Salvar
+                  </LoadingButton>
+                  <LoadingButton
                     type="button"
                     onClick={() => void onSave(true)}
-                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
-                    disabled={saving}
+                    className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
+                    loading={saving}
                   >
-                    {saving ? "Salvando..." : "Salvar e voltar"}
-                  </button>
+                    Salvar e voltar
+                  </LoadingButton>
                 </div>
               </div>
             </>
           ) : (
-            <div className="px-5 py-6 text-sm text-slate-500">Nenhum dado disponível.</div>
+            <div className="px-5 py-6 text-sm text-slate-500 dark:text-slate-400">Nenhum dado disponível.</div>
           )}
         </div>
       </aside>

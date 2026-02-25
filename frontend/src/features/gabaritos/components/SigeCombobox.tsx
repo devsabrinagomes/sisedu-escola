@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
+import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 type Option = {
   value: number;
@@ -33,6 +35,7 @@ export default function SigeCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const showLoading = useDelayedLoading(loading);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -114,13 +117,13 @@ export default function SigeCombobox({
 
   return (
     <div ref={rootRef}>
-      <label className="mb-1 block text-xs font-medium text-slate-500">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-300">{label}</label>
       <div className="relative">
         <div
           className={[
-            "flex w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700",
+            "flex w-full items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300",
             "focus-within:ring-2 focus-within:ring-brand-500/40",
-            disabled ? "cursor-not-allowed bg-slate-50 text-slate-400" : "",
+            disabled ? "cursor-not-allowed bg-slate-50 text-slate-400 dark:bg-surface-2 dark:text-slate-500" : "",
           ].join(" ")}
         >
           <Search className="mr-2 h-4 w-4 text-slate-400" />
@@ -136,7 +139,7 @@ export default function SigeCombobox({
             }}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
-            className="w-full bg-transparent outline-none placeholder:text-slate-400"
+            className="w-full bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
 
           {selected ? (
@@ -146,7 +149,7 @@ export default function SigeCombobox({
                 onChange(undefined);
                 close();
               }}
-              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-surface-2 dark:hover:text-slate-200"
               title="Limpar seleção"
               aria-label="Limpar seleção"
             >
@@ -157,11 +160,13 @@ export default function SigeCombobox({
         </div>
 
         {open ? (
-          <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+          <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-borderDark dark:bg-surface-1">
             {loading ? (
-              <div className="px-3 py-2 text-sm text-slate-500">Carregando...</div>
+              <div className="flex items-center justify-center px-3 py-3" aria-busy="true">
+                {showLoading ? <EqualizerLoader size={16} /> : null}
+              </div>
             ) : filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-slate-500">{emptyText}</div>
+              <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-300">{emptyText}</div>
             ) : (
               filtered.map((option, index) => {
                 const isSelected = option.value === value;
@@ -174,11 +179,13 @@ export default function SigeCombobox({
                     onClick={() => selectOption(option)}
                     className={[
                       "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm",
-                      highlighted ? "bg-slate-100 text-slate-900" : "text-slate-700",
+                      highlighted
+                        ? "bg-slate-100 text-slate-900 dark:bg-surface-2 dark:text-slate-100"
+                        : "text-slate-700 dark:text-slate-300",
                     ].join(" ")}
                   >
                     <span className="truncate">{option.label}</span>
-                    {isSelected ? <Check className="h-4 w-4 text-emerald-600" /> : null}
+                    {isSelected ? <Check className="h-4 w-4 text-brand-500 dark:text-brand-400" /> : null}
                   </button>
                 );
               })

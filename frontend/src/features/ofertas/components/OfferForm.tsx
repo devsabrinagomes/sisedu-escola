@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import BookletCombobox from "@/components/BookletCombobox";
 import DatePickerInput from "@/components/ui/DatePickerInput";
+import LoadingButton from "@/components/ui/LoadingButton";
 import SigeMultiCombobox from "@/features/gabaritos/components/SigeMultiCombobox";
 import {
   listOfferSchoolClasses,
@@ -204,26 +205,30 @@ export default function OfferForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-borderDark dark:bg-surface-1">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
                 Descrição <span className="text-red-500">*</span>
               </label>
-              <span className="text-xs text-slate-500">{description.length}/500</span>
+              <span className="text-xs text-slate-500 dark:text-slate-300">{description.length}/500</span>
             </div>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 500))}
               rows={4}
               placeholder="Nome ou título da oferta"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40"
+              aria-invalid={Boolean(errors.description)}
+              aria-describedby="offer-description-help"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-borderDark dark:bg-surface-1 dark:text-slate-100"
             />
             {errors.description ? (
-              <p className="mt-1 text-xs text-red-600">{errors.description}</p>
+              <p id="offer-description-help" className="mt-1 text-xs text-red-600">
+                {errors.description}
+              </p>
             ) : (
-              <p className="mt-1 text-xs text-slate-500">
+              <p id="offer-description-help" className="mt-1 text-xs text-slate-500 dark:text-slate-300">
                 {descriptionLeft >= 0
                   ? `${descriptionLeft} caracteres restantes`
                   : "Limite de 500 caracteres excedido"}
@@ -289,7 +294,7 @@ export default function OfferForm({
           </>
 
           <div className="md:col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Caderno <span className="text-red-500">*</span>
             </label>
             <BookletCombobox
@@ -303,7 +308,7 @@ export default function OfferForm({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Data início <span className="text-red-500">*</span>
             </label>
             <DatePickerInput
@@ -317,7 +322,7 @@ export default function OfferForm({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Data fim <span className="text-red-500">*</span>
             </label>
             <DatePickerInput
@@ -336,24 +341,18 @@ export default function OfferForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-borderDark dark:bg-surface-1 dark:text-slate-300 dark:hover:bg-surface-2"
           disabled={saving}
         >
           Cancelar
         </button>
-        <button
+        <LoadingButton
           type="submit"
-          disabled={saving}
-          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+          loading={saving}
+          className="rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
         >
-          {saving
-            ? mode === "create"
-              ? "Salvando..."
-              : "Atualizando..."
-            : mode === "create"
-              ? "Salvar oferta"
-              : "Salvar alterações"}
-        </button>
+          {mode === "create" ? "Salvar oferta" : "Salvar alterações"}
+        </LoadingButton>
       </div>
     </form>
   );
