@@ -80,7 +80,7 @@ export default function Layout() {
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:border-borderDark dark:bg-surface-2 dark:text-brand-400 dark:hover:bg-surface-2"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:border-borderDark dark:bg-surface-2 dark:text-[var(--yellow-stroke)] dark:hover:bg-surface-2"
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
