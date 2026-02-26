@@ -1,8 +1,8 @@
 import os
 import uuid
+from django.conf import settings
 from django.db import models
 from django.db.models import UniqueConstraint, Index
-from django.utils import timezone
 
 def rename_upload_question(self, filename):
     file_name, file_extension = os.path.splitext(filename)
@@ -267,3 +267,41 @@ class StudentAnswer(models.Model):
 
     def __str__(self):
         return f"Resposta {self.application_id} - Item {self.booklet_item_id}"
+
+
+class ChatConversation(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_conversations")
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_interaction = models.DateTimeField(auto_now=True)
+    current_step = models.CharField(max_length=50, default="start")
+    fallback_count = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        indexes = [
+            Index(fields=["user", "-last_interaction"]),
+        ]
+
+    def __str__(self):
+        return f"Conversa {self.id} (user={self.user_id})"
+
+
+class ChatMessage(models.Model):
+    SENDER_USER = "user"
+    SENDER_BOT = "bot"
+    SENDER_CHOICES = [
+        (SENDER_USER, "Usuário"),
+        (SENDER_BOT, "Bot"),
+    ]
+
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name="messages")
+    sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            Index(fields=["conversation", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Msg {self.id} ({self.sender}) conv={self.conversation_id}"

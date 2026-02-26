@@ -15,6 +15,10 @@ from .views_catalog import (
     SubjectViewSet,
     TopicViewSet,
 )
+from .views_chat import (
+    ChatConversationDetailView,
+    ChatSendView,
+)
 from .views_reports import (
     OfferReportItemsCsvView,
     OfferReportStudentsCsvView,
@@ -40,6 +44,8 @@ __all__ = [
     "BookletItemsView",
     "BookletKitPdfView",
     "BookletViewSet",
+    "ChatConversationDetailView",
+    "ChatSendView",
     "DescriptorViewSet",
     "MockSigeClassStudentsView",
     "MockSigeSchoolClassesView",

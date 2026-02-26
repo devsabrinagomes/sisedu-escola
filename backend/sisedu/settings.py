@@ -230,3 +230,10 @@ SIGE_ACADEMICO_USERNAME = os.getenv("SIGE_ACADEMICO_USERNAME", "").strip()
 SIGE_ACADEMICO_PASSWORD = os.getenv("SIGE_ACADEMICO_PASSWORD", "").strip()
 SIGE_ACADEMICO_SCOPE = os.getenv("SIGE_ACADEMICO_SCOPE", "").strip()
 SIGE_ACADEMICO_ACCESS_TOKEN = os.getenv("SIGE_ACADEMICO_ACCESS_TOKEN", "").strip()
+
+# Chat n8n webhook
+N8N_CHAT_WEBHOOK_URL = os.getenv(
+    "N8N_CHAT_WEBHOOK_URL",
+    "https://automacao.seduc.ce.gov.br/webhook/chat/sisedu",
+).strip()
+N8N_TOKEN = os.getenv("N8N_TOKEN", "").strip()

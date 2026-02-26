@@ -25,6 +25,8 @@ from .views import (
     ReportsByClassView,
     ReportsOverviewView,
     OfferViewSet,
+    ChatSendView,
+    ChatConversationDetailView,
     QuestionViewSet,
 )
 
@@ -111,4 +113,6 @@ urlpatterns = [
     path("booklets/<int:id>/items/", BookletItemsView.as_view(), name="booklet-items"),
     path("booklets/<int:id>/items/bulk/", BookletItemsBulkView.as_view(), name="booklet-items-bulk"),
     path("booklets/<int:id>/items/<int:item_id>/", BookletItemDetailView.as_view(), name="booklet-item-detail"),
+    path("chat/send/", ChatSendView.as_view(), name="chat-send"),
+    path("chat/conversation/<int:id>/", ChatConversationDetailView.as_view(), name="chat-conversation-detail"),
 ]

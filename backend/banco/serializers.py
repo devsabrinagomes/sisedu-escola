@@ -18,6 +18,11 @@ from .serializers_catalog import (
     SubjectSerializer,
     TopicSerializer,
 )
+from .serializers_chat import (
+    ChatConversationSerializer,
+    ChatMessageSerializer,
+    ChatSendSerializer,
+)
 from .serializers_questions import (
     QuestionOptionSerializer,
     QuestionSerializer,
@@ -30,6 +35,9 @@ __all__ = [
     "ApplicationSyncStudentSerializer",
     "BookletItemSerializer",
     "BookletSerializer",
+    "ChatConversationSerializer",
+    "ChatMessageSerializer",
+    "ChatSendSerializer",
     "DescriptorSerializer",
     "OfferSerializer",
     "QuestionOptionSerializer",

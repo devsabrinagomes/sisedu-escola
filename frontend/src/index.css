@@ -40,9 +40,9 @@
 
   /* semantic colors adaptadas p/ dark */
   --red-fill:#7F1D1D; --red-stroke:#EF4444;
-  --yellow-fill:#3A2F0B; --yellow-stroke:#FACC15;
-  --green-fill:#0B3B2E; --green-stroke:#0DC782;
-  --blue-fill:#0A2E44; --blue-stroke:#38BDF8;
+  --yellow-fill:#967405; --yellow-stroke:#FACC15;
+  --green-fill:#0c7c5e; --green-stroke:#3fce9a;
+  --blue-fill:#125f8f; --blue-stroke:#52c3f3;
 
   /* timeline refinada p/ dark premium */
   --timeline-neutral-fill:#1e2228;
@@ -167,5 +167,21 @@ body { margin: 0; }
   .eq-bar {
     animation: none;
     transform: scaleY(0.75);
+  }
+}
+
+/* ================================
+   CHAT X VLIBRAS
+================================ */
+body.chat-open [vw-access-button],
+body.chat-open [vw-plugin-wrapper] {
+  transform: translateY(-280px);
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 640px) {
+  body.chat-open [vw-access-button],
+  body.chat-open [vw-plugin-wrapper] {
+    transform: translateY(-360px);
   }
 }

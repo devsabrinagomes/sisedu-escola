@@ -7,7 +7,7 @@ import logo from "../assets/images/logo/logo.png";
 import { useTheme } from "@/shared/hooks/useTheme";
 import VLibrasWidget from "@/components/accessibility/VLibrasWidget";
 import HelpDrawer from "@/components/help/HelpDrawer";
-import WhatsAppSupportButton from "@/components/support/WhatsAppSupportButton";
+import ChatWidget from "@/components/chat/ChatWidget";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -151,7 +151,7 @@ export default function Layout() {
         </div>
       </main>
       <Footer />
-      <WhatsAppSupportButton />
+      <ChatWidget />
       <VLibrasWidget enabled={vlibrasEnabled} />
     </div>
   );
