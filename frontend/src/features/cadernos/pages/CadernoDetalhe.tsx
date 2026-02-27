@@ -37,7 +37,7 @@ export default function CadernoDetalhe() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userId } = useAuth();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [item, setItem] = useState<BookletDTO | null>(null);
   const [resolvedDrafts, setResolvedDrafts] = useState<BookletItemDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,6 +182,12 @@ export default function CadernoDetalhe() {
   }
 
   async function onDownloadKit() {
+    const loadingToastId = toast({
+      type: "info",
+      title: "Baixando kit de aplicação...",
+      message: "Aguarde enquanto os PDFs são gerados.",
+      duration: 20000,
+    });
     try {
       setDownloadingKit(true);
       await downloadBookletApplicationKit(bookletId);
@@ -195,6 +201,7 @@ export default function CadernoDetalhe() {
         message: getApiErrorMessage(error),
       });
     } finally {
+      dismiss(loadingToastId);
       setDownloadingKit(false);
     }
   }

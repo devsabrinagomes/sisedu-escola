@@ -36,7 +36,7 @@ function countItems(booklet: BookletDTO) {
 
 export default function CadernosList() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { userId } = useAuth();
   const [items, setItems] = useState<BookletDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +129,12 @@ export default function CadernosList() {
   }, [sortedItems, currentPage]);
 
   async function onDownloadKit(bookletId: number) {
+    const loadingToastId = toast({
+      type: "info",
+      title: "Baixando kit de aplicação...",
+      message: "Aguarde enquanto os PDFs são gerados.",
+      duration: 20000,
+    });
     try {
       setDownloadingKitId(bookletId);
       await downloadBookletApplicationKit(bookletId);
@@ -141,6 +147,7 @@ export default function CadernosList() {
         message: getApiErrorMessage(error),
       });
     } finally {
+      dismiss(loadingToastId);
       setDownloadingKitId(null);
     }
   }

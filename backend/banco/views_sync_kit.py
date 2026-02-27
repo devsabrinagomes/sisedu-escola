@@ -181,6 +181,7 @@ class OfferKitPdfView(OwnerAccessMixin, APIView):
     def get(self, request, offer_id, kind):
         offer = self._get_offer(request, offer_id)
         return _render_booklet_kit_pdf(
+            request=request,
             booklet=offer.booklet,
             kind=kind,
             kit_name=offer.description or f"Oferta #{offer.id}",
@@ -201,6 +202,7 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
     def get(self, request, booklet_id, kind):
         booklet = self._get_booklet(request, booklet_id)
         return _render_booklet_kit_pdf(
+            request=request,
             booklet=booklet,
             kind=kind,
             kit_name=booklet.name or f"Caderno #{booklet.id}",
@@ -208,7 +210,22 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
         )
 
 
-def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
+def _choose_cards_per_sheet(total_questions):
+    if total_questions <= 25:
+        return 4
+    if total_questions <= 35:
+        return 3
+    if total_questions <= 45:
+        return 2
+    return 1
+
+
+def _split_two_cols(numbers):
+    midpoint = (len(numbers) + 1) // 2
+    return numbers[:midpoint], numbers[midpoint:]
+
+
+def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_prefix):
     try:
         from weasyprint import CSS, HTML
     except ModuleNotFoundError:
@@ -256,21 +273,35 @@ def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
     }
 
     css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
-    base_url = str(settings.BASE_DIR / "banco" / "templates" / "pdf")
+    base_url = request.build_absolute_uri("/") if request else str(settings.BASE_DIR)
 
     if kind == "prova":
         html_string = render_to_string("pdf/booklet.html", context)
         filename = f"{filename_prefix}-caderno-prova.pdf"
+        stylesheets = [CSS(filename=css_path)]
     elif kind == "cartao-resposta":
-        html_string = render_to_string("pdf/answer_sheet.html", context)
+        total_questions = len(questions)
+        per_sheet = _choose_cards_per_sheet(total_questions)
+        question_numbers = list(range(1, total_questions + 1))
+        left_nums, right_nums = _split_two_cols(question_numbers)
+
+        context.update(
+            {
+                "per_sheet": per_sheet,
+                "cards": list(range(per_sheet)),
+                "left_nums": left_nums,
+                "right_nums": right_nums,
+                "booklet_name": kit_name,
+            }
+        )
+        html_string = render_to_string("pdf/answer_sheet_multi.html", context)
         filename = f"{filename_prefix}-cartao-resposta.pdf"
+        stylesheets = []
     else:
         raise ValidationError({"detail": "Tipo de kit inválido."})
 
     try:
-        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
-            stylesheets=[CSS(filename=css_path)]
-        )
+        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(stylesheets=stylesheets)
     except Exception as exc:
         raise ValidationError(
             {
