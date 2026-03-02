@@ -6,7 +6,7 @@
   <title>Cartão Resposta</title>
 
   <style>
-    @page { size: A4; margin: 12mm; }
+    @page { size: A4; margin: 5mm; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: Arial, Helvetica, sans-serif; color:#111; font-size: 8.6pt; background:#fff; }
 
@@ -15,27 +15,36 @@
       --dark-green:#1f5f3a;
     }
 
-    .sheet{ display:grid; gap: 8mm; min-height: 273mm; align-content: stretch; }
-    .sheet.cards-4{ grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-    .sheet.cards-3{ grid-template-columns: 1fr; grid-template-rows: 1fr 1fr 1fr; }
-    .sheet.cards-2{ grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-    .sheet.cards-1{ grid-template-columns: 1fr; grid-template-rows: 1fr; }
+    .sheet{
+      display:grid;
+      min-height: 287mm;
+      margin: 0 auto;
+      place-items: center;
+    }
 
     .card{
+      width: 100mm;
+      height: 140mm;
       border: 1.4px solid #111;
       border-radius: 2.5mm;
       padding: 4mm;
       page-break-inside: avoid;
       overflow: visible;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
       min-height: 0;
+      gap: 1.8mm;
     }
 
-    .card.scale-4{ font-size: 7.4pt; }
-    .card.scale-3{ font-size: 7.8pt; }
-    .card.scale-2{ font-size: 8.2pt; }
-    .card.scale-1{ font-size: 8.6pt; }
+    .card{ font-size: 8.6pt; }
+
+    .card-top{
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      flex-shrink: 0;
+    }
 
     .card-header{
       display:flex;
@@ -59,6 +68,7 @@
       margin: 2mm 0 1.2mm 0;
       color: var(--ink);
       letter-spacing: .2px;
+      text-align:center;
     }
 
     .row-fields{ display:flex; gap: 4mm; margin-bottom: 1.2mm; }
@@ -70,23 +80,35 @@
     .booklet-bar{
       border: 1.4px solid var(--dark-green);
       border-radius: 2mm;
-      padding: 1mm 2.4mm;
+      padding: 1.4mm 3mm;
       background: #fff;
       text-align:center;
       font-weight: 900;
-      margin: 1.8mm 0 1.6mm 0;
+      margin: 1.4mm 0 1.8mm 0;
       color: var(--ink);
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .card-bottom{
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .grid-wrap{
       border: 0;
       border-radius: 0;
-      padding: 0;
+      padding: 0.6mm 0 0 0;
       background:#fff;
-      margin-top: 1.4mm;
+      margin-top: 0;
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
-    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 4mm; height: 100%; }
     .col{
       border: 1.4px solid #111;
       border-radius: 2mm;
@@ -145,68 +167,62 @@
       flex: 0 0 auto;
     }
 
-    .scale-1 .bubble{ width: 6.8mm; height: 6.8mm; font-size: 8.1pt; }
-    .scale-2 .bubble{ width: 6.1mm; height: 6.1mm; font-size: 7.5pt; }
-    .scale-3 .bubble{ width: 5.4mm; height: 5.4mm; font-size: 6.9pt; }
-    .scale-4 .bubble{ width: 5.0mm; height: 5.0mm; font-size: 6.3pt; }
-    .scale-2 .row{ min-height: 7.2mm; }
-    .scale-2 .qnum{ font-size: 8.2pt; }
   </style>
 </head>
 
 <body>
-  <div class="sheet cards-{{ per_sheet }}">
-    {% for _ in cards %}
-      <div class="card scale-{{ per_sheet }}">
-        <div class="card-header">
-          <div class="brand-left">
-            <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola">
-            <p class="brand-sub">Avaliação • Cartão Resposta</p>
-          </div>
-          <div class="brand-right">
-            <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceará Governo do Estado">
-          </div>
-        </div>
-
-        <div class="title">Cartão Resposta</div>
-
-        <div class="line-field name-line"><span>Nome:</span><div class="line"></div></div>
-
-        <div class="row-fields">
-          <div class="line-field"><span>Série:</span><div class="line"></div></div>
-          <div class="line-field"><span>Turma:</span><div class="line"></div></div>
-          <div class="line-field"><span>Turno:</span><div class="line"></div></div>
-        </div>
-
-        <div class="booklet-bar">Caderno: {{ booklet_name }}</div>
-
-        <div class="grid-wrap">
-          <div class="grid">
-            <div class="col">
-              {% for n in left_nums %}
-              <div class="row">
-                <div class="qnum">{{ n|stringformat:"02d" }}</div>
-                <div class="bubbles">
-                  <div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div>
-                </div>
-              </div>
-              {% endfor %}
+  <div class="sheet">
+      <div class="card">
+        <div class="card-top">
+          <div class="card-header">
+            <div class="brand-left">
+              <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola">
             </div>
+            <div class="brand-right">
+              <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceará Governo do Estado">
+            </div>
+          </div>
 
-            <div class="col">
-              {% for n in right_nums %}
-              <div class="row">
-                <div class="qnum">{{ n|stringformat:"02d" }}</div>
-                <div class="bubbles">
-                  <div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div>
+          <div class="title">Cartão Resposta</div>
+
+          <div class="line-field name-line"><span>Nome:</span><div class="line"></div></div>
+
+          <div class="row-fields">
+            <div class="line-field"><span>Série:</span><div class="line"></div></div>
+            <div class="line-field"><span>Turma:</span><div class="line"></div></div>
+          </div>
+
+          <div class="booklet-bar">Caderno: {{ booklet_name }}</div>
+        </div>
+
+        <div class="card-bottom">
+          <div class="grid-wrap">
+            <div class="grid">
+              <div class="col">
+                {% for n in left_nums %}
+                <div class="row">
+                  <div class="qnum">{{ n|stringformat:"02d" }}</div>
+                  <div class="bubbles">
+                    <div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div>
+                  </div>
                 </div>
+                {% endfor %}
               </div>
-              {% endfor %}
+
+              <div class="col">
+                {% for n in right_nums %}
+                <div class="row">
+                  <div class="qnum">{{ n|stringformat:"02d" }}</div>
+                  <div class="bubbles">
+                    <div class="bubble">A</div><div class="bubble">B</div><div class="bubble">C</div><div class="bubble">D</div><div class="bubble">E</div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    {% endfor %}
   </div>
 </body>
 </html>

@@ -210,16 +210,6 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
         )
 
 
-def _choose_cards_per_sheet(total_questions):
-    if total_questions <= 25:
-        return 4
-    if total_questions <= 35:
-        return 3
-    if total_questions <= 45:
-        return 2
-    return 1
-
-
 def _split_two_cols(numbers):
     midpoint = (len(numbers) + 1) // 2
     return numbers[:midpoint], numbers[midpoint:]
@@ -281,14 +271,11 @@ def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_p
         stylesheets = [CSS(filename=css_path)]
     elif kind == "cartao-resposta":
         total_questions = len(questions)
-        per_sheet = _choose_cards_per_sheet(total_questions)
         question_numbers = list(range(1, total_questions + 1))
         left_nums, right_nums = _split_two_cols(question_numbers)
 
         context.update(
             {
-                "per_sheet": per_sheet,
-                "cards": list(range(per_sheet)),
                 "left_nums": left_nums,
                 "right_nums": right_nums,
                 "booklet_name": kit_name,

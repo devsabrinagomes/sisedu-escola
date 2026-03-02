@@ -22,6 +22,7 @@ from .views import (
     OfferReportItemsCsvView,
     OfferReportStudentsCsvView,
     OfferReportSummaryView,
+    preview_cartao_resposta_pdf,
     ReportsByClassView,
     ReportsOverviewView,
     OfferViewSet,
@@ -92,6 +93,7 @@ urlpatterns = [
         ReportsOverviewView.as_view(),
         name="reports-overview",
     ),
+    path("pdf/preview/", preview_cartao_resposta_pdf, name="pdf-preview"),
     path(
         "reports/by-class/<int:offer_id>/",
         ReportsByClassView.as_view(),

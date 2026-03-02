@@ -1,3 +1,9 @@
+from math import ceil
+
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
+
 from .views_helpers import *  # noqa: F401,F403
 from .views_helpers import (
     _build_class_names_map,
@@ -9,6 +15,55 @@ from .views_helpers import (
     _resolve_filtered_class_refs,
     _resolve_report_data,
 )
+
+
+def preview_cartao_resposta_pdf(request):
+    # Querystring de teste:
+    # ?q=60 aumenta o total de questoes
+    # ?booklet=Simulado%20ENEM%202026 troca o nome do caderno
+    # ?cards=2 duplica o mesmo cartao em 2 paginas para validar repeticao
+    try:
+        total_questions = int(request.GET.get("q", 45))
+    except (TypeError, ValueError):
+        total_questions = 45
+    total_questions = max(1, total_questions)
+
+    booklet_name = (request.GET.get("booklet") or "Simulado ENEM 2026").strip() or "Simulado ENEM 2026"
+
+    try:
+        cards_count = int(request.GET.get("cards", 1))
+    except (TypeError, ValueError):
+        cards_count = 1
+    cards_count = max(1, cards_count)
+
+    nums = list(range(1, total_questions + 1))
+
+    # O split divide as questoes em duas colunas quase iguais.
+    # ceil garante que a coluna da esquerda receba a questao extra quando o total for impar.
+    mid = ceil(len(nums) / 2)
+    left_nums = nums[:mid]
+    right_nums = nums[mid:]
+
+    context = {
+        "booklet_name": booklet_name,
+        "left_nums": left_nums,
+        "right_nums": right_nums,
+        "cards": range(cards_count),
+    }
+
+    html_string = render_to_string("pdf/cartao_resposta.html", context)
+
+    # O base_url e necessario para o WeasyPrint resolver {% static %} e demais assets
+    # a partir da URL raiz do projeto durante a geracao do PDF.
+    pdf_bytes = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri("/"),
+    ).write_pdf()
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'inline; filename="cartao_resposta_preview.pdf"'
+    return response
+
 
 class OfferReportSummaryView(APIView):
     permission_classes = [IsAuthenticated]

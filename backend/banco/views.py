@@ -19,6 +19,7 @@ from .views_reports import (
     OfferReportItemsCsvView,
     OfferReportStudentsCsvView,
     OfferReportSummaryView,
+    preview_cartao_resposta_pdf,
     ReportsByClassView,
     ReportsOverviewView,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "OfferReportStudentsCsvView",
     "OfferReportSummaryView",
     "OfferViewSet",
+    "preview_cartao_resposta_pdf",
     "QuestionViewSet",
     "ReportsByClassView",
     "ReportsOverviewView",

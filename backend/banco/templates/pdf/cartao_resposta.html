@@ -1,0 +1,317 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Cartão Resposta Preview</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #0f172a;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      background: #ffffff;
+    }
+
+    /* Evitar Grid no contêiner principal reduz divergencias entre navegador e WeasyPrint. */
+    .sheet {
+      width: 100%;
+      text-align: center;
+    }
+
+    .card {
+      width: 100mm;
+      min-height: 140mm;
+      margin: 0 auto;
+      padding: 4mm;
+      border: 1.2px solid #111;
+      border-radius: 3mm;
+      background: #ffffff;
+      text-align: left;
+      page-break-inside: avoid;
+      page-break-after: always;
+    }
+
+    .card:last-child {
+      page-break-after: auto;
+    }
+
+    .card-header {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-bottom: 2mm;
+      padding-bottom: 2mm;
+      border-bottom: 1.4px solid #1f5f3a;
+    }
+
+    .logo-cell {
+      display: table-cell;
+      width: 50%;
+      vertical-align: middle;
+    }
+
+    .logo-cell.right {
+      text-align: right;
+    }
+
+    .logo-cell img {
+      max-height: 12mm;
+      max-width: 30mm;
+    }
+
+    .logo-cell.left img {
+      max-height: 14mm;
+      max-width: 34mm;
+    }
+
+    .title {
+      margin: 0 0 2mm;
+      text-align: center;
+      font-size: 11pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .field-label {
+      display: inline-block;
+      min-width: 11mm;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .field-line {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-bottom: 1.5mm;
+    }
+
+    .field-line-label,
+    .field-line-rule {
+      display: table-cell;
+      vertical-align: middle;
+    }
+
+    .field-line-label {
+      width: 13mm;
+    }
+
+    .field-rule {
+      display: block;
+      width: 100%;
+      border-bottom: 1px solid #111;
+      height: 3mm;
+    }
+
+    .field-row {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-bottom: 2mm;
+    }
+
+    .field-col {
+      display: table-cell;
+      width: 50%;
+      vertical-align: middle;
+    }
+
+    .field-col + .field-col {
+      padding-left: 3mm;
+    }
+
+    .field-inline {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+    }
+
+    .field-inline-label,
+    .field-inline-rule {
+      display: table-cell;
+      vertical-align: middle;
+    }
+
+    .field-inline-label {
+      width: 14mm;
+    }
+
+    .small-rule {
+      display: block;
+      width: 100%;
+      border-bottom: 1px solid #111;
+      height: 3mm;
+    }
+
+    .booklet-bar {
+      margin: 1.4mm 0 2.4mm;
+      padding: 1.4mm 2.2mm;
+      border: 1.2px solid #1f5f3a;
+      border-radius: 2mm;
+      clear: both;
+      text-align: center;
+      font-weight: 700;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .questions {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      border-spacing: 0;
+    }
+
+    .question-col {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding: 2mm 1mm;
+      border: 1px solid #111;
+      border-radius: 2mm;
+      font-size: 9pt;
+      text-align: left;
+    }
+
+    .question-col + .question-col {
+      border-left: 3mm solid transparent;
+    }
+
+    .question-row {
+      margin-bottom: 1.3mm;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .question-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .question-number {
+      display: inline-block;
+      width: 5.8mm;
+      margin-right: 0.2mm;
+      text-align: center;
+      font-weight: 700;
+      font-size: 7.6pt;
+    }
+
+    .bubble-group {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .bubble {
+      display: inline-block;
+      width: 5.1mm;
+      height: 5.1mm;
+      line-height: 4.7mm;
+      margin-right: 0.6mm;
+      border: 1.4px solid #111;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 6.1pt;
+      font-weight: 700;
+      background: #ffffff;
+    }
+
+    .bubble:last-child {
+      margin-right: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    {% for _ in cards %}
+      <div class="card">
+        <div class="card-header">
+          <div class="logo-cell left">
+            <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola" />
+          </div>
+          <div class="logo-cell right">
+            <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceara Governo do Estado" />
+          </div>
+        </div>
+
+        <div class="title">Cartão Resposta</div>
+
+        <div class="field-line">
+          <div class="field-line-label">
+            <span class="field-label">Nome:</span>
+          </div>
+          <div class="field-line-rule">
+            <span class="field-rule"></span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-col">
+            <div class="field-inline">
+              <div class="field-inline-label">
+                <span class="field-label">Série:</span>
+              </div>
+              <div class="field-inline-rule">
+                <span class="small-rule"></span>
+              </div>
+            </div>
+          </div>
+          <div class="field-col">
+            <div class="field-inline">
+              <div class="field-inline-label">
+                <span class="field-label">Turma:</span>
+              </div>
+              <div class="field-inline-rule">
+                <span class="small-rule"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="booklet-bar">Caderno: {{ booklet_name }}</div>
+
+        <div class="questions">
+          <div class="question-col">
+            {% for n in left_nums %}
+              <div class="question-row">
+                <span class="question-number">{{ n|stringformat:"02d" }}</span>
+                <span class="bubble-group">
+                  <span class="bubble">A</span>
+                  <span class="bubble">B</span>
+                  <span class="bubble">C</span>
+                  <span class="bubble">D</span>
+                  <span class="bubble">E</span>
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="question-col">
+            {% for n in right_nums %}
+              <div class="question-row">
+                <span class="question-number">{{ n|stringformat:"02d" }}</span>
+                <span class="bubble-group">
+                  <span class="bubble">A</span>
+                  <span class="bubble">B</span>
+                  <span class="bubble">C</span>
+                  <span class="bubble">D</span>
+                  <span class="bubble">E</span>
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
