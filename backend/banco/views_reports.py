@@ -35,6 +35,7 @@ def preview_cartao_resposta_pdf(request):
     except (TypeError, ValueError):
         cards_count = 1
     cards_count = max(1, cards_count)
+    landscape_mode = total_questions > 45
 
     nums = list(range(1, total_questions + 1))
 
@@ -48,10 +49,12 @@ def preview_cartao_resposta_pdf(request):
         "booklet_name": booklet_name,
         "left_nums": left_nums,
         "right_nums": right_nums,
-        "cards": range(cards_count),
+        "cards": range(cards_count if "cards" in request.GET else (3 if landscape_mode else 4)),
+        "total_questions": total_questions,
+        "landscape_mode": landscape_mode,
     }
 
-    html_string = render_to_string("pdf/cartao_resposta.html", context)
+    html_string = render_to_string("pdf/answer_sheet_multi.html", context)
 
     # O base_url e necessario para o WeasyPrint resolver {% static %} e demais assets
     # a partir da URL raiz do projeto durante a geracao do PDF.

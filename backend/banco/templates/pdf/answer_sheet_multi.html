@@ -35,7 +35,7 @@
       height: 140mm;
       border: 1.4px solid #111;
       border-radius: 2.5mm;
-      padding: 3.2mm;
+      padding: 3mm;
       page-break-inside: avoid;
       overflow: hidden;
     }
@@ -52,7 +52,7 @@
       justify-content: space-between;
       gap: 3mm;
       margin-bottom: 1mm;
-      border-bottom: 2px solid var(--dark-green);
+      /* border-bottom: 2px solid var(--dark-green); */
 
     }
 
@@ -80,7 +80,7 @@
 
     .booklet-bar{
       border: 1.4px solid var(--dark-green);
-      border-radius: 2mm;
+      border-radius: 1mm;
       padding: 1mm 2mm;
       background: #fff;
       text-align:center;
@@ -94,8 +94,8 @@
     }
 
     .card-bottom{
-      height: 96mm;
-      overflow: hidden;
+      height: 114mm;
+      overflow: visible;
     }
 
     .grid-wrap{
@@ -105,6 +105,7 @@
       background:#fff;
       margin-top: 0;
       width: 100%;
+      height: 100%;
     }
 
     /* As colunas internas usam inline-block para reduzir variações de largura no PDF final. */
@@ -112,38 +113,42 @@
       width: 100%;
       font-size: 0;
       white-space: nowrap;
+      height: 100%;
     }
     .col{
       display: inline-block;
       vertical-align: top;
-      width: 48.6%;
-      margin-right: 2.8%;
+      width: 49.2%;
+      margin-right: 1.6%;
       border: 1px solid #202020;
       border-radius: 2mm;
-      padding: 1mm 0.8mm;
+      padding: 1mm 0.6mm;
       page-break-inside: avoid;
       overflow: hidden;
-      min-height: 86mm;
+      /* min-height: 114mm; */
       white-space: normal;
       font-size: 8.6pt;
+      height: 105mm;
     }
     .col:last-child{ margin-right: 0; }
 
     .row{
       display: table;
+      position: relative;
       width: 100%;
       table-layout: fixed;
       margin: 0;
       min-height: 5.1mm;
       line-height: 1;
       page-break-inside: avoid;
-      /* margin-bottom: 0.9mm; */
     }
-    .row:last-child{ margin-bottom: 0; }
+    .row:last-child{
+      margin-bottom: 0;
+    }
 
     .qnum{
       display: table-cell;
-      width: 6.4mm;
+      width: 6mm;
       font-weight: 900;
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -154,10 +159,12 @@
     }
 
     .bubbles{
-      display: table-cell;
+      display: flex;
+      justify-content: space-around;
       white-space: nowrap;
       vertical-align: middle;
       font-size: 0;
+      margin-bottom: 0.2mm;
     }
 
     .bubble{
@@ -263,7 +270,7 @@
     body.is-landscape .card{
       width: 93.5mm;
       height: 200mm;
-      padding: 1.9mm 1.95mm;
+      padding: 1.9mm 1.2mm;
       flex: 0 0 auto;
     }
     body.is-landscape .card-left{
@@ -299,25 +306,28 @@
       margin-bottom: 1mm;
     }
     body.is-landscape .card-bottom{
-      height: 180mm;
-      overflow: hidden;
+      height: 200mm;
     }
     body.is-landscape .grid-wrap{
       padding-top: 0;
+      height: 100%;
     }
     body.is-landscape .grid{
       white-space: nowrap;
+      height: 100%;
     }
     body.is-landscape .col{
       display: inline-block;
       vertical-align: center;
-      width: 49%;
-      margin-right: 2%;
-      min-height: 168mm;
-      padding: 0.35mm 0.18mm;
+      width: 49.5%;
+      margin-right: 1%;
+      min-height: 166mm;
+      padding: 0.35mm 0.08mm;
+      height: 172mm;
     }
     body.is-landscape .row{
       display: flex;
+      position: relative;
       align-items: center;
       width: 100%;
       min-height: 0;
@@ -337,14 +347,15 @@
       vertical-align: middle;
     }
     body.is-landscape .bubbles{
-      display: inline-block;
+      display: flex;
+      justify-content: space-around;
       flex: 1 1 auto;
       white-space: nowrap;
       vertical-align: middle;
     }
     body.is-landscape .bubble{
-      width: 3.5mm;
-      height: 3.5mm;
+      width: 3.4mm;
+      height: 3.4mm;
       line-height: 3.22mm;
       font-size: 3.74pt;
       margin-right: 0.34mm;

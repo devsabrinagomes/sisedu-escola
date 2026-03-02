@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import EqualizerLoader from "@/components/ui/EqualizerLoader";
+import LoadingButton from "@/components/ui/LoadingButton";
 import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
 import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import { listMockSigeSchoolClasses, listMockSigeSchools } from "@/features/gabaritos/services/gabaritos";
@@ -537,15 +538,15 @@ export default function RelatoriosList() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
+            <LoadingButton
               type="button"
               onClick={() => void onLoadReport()}
+              loading={summaryLoading}
+              loadingText="Carregando relatórios..."
               className="inline-flex items-center gap-2 rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
-              disabled={summaryLoading}
             >
-              {summaryLoading && showSummaryLoading ? <EqualizerLoader size={16} /> : null}
               Carregar relatórios
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={onClearFilters}
