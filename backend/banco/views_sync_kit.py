@@ -273,12 +273,15 @@ def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_p
         total_questions = len(questions)
         question_numbers = list(range(1, total_questions + 1))
         left_nums, right_nums = _split_two_cols(question_numbers)
+        landscape_mode = total_questions > 45
 
         context.update(
             {
+                "cards": range(3 if landscape_mode else 4),
                 "left_nums": left_nums,
                 "right_nums": right_nums,
                 "booklet_name": kit_name,
+                "landscape_mode": landscape_mode,
             }
         )
         html_string = render_to_string("pdf/answer_sheet_multi.html", context)

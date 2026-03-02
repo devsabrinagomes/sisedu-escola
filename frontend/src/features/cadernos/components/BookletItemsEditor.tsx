@@ -46,13 +46,18 @@ export default function BookletItemsEditor({
             Arraste para reordenar. O salvamento respeita a ordem exibida.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onAddClick}
-          className="rounded-lg btn-primary px-3 py-2 text-sm font-semibold"
-        >
-          Adicionar questões
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+            {items.length} {items.length === 1 ? "questão" : "questões"}
+          </span>
+          <button
+            type="button"
+            onClick={onAddClick}
+            className="rounded-lg btn-primary px-3 py-2 text-sm font-semibold"
+          >
+            Adicionar questões
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (

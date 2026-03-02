@@ -193,7 +193,16 @@ export default function OfertasList() {
         </div>
         <div className="mt-3 flex items-center justify-between">
           <div className="text-xs text-slate-500 dark:text-slate-300">
-            {loading ? (showLoading ? <EqualizerLoader size={16} /> : null) : `${count} oferta(s)`}
+            {loading ? (
+              showLoading ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-16 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                />
+              ) : null
+            ) : (
+              `${count} oferta(s)`
+            )}
           </div>
           <div className="flex items-center gap-2">
             {hasFilters && (

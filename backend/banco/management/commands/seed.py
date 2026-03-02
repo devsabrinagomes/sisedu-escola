@@ -24,6 +24,7 @@ from banco.models import (
 
 class Command(BaseCommand):
     help = "Cria dados fictícios para currículo, usuários e questões"
+    total_questions = 90
 
     @transaction.atomic
     def handle(self, *args, **kwargs):
@@ -122,7 +123,7 @@ class Command(BaseCommand):
         # =====================================================
         # 5) QUESTIONS + VERSION + OPTIONS
         # =====================================================
-        for i in range(1, 11):
+        for i in range(1, self.total_questions + 1):
             seed_user = random.choice(seed_users)
 
             q = Question.objects.create(

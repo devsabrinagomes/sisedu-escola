@@ -6,7 +6,10 @@
   <title>Cartão Resposta</title>
 
   <style>
-    @page { size: A4; margin: 5mm; }
+    @page {
+      size: {% if landscape_mode %}A4 landscape{% else %}A4{% endif %};
+      margin: 3mm;
+    }
     * { box-sizing: border-box; }
     body { margin:0; font-family: Arial, Helvetica, sans-serif; color:#111; font-size: 8.6pt; background:#fff; }
 
@@ -15,175 +18,356 @@
       --dark-green:#1f5f3a;
     }
 
+    /* Evita Grid no container principal para manter o encaixe dos 4 cards estável no WeasyPrint. */
     .sheet{
-      display:grid;
-      min-height: 287mm;
+      width: 204mm;
+      min-height: 284mm;
       margin: 0 auto;
-      place-items: center;
+      font-size: 0;
+      text-align: left;
+      page-break-after: always;
     }
 
     .card{
+      display: inline-block;
+      vertical-align: top;
       width: 100mm;
       height: 140mm;
       border: 1.4px solid #111;
       border-radius: 2.5mm;
-      padding: 4mm;
+      padding: 3.2mm;
       page-break-inside: avoid;
-      overflow: visible;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      min-height: 0;
-      gap: 1.8mm;
+      overflow: hidden;
     }
 
     .card{ font-size: 8.6pt; }
+    .card-left{ margin-right: 4mm; }
+    .card-top{ margin-bottom: 4mm; }
 
-    .card-top{
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      flex-shrink: 0;
-    }
+    .card-head{ margin-bottom: 1.4mm; }
 
     .card-header{
       display:flex;
       align-items:center;
       justify-content: space-between;
-      gap: 4mm;
-      padding-bottom: 2.2mm;
+      gap: 3mm;
+      margin-bottom: 1mm;
       border-bottom: 2px solid var(--dark-green);
-      margin-bottom: 1.4mm;
+
     }
 
     .brand-left{ display:flex; flex-direction:column; gap: 0.8mm; min-width:0; margin-left: -1mm; }
-    .brand-left img{ height: 14mm; width:auto; object-fit:contain; display:block; }
+    .brand-left img{ height: 11mm; width:auto; object-fit:contain; display:block; }
     .brand-sub{ margin:0; font-weight:800; color: var(--ink); }
 
-    .brand-right img{ height: 10mm; width:auto; object-fit:contain; display:block; }
+    .brand-right img{ height: 8mm; width:auto; object-fit:contain; display:block; }
 
     .title{
       font-weight: 900;
       text-transform: uppercase;
-      margin: 2mm 0 1.2mm 0;
+      margin: 1.2mm 0 1mm 0;
       color: var(--ink);
       letter-spacing: .2px;
       text-align:center;
+      font-size: 8pt;
     }
 
-    .row-fields{ display:flex; gap: 4mm; margin-bottom: 1.2mm; }
-    .name-line{ margin-bottom: 1.2mm; }
+    .row-fields{ display:flex; gap: 3mm; margin-bottom: 1mm; }
+    .name-line{ margin: 2mm 0 1mm; }
     .line-field{ flex:1; display:flex; align-items:center; gap: 2mm; }
-    .line-field span{ font-weight:800; white-space:nowrap; color:var(--ink); }
+    .line-field span{ font-weight:800; white-space:nowrap; color:var(--ink); font-size: 7.5pt; }
     .line{ flex:1; border-bottom: 1.4px solid #111; height:0; transform: translateY(1mm); }
 
     .booklet-bar{
       border: 1.4px solid var(--dark-green);
       border-radius: 2mm;
-      padding: 1.4mm 3mm;
+      padding: 1mm 2mm;
       background: #fff;
       text-align:center;
       font-weight: 900;
-      margin: 1.4mm 0 1.8mm 0;
+      margin: 1mm 0 1.1mm 0;
       color: var(--ink);
       line-height: 1.15;
       overflow-wrap: anywhere;
       word-break: break-word;
+      font-size: 7.5pt;
     }
 
     .card-bottom{
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+      height: 96mm;
       overflow: hidden;
     }
 
     .grid-wrap{
       border: 0;
       border-radius: 0;
-      padding: 0.6mm 0 0 0;
+      padding: 0.4mm 0 0 0;
       background:#fff;
       margin-top: 0;
-      flex: 1 1 auto;
-      min-height: 0;
+      width: 100%;
     }
 
-    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 4mm; height: 100%; }
+    /* As colunas internas usam inline-block para reduzir variações de largura no PDF final. */
+    .grid{
+      width: 100%;
+      font-size: 0;
+      white-space: nowrap;
+    }
     .col{
-      border: 1.4px solid #111;
+      display: inline-block;
+      vertical-align: top;
+      width: 48.6%;
+      margin-right: 2.8%;
+      border: 1px solid #202020;
       border-radius: 2mm;
-      padding: 1.6mm 1.2mm;
+      padding: 1mm 0.8mm;
       page-break-inside: avoid;
       overflow: hidden;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 1.6mm;
-      justify-content: space-evenly;
+      min-height: 86mm;
+      white-space: normal;
+      font-size: 8.6pt;
     }
+    .col:last-child{ margin-right: 0; }
 
     .row{
-      display:flex;
-      align-items:center;
-      gap: 2.2mm;
+      display: table;
+      width: 100%;
+      table-layout: fixed;
       margin: 0;
-      min-height: 6.6mm;
+      min-height: 5.1mm;
       line-height: 1;
       page-break-inside: avoid;
-      min-width: 0;
+      /* margin-bottom: 0.9mm; */
     }
+    .row:last-child{ margin-bottom: 0; }
 
     .qnum{
-      width: 8.4mm;
+      display: table-cell;
+      width: 6.4mm;
       font-weight: 900;
       text-align: right;
       font-variant-numeric: tabular-nums;
-      font-size: 7.6pt;
+      font-size: 6.6pt;
       color: var(--ink);
+      padding-right: 1.3mm;
+      vertical-align: middle;
     }
 
     .bubbles{
-      display:grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      column-gap: 1.1mm;
-      width: 100%;
-      min-width: 0;
+      display: table-cell;
+      white-space: nowrap;
+      vertical-align: middle;
+      font-size: 0;
     }
 
     .bubble{
-      width: 5.2mm;
-      height: 5.2mm;
+      display:inline-block;
+      width: 4.55mm;
+      height: 4.55mm;
       border: 1.2px solid #111;
       border-radius: 50%;
-      justify-self: center;
-      display:flex;
-      align-items:center;
-      justify-content:center;
       font-weight: 900;
-      font-size: 6.5pt;
-      line-height: 1;
+      font-size: 4.88pt;
+      line-height: 4.22mm;
       background:#fff;
       color:#111;
+      text-align: center;
+      margin-right: 1.2mm;
+    }
+    .bubble:last-child{ margin-right: 0; }
+
+    body.is-compact .card{
+      padding: 2.8mm;
+    }
+    body.is-compact .card-head{
+      margin-bottom: 1mm;
+    }
+    body.is-compact .card-header{
+      padding-bottom: 1.4mm;
+      margin-bottom: 0.8mm;
+    }
+    body.is-compact .brand-left img{ height: 10mm; }
+    body.is-compact .brand-right img{ height: 7.2mm; }
+    body.is-compact .title{
+      margin: 0.8mm 0;
+      font-size: 7.4pt;
+    }
+    body.is-compact .row-fields,
+    body.is-compact .name-line,
+    body.is-compact .booklet-bar{
+      margin-bottom: 0.8mm;
+    }
+    body.is-compact .booklet-bar{
+      padding: 0.8mm 1.6mm;
+      font-size: 7pt;
+    }
+    body.is-compact .card-bottom{
+      height: 99mm;
+    }
+    body.is-compact .col{
+      min-height: 89mm;
+      padding: 0.8mm 0.6mm;
+    }
+    body.is-compact .row{
+      min-height: 4.2mm;
+      margin-bottom: 0.55mm;
+    }
+    body.is-compact .qnum{
+      width: 5.8mm;
+      font-size: 6pt;
+      padding-right: 1mm;
+    }
+    body.is-compact .bubble{
+      width: 3.74mm;
+      height: 3.74mm;
+      line-height: 3.44mm;
+      font-size: 4.28pt;
+      margin-right: 0.75mm;
+    }
+
+    body.is-tight .card{
+      padding: 2.7mm;
+    }
+    body.is-tight .card-bottom{
+      height: 99.5mm;
+    }
+    body.is-tight .col{
+      min-height: 89.5mm;
+      padding: 0.9mm 0.7mm;
+    }
+    body.is-tight .row{
+      min-height: 4.25mm;
+      margin-bottom: 0.5mm;
+    }
+    body.is-tight .qnum{
+      width: 5.6mm;
+      font-size: 6.05pt;
+      padding-right: 0.9mm;
+    }
+    body.is-tight .bubble{
+      width: 3.7mm;
+      height: 3.7mm;
+      line-height: 3.4mm;
+      font-size: 4.2pt;
+      margin-right: 0.7mm;
+    }
+
+    body.is-landscape .sheet{
+      width: 291mm;
+      min-height: 204mm;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: auto;
+    }
+    body.is-landscape .card{
+      width: 93.5mm;
+      height: 200mm;
+      padding: 1.9mm 1.95mm;
       flex: 0 0 auto;
+    }
+    body.is-landscape .card-left{
+      margin-right: 4mm;
+    }
+    body.is-landscape .card-top{
+      margin-bottom: 0;
+    }
+    body.is-landscape .card-head{
+      margin-bottom: 0.2mm;
+    }
+    body.is-landscape .brand-left img{
+      height: 7.8mm;
+    }
+    body.is-landscape .brand-right img{
+      height: 5.8mm;
+    }
+    body.is-landscape .title{
+      margin: 0.35mm 0 0.25mm 0;
+      font-size: 6.55pt;
+    }
+    body.is-landscape .row-fields,
+    body.is-landscape .name-line,
+    body.is-landscape .booklet-bar{
+      margin-bottom: 0.2mm;
+    }
+    body.is-landscape .line-field span{
+      font-size: 6pt;
+    }
+    body.is-landscape .booklet-bar{
+      padding: 0.5mm 0.9mm;
+      font-size: 5.85pt;
+      margin-bottom: 1mm;
+    }
+    body.is-landscape .card-bottom{
+      height: 180mm;
+      overflow: hidden;
+    }
+    body.is-landscape .grid-wrap{
+      padding-top: 0;
+    }
+    body.is-landscape .grid{
+      white-space: nowrap;
+    }
+    body.is-landscape .col{
+      display: inline-block;
+      vertical-align: center;
+      width: 49%;
+      margin-right: 2%;
+      min-height: 168mm;
+      padding: 0.35mm 0.18mm;
+    }
+    body.is-landscape .row{
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 0;
+      line-height: 1;
+      margin-bottom: 0.2mm;
+    }
+    body.is-landscape .row:last-child{
+      margin-bottom: 0;
+    }
+    body.is-landscape .qnum{
+      display: inline-block;
+      flex: 0 0 4.6mm;
+      width: 4.6mm;
+      font-size: 4.8pt;
+      padding-right: 0.28mm;
+      line-height: 1;
+      vertical-align: middle;
+    }
+    body.is-landscape .bubbles{
+      display: inline-block;
+      flex: 1 1 auto;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    body.is-landscape .bubble{
+      width: 3.5mm;
+      height: 3.5mm;
+      line-height: 3.22mm;
+      font-size: 3.74pt;
+      margin-right: 0.34mm;
     }
 
   </style>
 </head>
 
-<body>
+<body class="{% if landscape_mode %}is-landscape{% elif total_questions >= 40 %}is-tight{% elif total_questions >= 31 %}is-compact{% endif %}">
   <div class="sheet">
-      <div class="card">
-        <div class="card-top">
+    {% for _ in cards %}
+      <div class="{% if landscape_mode %}{% cycle 'card card-left' 'card card-left' 'card' %}{% else %}{% cycle 'card card-left card-top' 'card card-top' 'card card-left' 'card' %}{% endif %}">
+        <div class="card-head">
           <div class="card-header">
             <div class="brand-left">
               <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola">
             </div>
+            <div class="title">Cartão Resposta</div>
             <div class="brand-right">
               <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceará Governo do Estado">
             </div>
           </div>
 
-          <div class="title">Cartão Resposta</div>
 
           <div class="line-field name-line"><span>Nome:</span><div class="line"></div></div>
 
@@ -223,6 +407,7 @@
           </div>
         </div>
       </div>
+    {% endfor %}
   </div>
 </body>
 </html>

@@ -186,6 +186,7 @@ export default function CadernoDetalhe() {
       type: "info",
       title: "Baixando kit de aplicação...",
       message: "Aguarde enquanto os PDFs são gerados.",
+      loading: true,
       duration: 20000,
     });
     try {

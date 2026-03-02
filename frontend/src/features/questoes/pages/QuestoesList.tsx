@@ -527,9 +527,16 @@ export default function QuestoesList() {
 
           <div className="mt-3 hidden lg:flex items-center justify-between">
             <div className="text-xs text-slate-500 dark:text-slate-300">
-              {loading
-                ? (showLoading ? <EqualizerLoader size={16} /> : null)
-                : `${filteredByTab.length} ${filteredByTab.length === 1 ? "questão" : "questões"}`}
+              {loading ? (
+                showLoading ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                  />
+                ) : null
+              ) : (
+                `${filteredByTab.length} ${filteredByTab.length === 1 ? "questão" : "questões"}`
+              )}
             </div>
 
             {activeTab === "mine" && (
@@ -543,9 +550,16 @@ export default function QuestoesList() {
           </div>
 
           <div className="mt-3 text-xs text-slate-500 dark:text-slate-300 lg:hidden">
-            {loading
-              ? (showLoading ? <EqualizerLoader size={16} /> : null)
-              : `${filteredByTab.length} ${filteredByTab.length === 1 ? "questão" : "questões"}`}
+            {loading ? (
+              showLoading ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                />
+              ) : null
+            ) : (
+              `${filteredByTab.length} ${filteredByTab.length === 1 ? "questão" : "questões"}`
+            )}
           </div>
         </div>
 

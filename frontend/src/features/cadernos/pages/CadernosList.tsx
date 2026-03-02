@@ -133,6 +133,7 @@ export default function CadernosList() {
       type: "info",
       title: "Baixando kit de aplicação...",
       message: "Aguarde enquanto os PDFs são gerados.",
+      loading: true,
       duration: 20000,
     });
     try {
@@ -184,7 +185,16 @@ export default function CadernosList() {
           </Link>
         </div>
         <div className="mt-3 text-xs text-slate-500 dark:text-slate-300">
-          {loading ? (showLoading ? <EqualizerLoader size={16} /> : null) : `${sortedItems.length} caderno(s)`}
+          {loading ? (
+            showLoading ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                />
+            ) : null
+          ) : (
+            `${sortedItems.length} caderno(s)`
+          )}
         </div>
       </div>
 

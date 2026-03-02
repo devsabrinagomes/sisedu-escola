@@ -307,7 +307,16 @@ export default function QuestionVersionPickerModal({
           </div>
 
           <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            {loading ? (showLoading ? <EqualizerLoader size={16} /> : null) : `${count} resultado(s) • ${selectedCount} selecionada(s)`}
+            {loading ? (
+              showLoading ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                />
+              ) : null
+            ) : (
+              `${count} resultado(s) • ${selectedCount} selecionada(s)`
+            )}
           </div>
         </div>
 
