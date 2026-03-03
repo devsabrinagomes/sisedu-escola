@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -6,53 +7,125 @@
   <link rel="stylesheet" href="pdf.css" />
 </head>
 <body>
-  <div class="cover">
-    <h1>CADERNO DE PROVA</h1>
-    <h2>{{ offer.name }}</h2>
-
-    <div class="info-box">
-      <div class="info-row">Disciplina: {{ discipline }}</div>
-      <div class="info-row">Ano/Serie: {{ grade }}</div>
-      <div class="info-row">Turma: {{ class_name }}</div>
-      <div class="info-row">Data: {{ date }}</div>
-      <div class="info-row">Aluno: _______________________</div>
-      <div class="info-row">N de questoes: {{ total_questions }}</div>
-    </div>
-
-    <div class="instructions">
-      <h3>INSTRUCOES</h3>
-      <ul>
-        <li>Leia atentamente cada questao.</li>
-        <li>Marque apenas UMA alternativa.</li>
-        <li>Preencha o cartao-resposta com caneta preta.</li>
-      </ul>
+  <div class="booklet-band booklet-band-top">
+    <div class="booklet-band-line"></div>
+    <div class="booklet-band-stripes">
+      <span class="stripe orange"></span>
+      <span class="stripe blue"></span>
+      <span class="stripe red"></span>
+      <span class="stripe yellow"></span>
     </div>
   </div>
 
-  <div class="page-break"></div>
+  <div class="booklet-footer">
+    <div class="footer-content">Arquivo gerado no Sisedu Escola</div>
+    <div class="booklet-band booklet-band-bottom">
+      <div class="booklet-band-stripes">
+        <span class="stripe orange"></span>
+        <span class="stripe blue"></span>
+        <span class="stripe red"></span>
+        <span class="stripe yellow"></span>
+      </div>
+      <div class="booklet-band-line"></div>
+    </div>
+  </div>
 
-  <div class="internal">
-    <div class="header">
-      {{ offer.name }} | {{ discipline }} | Pagina <span class="page"></span> de <span class="topage"></span>
+  <div class="booklet-sheet">
+    <div class="booklet-header">
+      <div class="booklet-header-content">
+        <div class="booklet-brand-left">
+          <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola" />
+        </div>
+        <div class="booklet-brand-right">
+          <img src="{% static 'assets/images/logo/sisedu.png' %}" alt="Sisedu" />
+          <img src="{% static 'assets/images/logo/coded.png' %}" alt="Coded" />
+          <img src="{% static 'assets/images/logo/cientistachefe.png' %}" alt="Cientista Chefe" />
+          <img src="{% static 'assets/images/logo/cearaeduca.png' %}" alt="Ceara Educa" />
+          <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceara Governo do Estado" />
+        </div>
+      </div>
     </div>
 
-    <div class="content">
+    <h1 class="booklet-title">CADERNO DE PROVA</h1>
+    <h2 class="booklet-name">{{ offer.name }}</h2>
+
+    <div class="info-box booklet-fields">
+      <div class="field-line">
+        <div class="field-line-label">
+          <span class="field-label">Nome:</span>
+        </div>
+        <div class="field-line-rule">
+          <span class="field-rule"></span>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-col">
+          <div class="field-inline">
+            <div class="field-inline-label">
+              <span class="field-label">Série:</span>
+            </div>
+            <div class="field-inline-rule">
+              <span class="small-rule"></span>
+            </div>
+          </div>
+        </div>
+        <div class="field-col">
+          <div class="field-inline">
+            <div class="field-inline-label">
+              <span class="field-label">Turma:</span>
+            </div>
+            <div class="field-inline-rule">
+              <span class="small-rule"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="instructions-card">
+      <h3>INSTRUÇÕES</h3>
+      <ul>
+        <li>Leia atentamente cada questão antes de responder.</li>
+        <li>Marque apenas uma alternativa para cada questão.</li>
+        <li>Revise suas respostas antes de preencher o cartão-resposta.</li>
+      </ul>
+    </div>
+
+    <div class="questions-list">
       {% for question in questions %}
         <div class="question">
-          <div class="question-number">
-            {{ forloop.counter|stringformat:"02d" }}.
-            <span class="skill">(Habilidade {{ question.skill_code }})</span>
+          <div class="question-head">
+            <div class="question-number">{{ question.number|stringformat:"02d" }}.</div>
+            <div class="statement">
+              {{ question.statement|safe }}
+            </div>
           </div>
 
-          <div class="statement">
-            {{ question.statement|safe }}
-          </div>
+          {% if question.support_image_url %}
+            <div class="question-support">
+              <img src="{{ question.support_image_url }}" alt="Apoio da questão {{ question.number }}" />
+            </div>
+          {% endif %}
+
+          {% if question.image_reference %}
+            <div class="question-reference">
+              {{ question.image_reference }}
+            </div>
+          {% endif %}
 
           <div class="options">
             {% for option in question.options %}
               <div class="option">
-                <strong>{{ option.letter }})</strong>
-                {{ option.text }}
+                <span class="option-letter">{{ option.letter }})</span>
+                <div class="option-content">
+                  {% if option.text %}
+                    <div>{{ option.text|safe }}</div>
+                  {% endif %}
+                  {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Alternativa {{ option.letter }} da questão {{ question.number }}" />
+                  {% endif %}
+                </div>
               </div>
             {% endfor %}
           </div>

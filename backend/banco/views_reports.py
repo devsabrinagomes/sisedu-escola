@@ -1,9 +1,12 @@
 from math import ceil
 
+from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from weasyprint import HTML
+from weasyprint import CSS, HTML
 
+from .models import Booklet
+from .views_sync_kit import _render_booklet_kit_pdf
 from .views_helpers import *  # noqa: F401,F403
 from .views_helpers import (
     _build_class_names_map,
@@ -65,6 +68,69 @@ def preview_cartao_resposta_pdf(request):
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'inline; filename="cartao_resposta_preview.pdf"'
+    return response
+
+
+def preview_caderno_prova_publico_pdf(request):
+    booklet_id = request.GET.get("booklet_id")
+    if booklet_id:
+        try:
+            booklet = Booklet.objects.get(pk=int(booklet_id))
+        except (Booklet.DoesNotExist, TypeError, ValueError):
+            booklet = None
+        if booklet is not None:
+            return _render_booklet_kit_pdf(
+                request=request,
+                booklet=booklet,
+                kind="prova",
+                kit_name=booklet.name or f"Caderno #{booklet.id}",
+                filename_prefix=f"caderno-{booklet.id}",
+                disposition="inline",
+            )
+
+    try:
+        total_questions = int(request.GET.get("q", 5))
+    except (TypeError, ValueError):
+        total_questions = 5
+    total_questions = max(1, total_questions)
+
+    booklet_name = (request.GET.get("booklet") or "Simulado SAEB 2026").strip() or "Simulado SAEB 2026"
+    questions = []
+    for index in range(1, total_questions + 1):
+        has_support = index % 3 == 0
+        questions.append(
+            {
+                "number": index,
+                "statement": "<p>Leia o enunciado da questão com atenção e selecione a alternativa correta.</p>",
+                "support_image_url": "",
+                "image_reference": (
+                    "Texto de apoio: utilize as informações apresentadas para responder à questão."
+                    if has_support
+                    else ""
+                ),
+                "options": [
+                    {"letter": "A", "text": "Alternativa A de exemplo.", "image_url": ""},
+                    {"letter": "B", "text": "Alternativa B de exemplo.", "image_url": ""},
+                    {"letter": "C", "text": "Alternativa C de exemplo.", "image_url": ""},
+                    {"letter": "D", "text": "Alternativa D de exemplo.", "image_url": ""},
+                    {"letter": "E", "text": "Alternativa E de exemplo.", "image_url": ""},
+                ],
+            }
+        )
+
+    context = {
+        "offer": {"id": 1, "name": booklet_name},
+        "questions": questions,
+    }
+    html_string = render_to_string("pdf/booklet.html", context)
+    css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
+    pdf_bytes = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri("/"),
+    ).write_pdf(stylesheets=[CSS(filename=css_path)])
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'inline; filename="caderno_prova_preview.pdf"'
     return response
 
 

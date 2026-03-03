@@ -5,6 +5,7 @@ from .views import (
     ApplicationAbsentView,
     ApplicationAnswersView,
     BookletAddQuestionView,
+    BookletPdfPreviewView,
     BookletKitPdfView,
     BookletItemDetailView,
     BookletItemsBulkView,
@@ -22,6 +23,7 @@ from .views import (
     OfferReportItemsCsvView,
     OfferReportStudentsCsvView,
     OfferReportSummaryView,
+    preview_caderno_prova_publico_pdf,
     preview_cartao_resposta_pdf,
     ReportsByClassView,
     ReportsOverviewView,
@@ -93,6 +95,12 @@ urlpatterns = [
         ReportsOverviewView.as_view(),
         name="reports-overview",
     ),
+    path(
+        "pdf/preview/booklet/",
+        preview_caderno_prova_publico_pdf,
+        name="pdf-preview-booklet-public",
+    ),
+    path("pdf/preview/booklet/<int:booklet_id>/", BookletPdfPreviewView.as_view(), name="pdf-preview-booklet"),
     path("pdf/preview/", preview_cartao_resposta_pdf, name="pdf-preview"),
     path(
         "reports/by-class/<int:offer_id>/",

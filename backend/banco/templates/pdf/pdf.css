@@ -1,13 +1,116 @@
 @page {
   size: A4;
-  margin: 15mm;
+  margin: 15mm 15mm 28mm;
 }
 
 body {
-  font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+  margin: 0;
+  font-family: "Inter", "DejaVu Sans", "Liberation Sans", sans-serif;
   font-size: 11pt;
   color: #111111;
   line-height: 1.45;
+}
+
+.booklet-band {
+  position: fixed;
+  left: -12mm;
+  right: -12mm;
+  height: 6mm;
+}
+
+.booklet-band-line {
+  position: absolute;
+  height: 0.8mm;
+  background: #12924a;
+}
+
+.booklet-band-stripes {
+  position: absolute;
+  display: flex;
+  gap: 0;
+  width: 30mm;
+  height: 2.6mm;
+}
+
+.booklet-band-top {
+  top: -14mm;
+}
+
+.booklet-band-top .booklet-band-line {
+  top: 0.8mm;
+  left: 0;
+  width: 46%;
+}
+
+.booklet-band-top .booklet-band-stripes {
+  top: 0.8mm;
+  right: 0;
+}
+
+.booklet-footer {
+  position: fixed;
+  left: -12mm;
+  right: -12mm;
+  bottom: -26mm;
+  height: 16mm;
+  padding: 0;
+  color: #111111;
+  box-sizing: border-box;
+}
+
+.footer-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 9.5pt;
+  line-height: 1.2;
+}
+
+.booklet-band-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6mm;
+}
+
+.booklet-band-bottom .booklet-band-line {
+  right: 0;
+  bottom: 0.8mm;
+  width: 46%;
+}
+
+.booklet-band-bottom .booklet-band-stripes {
+  left: 0;
+  bottom: 0.8mm;
+}
+
+.stripe {
+  display: block;
+  height: 100%;
+}
+
+.stripe.orange {
+  width: 10mm;
+  background: #f7941d;
+}
+
+.stripe.blue {
+  width: 8mm;
+  background: #4d9acc;
+}
+
+.stripe.red {
+  width: 7mm;
+  background: #ef4444;
+}
+
+.stripe.yellow {
+  width: 9mm;
+  background: #e8df26;
 }
 
 h1,
@@ -21,16 +124,62 @@ p {
   text-align: center;
 }
 
-.cover h1 {
-  font-size: 22pt;
-  letter-spacing: 0.4mm;
-  margin-bottom: 4mm;
+.booklet-sheet {
+  text-align: left;
+  padding-top: 8mm;
 }
 
-.cover h2 {
-  font-size: 13pt;
+.booklet-header {
+  width: calc(100% + 30mm);
+  margin: 0 -12mm 8mm;
+  padding: 0 4mm 1mm;
+  box-sizing: border-box;
+}
+
+.booklet-header-content {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  margin-top: -3mm;
+}
+
+.booklet-brand-left,
+.booklet-brand-right {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.booklet-brand-right {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.booklet-brand-left img {
+  height: 20mm;
+  width: auto;
+  display: block;
+}
+
+.booklet-brand-right img {
+  height: 6.5mm;
+  width: auto;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 2.2mm;
+}
+
+.booklet-title {
+  text-align: center;
+  font-size: 20pt;
+  letter-spacing: 0.4mm;
+  margin-bottom: 2mm;
+}
+
+.booklet-name {
+  text-align: center;
+  font-size: 12pt;
   font-weight: normal;
-  margin-bottom: 10mm;
+  margin-bottom: 7mm;
 }
 
 .info-box {
@@ -41,27 +190,104 @@ p {
   margin-bottom: 8mm;
 }
 
+.field-label {
+  display: inline-block;
+  min-width: 11mm;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.field-line {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+  margin-bottom: 2.5mm;
+}
+
+.field-line-label,
+.field-line-rule {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.field-line-label {
+  width: 14mm;
+}
+
+.field-rule {
+  display: block;
+  width: 100%;
+  border-bottom: 1px solid #111;
+  height: 3mm;
+}
+
+.field-row {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+  margin-bottom: 2.5mm;
+}
+
+.field-col {
+  display: table-cell;
+  width: 50%;
+  vertical-align: middle;
+}
+
+.field-col + .field-col {
+  padding-left: 3mm;
+}
+
+.field-inline {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+}
+
+.field-inline-label,
+.field-inline-rule {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.field-inline-label {
+  width: 14mm;
+}
+
+.small-rule {
+  display: block;
+  width: 100%;
+  border-bottom: 1px solid #111;
+  height: 3mm;
+}
+
 .info-row {
   margin-bottom: 2mm;
 }
 
-.instructions {
-  text-align: left;
-  border-top: 0.3mm solid #d7dbe1;
-  padding-top: 5mm;
+.booklet-fields {
+  margin-bottom: 6mm;
 }
 
-.instructions h3 {
+.instructions-card {
+  text-align: left;
+  border: 0.3mm solid #bfc4cc;
+  border-radius: 1.2mm;
+  padding: 5mm;
+  margin-bottom: 8mm;
+}
+
+.instructions-card h3 {
   font-size: 11pt;
   margin-bottom: 2.5mm;
 }
 
-.instructions ul {
+.instructions-card ul {
   margin: 0;
   padding-left: 6mm;
 }
 
-.instructions li {
+.instructions-card li {
   margin-bottom: 2mm;
 }
 
@@ -69,19 +295,8 @@ p {
   page-break-before: always;
 }
 
-.internal .header {
-  position: fixed;
-  top: 5mm;
-  left: 15mm;
-  right: 15mm;
-  font-size: 9pt;
-  color: #333333;
-  border-bottom: 0.3mm solid #d7dbe1;
-  padding-bottom: 2mm;
-}
-
-.internal .content {
-  margin-top: 14mm;
+.questions-list {
+  width: 100%;
 }
 
 .question {
@@ -93,17 +308,39 @@ p {
 
 .question-number {
   font-weight: bold;
+}
+
+.question-head {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
   margin-bottom: 3mm;
 }
 
-.skill {
-  font-size: 9pt;
-  color: #555555;
-  margin-left: 5mm;
+.question-head .question-number,
+.question-head .statement {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.question-head .question-number {
+  width: 12mm;
 }
 
 .statement {
-  margin-bottom: 3mm;
+  margin-bottom: 0;
+}
+
+.question-support,
+.question-reference {
+  margin: 3mm 0;
+}
+
+.question-support img,
+.option-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 .options {
@@ -111,8 +348,21 @@ p {
 }
 
 .option {
-  margin-left: 5mm;
+  display: table;
+  width: 100%;
+  table-layout: fixed;
   margin-bottom: 2mm;
+}
+
+.option-letter,
+.option-content {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.option-letter {
+  width: 8mm;
+  font-weight: 700;
 }
 
 .answer-sheet h1 {

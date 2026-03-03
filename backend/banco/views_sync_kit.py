@@ -210,12 +210,39 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
         )
 
 
+class BookletPdfPreviewView(OwnerAccessMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booklet_id):
+        booklet = self.get_owned_booklet(
+            request,
+            booklet_id,
+            message="Você não tem permissão para visualizar este caderno.",
+        )
+        return _render_booklet_kit_pdf(
+            request=request,
+            booklet=booklet,
+            kind="prova",
+            kit_name=booklet.name or f"Caderno #{booklet.id}",
+            filename_prefix=f"caderno-{booklet.id}",
+            disposition="inline",
+        )
+
+
 def _split_two_cols(numbers):
     midpoint = (len(numbers) + 1) // 2
     return numbers[:midpoint], numbers[midpoint:]
 
 
-def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_prefix):
+def _render_booklet_kit_pdf(
+    *,
+    request=None,
+    booklet,
+    kind,
+    kit_name,
+    filename_prefix,
+    disposition="attachment",
+):
     try:
         from weasyprint import CSS, HTML
     except ModuleNotFoundError:
@@ -236,14 +263,21 @@ def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_p
     for index, item in enumerate(booklet_items, start=1):
         version = item.question_version
         options = [
-            {"letter": opt.letter, "text": opt.option_text or "-"}
+            {
+                "letter": opt.letter,
+                "text": opt.option_text or "",
+                "image_url": opt.option_image.url if getattr(opt, "option_image", None) else "",
+            }
             for opt in version.options.all().order_by("letter")
         ]
         questions.append(
             {
                 "number": index,
                 "statement": version.command or version.title or "-",
-                "skill_code": getattr(getattr(version, "skill", None), "code", "-"),
+                "support_image_url": (
+                    version.support_image.url if getattr(version, "support_image", None) else ""
+                ),
+                "image_reference": (getattr(version, "image_reference", "") or "").strip(),
                 "options": options,
             }
         )
@@ -302,5 +336,5 @@ def _render_booklet_kit_pdf(*, request=None, booklet, kind, kit_name, filename_p
             }
         )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
     return response
