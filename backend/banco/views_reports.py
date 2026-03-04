@@ -120,6 +120,7 @@ def preview_caderno_prova_publico_pdf(request):
 
     context = {
         "offer": {"id": 1, "name": booklet_name},
+        "generated_at": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         "questions": questions,
     }
     html_string = render_to_string("pdf/booklet.html", context)

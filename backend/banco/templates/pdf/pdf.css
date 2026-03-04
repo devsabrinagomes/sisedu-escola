@@ -54,7 +54,7 @@ body {
   bottom: -26mm;
   height: 16mm;
   padding: 0;
-  color: #111111;
+  color: #6b7280;
   box-sizing: border-box;
 }
 
@@ -65,7 +65,7 @@ body {
   width: 60%;
   transform: translate(-50%, -50%);
   text-align: center;
-  font-size: 9.5pt;
+  font-size: 8pt;
   line-height: 1.2;
 }
 
@@ -126,13 +126,13 @@ p {
 
 .booklet-sheet {
   text-align: left;
-  padding-top: 8mm;
+  padding-top: 0;
 }
 
 .booklet-header {
-  width: calc(100% + 30mm);
-  margin: 0 -12mm 8mm;
-  padding: 0 4mm 1mm;
+  width: 100%;
+  margin: 0 0 8mm;
+  padding: 0 1mm 1mm 0;
   box-sizing: border-box;
 }
 
@@ -140,7 +140,7 @@ p {
   display: table;
   width: 100%;
   table-layout: fixed;
-  margin-top: -3mm;
+  margin-top: -8mm;
 }
 
 .booklet-brand-left,
@@ -152,6 +152,7 @@ p {
 .booklet-brand-right {
   text-align: right;
   white-space: nowrap;
+  width: 68%;
 }
 
 .booklet-brand-left img {
@@ -160,12 +161,36 @@ p {
   display: block;
 }
 
+.booklet-brand-left .logo-sisedu-escola {
+  height: 20mm;
+}
+
 .booklet-brand-right img {
-  height: 6.5mm;
+  height: 8mm;
   width: auto;
   display: inline-block;
   vertical-align: middle;
-  margin-left: 2.2mm;
+  margin-left: 2.4mm;
+}
+
+.booklet-brand-right .logo-sisedu {
+  height: 8mm;
+}
+
+.booklet-brand-right .logo-coded {
+  height: 15mm;
+}
+
+.booklet-brand-right .logo-cientista-chefe {
+  height: 10mm;
+}
+
+.booklet-brand-right .logo-ceara-educa {
+  height: 18mm;
+}
+
+.booklet-brand-right .logo-ceara {
+  height: 8mm;
 }
 
 .booklet-title {
@@ -212,6 +237,11 @@ p {
 
 .field-line-label {
   width: 14mm;
+  padding-right: 1.6mm;
+}
+
+.field-line-rule {
+  padding-right: 0;
 }
 
 .field-rule {
@@ -252,6 +282,15 @@ p {
 
 .field-inline-label {
   width: 14mm;
+}
+
+.field-inline-classroom .field-inline-label {
+  width: 16.5mm;
+  padding-right: 1.6mm;
+}
+
+.field-inline-classroom .field-inline-rule {
+  padding-right: 2.2mm;
 }
 
 .small-rule {

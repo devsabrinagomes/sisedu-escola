@@ -287,6 +287,7 @@ def _render_booklet_kit_pdf(
             "id": booklet.id,
             "name": kit_name,
         },
+        "generated_at": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         "discipline": "-",
         "grade": "-",
         "class_name": "-",

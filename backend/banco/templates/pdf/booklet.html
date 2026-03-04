@@ -18,7 +18,7 @@
   </div>
 
   <div class="booklet-footer">
-    <div class="footer-content">Arquivo gerado no Sisedu Escola</div>
+    <div class="footer-content">Caderno: {{ offer.name }} | Gerado em: {{ generated_at }}</div>
     <div class="booklet-band booklet-band-bottom">
       <div class="booklet-band-stripes">
         <span class="stripe orange"></span>
@@ -34,14 +34,14 @@
     <div class="booklet-header">
       <div class="booklet-header-content">
         <div class="booklet-brand-left">
-          <img src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola" />
+          <img class="logo-sisedu-escola" src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola" />
         </div>
         <div class="booklet-brand-right">
-          <img src="{% static 'assets/images/logo/sisedu.png' %}" alt="Sisedu" />
-          <img src="{% static 'assets/images/logo/coded.png' %}" alt="Coded" />
-          <img src="{% static 'assets/images/logo/cientistachefe.png' %}" alt="Cientista Chefe" />
-          <img src="{% static 'assets/images/logo/cearaeduca.png' %}" alt="Ceara Educa" />
-          <img src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceara Governo do Estado" />
+          <img class="logo-sisedu" src="{% static 'assets/images/logo/sisedu.png' %}" alt="Sisedu" />
+          <img class="logo-coded" src="{% static 'assets/images/logo/coded.png' %}" alt="Coded" />
+          <img class="logo-cientista-chefe" src="{% static 'assets/images/logo/cientistachefe.png' %}" alt="Cientista Chefe" />
+          <img class="logo-ceara-educa" src="{% static 'assets/images/logo/cearaeduca.png' %}" alt="Ceara Educa" />
+          <img class="logo-ceara" src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceara Governo do Estado" />
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
           </div>
         </div>
         <div class="field-col">
-          <div class="field-inline">
+          <div class="field-inline field-inline-classroom">
             <div class="field-inline-label">
               <span class="field-label">Turma:</span>
             </div>
