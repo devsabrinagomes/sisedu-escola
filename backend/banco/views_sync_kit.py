@@ -245,6 +245,7 @@ def _render_booklet_kit_pdf(
 ):
     try:
         from weasyprint import CSS, HTML
+        from weasyprint.text.fonts import FontConfiguration
     except ModuleNotFoundError:
         raise ValidationError(
             {"detail": "WeasyPrint não está disponível neste ambiente do backend."}
@@ -300,10 +301,12 @@ def _render_booklet_kit_pdf(
     css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
     base_url = request.build_absolute_uri("/") if request else str(settings.BASE_DIR)
 
+    font_config = FontConfiguration()
+
     if kind == "prova":
         html_string = render_to_string("pdf/booklet.html", context)
         filename = f"{filename_prefix}-caderno-prova.pdf"
-        stylesheets = [CSS(filename=css_path)]
+        stylesheets = [CSS(filename=css_path, font_config=font_config)]
     elif kind == "cartao-resposta":
         total_questions = len(questions)
         question_numbers = list(range(1, total_questions + 1))
@@ -326,7 +329,10 @@ def _render_booklet_kit_pdf(
         raise ValidationError({"detail": "Tipo de kit inválido."})
 
     try:
-        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(stylesheets=stylesheets)
+        pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
+            stylesheets=stylesheets,
+            font_config=font_config,
+        )
     except Exception as exc:
         raise ValidationError(
             {

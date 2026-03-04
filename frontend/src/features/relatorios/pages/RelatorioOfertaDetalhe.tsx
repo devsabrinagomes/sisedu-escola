@@ -9,8 +9,9 @@ import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
 import { listMockSigeSchoolClasses } from "@/features/gabaritos/services/gabaritos";
 import {
-  downloadReportItemsCsv,
-  downloadReportStudentsCsv,
+  downloadReportCsv,
+  downloadReportExcel,
+  downloadReportPdf,
   getOfferReportSummary,
   getReportOffer,
 } from "@/features/relatorios/services/reports";
@@ -76,7 +77,7 @@ export default function RelatorioOfertaDetalhe() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
   const [studentSelection, setStudentSelection] = useState<StudentSelection>(null);
-  const [downloading, setDownloading] = useState<"students" | "items" | null>(null);
+  const [downloading, setDownloading] = useState<"csv" | "pdf" | "excel" | null>(null);
   const showOfferLoading = useDelayedLoading(offerLoading);
   const showSummaryLoading = useDelayedLoading(summaryLoading);
 
@@ -228,16 +229,16 @@ export default function RelatorioOfertaDetalhe() {
     }
   }
 
-  async function onDownloadStudentsCsv() {
+  async function onDownloadCsv() {
     if (!offer) return;
     try {
-      setDownloading("students");
-      await downloadReportStudentsCsv(offer.id, selectedClassRef);
-      toast({ type: "success", title: "CSV por aluno baixado com sucesso" });
+      setDownloading("csv");
+      await downloadReportCsv(offer.id, selectedClassRef);
+      toast({ type: "success", title: "CSV baixado com sucesso" });
     } catch (error: unknown) {
       toast({
         type: "error",
-        title: "Erro ao baixar CSV por aluno",
+        title: "Erro ao baixar CSV",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -245,16 +246,45 @@ export default function RelatorioOfertaDetalhe() {
     }
   }
 
-  async function onDownloadItemsCsv() {
+  async function onDownloadPdf() {
     if (!offer) return;
     try {
-      setDownloading("items");
-      await downloadReportItemsCsv(offer.id, selectedClassRef);
-      toast({ type: "success", title: "CSV por questão baixado com sucesso" });
+      setDownloading("pdf");
+      await downloadReportPdf(
+        offer.id,
+        initialClassRef
+          ? {
+              classRef: selectedClassRef,
+              schoolRef: selectedSchoolRef,
+              serie: serieFromQueryRaw ? Number(serieFromQueryRaw) : undefined,
+              schoolLabel: selectedSchoolLabel !== "-" ? selectedSchoolLabel : undefined,
+              serieLabel: serieLabel !== "-" ? serieLabel : undefined,
+              className: resolvedClassName || undefined,
+            }
+          : selectedClassRef,
+      );
+      toast({ type: "success", title: "PDF baixado com sucesso" });
     } catch (error: unknown) {
       toast({
         type: "error",
-        title: "Erro ao baixar CSV por questão",
+        title: "Erro ao baixar PDF",
+        message: getApiErrorMessage(error),
+      });
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function onDownloadExcel() {
+    if (!offer) return;
+    try {
+      setDownloading("excel");
+      await downloadReportExcel(offer.id, selectedClassRef);
+      toast({ type: "success", title: "Excel baixado com sucesso" });
+    } catch (error: unknown) {
+      toast({
+        type: "error",
+        title: "Erro ao baixar Excel",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -334,30 +364,15 @@ export default function RelatorioOfertaDetalhe() {
     ? sigeSelection.series_years.map((value) => `${value}ª série`).join(", ")
     : "-";
   const headerRightSlot = initialClassRef ? (
-    <details className="relative">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2">
-        <Download className="h-4 w-4" />
-        {downloading ? "Baixando..." : "Baixar"}
-      </summary>
-      <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-1 shadow-lg">
-        <button
-          type="button"
-          onClick={() => void onDownloadStudentsCsv()}
-          disabled={downloading !== null}
-          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
-        >
-          {downloading === "students" ? "Baixando..." : "CSV por aluno"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void onDownloadItemsCsv()}
-          disabled={downloading !== null}
-          className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
-        >
-          {downloading === "items" ? "Baixando..." : "CSV por questão"}
-        </button>
-      </div>
-    </details>
+    <button
+      type="button"
+      onClick={() => void onDownloadPdf()}
+      disabled={downloading !== null}
+      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <Download className="h-4 w-4" />
+      {downloading === "pdf" ? "Baixando..." : "Baixar PDF"}
+    </button>
   ) : null;
 
   return (
@@ -489,7 +504,7 @@ export default function RelatorioOfertaDetalhe() {
                       </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                       <div className="rounded-lg border border-slate-200 dark:border-borderDark p-4">
                         <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                           Percentual de alunos que finalizaram o teste
@@ -908,19 +923,27 @@ export default function RelatorioOfertaDetalhe() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => void onDownloadStudentsCsv()}
+                        onClick={() => void onDownloadPdf()}
                         disabled={downloading !== null}
                         className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {downloading === "students" ? "Baixando..." : "Baixar CSV (por aluno)"}
+                        {downloading === "pdf" ? "Baixando..." : "Baixar PDF"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => void onDownloadItemsCsv()}
+                        onClick={() => void onDownloadCsv()}
                         disabled={downloading !== null}
                         className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {downloading === "items" ? "Baixando..." : "Baixar CSV (por questão)"}
+                        {downloading === "csv" ? "Baixando..." : "Baixar CSV"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onDownloadExcel()}
+                        disabled={downloading !== null}
+                        className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {downloading === "excel" ? "Baixando..." : "Baixar Excel"}
                       </button>
                     </div>
                   </div>

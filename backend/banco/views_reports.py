@@ -1,14 +1,19 @@
+import csv
+from html import escape
+from io import StringIO
 from math import ceil
 
 from django.conf import settings
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from weasyprint import CSS, HTML
+from weasyprint.text.fonts import FontConfiguration
 
 from .models import Booklet
 from .views_sync_kit import _render_booklet_kit_pdf
 from .views_helpers import *  # noqa: F401,F403
 from .views_helpers import (
+    _build_simple_pdf,
     _build_class_names_map,
     _build_csv_response,
     _get_offer_for_reports,
@@ -61,10 +66,11 @@ def preview_cartao_resposta_pdf(request):
 
     # O base_url e necessario para o WeasyPrint resolver {% static %} e demais assets
     # a partir da URL raiz do projeto durante a geracao do PDF.
+    font_config = FontConfiguration()
     pdf_bytes = HTML(
         string=html_string,
         base_url=request.build_absolute_uri("/"),
-    ).write_pdf()
+    ).write_pdf(font_config=font_config)
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'inline; filename="cartao_resposta_preview.pdf"'
@@ -125,14 +131,471 @@ def preview_caderno_prova_publico_pdf(request):
     }
     html_string = render_to_string("pdf/booklet.html", context)
     css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
+    font_config = FontConfiguration()
     pdf_bytes = HTML(
         string=html_string,
         base_url=request.build_absolute_uri("/"),
-    ).write_pdf(stylesheets=[CSS(filename=css_path)])
+    ).write_pdf(
+        stylesheets=[CSS(filename=css_path, font_config=font_config)],
+        font_config=font_config,
+    )
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'inline; filename="caderno_prova_preview.pdf"'
     return response
+
+
+def preview_relatorio_publico_pdf(request):
+    offer_name = (request.GET.get("offer") or "Oferta programada").strip() or "Oferta programada"
+    booklet_name = (request.GET.get("booklet") or "Avaliacao Diagnostica").strip() or "Avaliacao Diagnostica"
+    school_name = (request.GET.get("school") or "EEMTI Dom Jose Tupinamba da Frota").strip() or "EEMTI Dom Jose Tupinamba da Frota"
+    serie_label = (request.GET.get("serie_label") or "1a serie").strip() or "1a serie"
+    payload = {
+        "students_total": 3,
+        "absent_count": 1,
+        "finalized_count": 2,
+        "in_progress_count": 1,
+        "items_total": 5,
+        "accuracy_buckets": [
+            {"range": "0-25", "count_students": 1, "pct_students": 33.33},
+            {"range": "25-50", "count_students": 0, "pct_students": 0.0},
+            {"range": "50-75", "count_students": 1, "pct_students": 33.33},
+            {"range": "75-100", "count_students": 1, "pct_students": 33.33},
+        ],
+        "students": [],
+        "items": [],
+    }
+    return _render_report_pdf_response(
+        request,
+        report_title="RELATORIO DA OFERTA",
+        offer_name=offer_name,
+        booklet_name=booklet_name,
+        school_label=school_name,
+        serie_label=serie_label,
+        class_label="-",
+        period_label="04/03/2026 - 14/03/2026",
+        payload=payload,
+        disposition="inline",
+        filename="relatorio-preview.pdf",
+    )
+
+
+def _build_report_pdf_context(
+    *,
+    report_title,
+    offer_name,
+    booklet_name,
+    school_label,
+    serie_label,
+    class_label,
+    period_label,
+    generated_at,
+    payload,
+):
+    total_students = max(int(payload.get("students_total", 0) or 0), 0)
+    finalized_count = max(int(payload.get("finalized_count", 0) or 0), 0)
+    absent_count = max(int(payload.get("absent_count", 0) or 0), 0)
+    not_finalized_count = max(total_students - finalized_count, 0)
+    denominator = max(total_students, 1)
+    finalized_pct = round((finalized_count / denominator) * 100, 2)
+    not_finalized_pct = round((not_finalized_count / denominator) * 100, 2)
+    circumference = round(2 * 3.141592653589793 * 72, 2)
+    finalized_stroke = round((finalized_pct / 100) * circumference, 2)
+    not_finalized_stroke = round(max(circumference - finalized_stroke, 0), 2)
+
+    tones = ["red", "yellow", "green", "blue"]
+    accuracy_buckets = []
+    for index, bucket in enumerate(payload.get("accuracy_buckets", [])):
+        accuracy_buckets.append(
+            {
+                "range": bucket["range"],
+                "pct_students": bucket["pct_students"],
+                "tone": tones[index % len(tones)],
+            }
+        )
+
+    return {
+        "report_title": report_title,
+        "offer": {"name": offer_name},
+        "booklet_name": booklet_name,
+        "school_label": school_label,
+        "serie_label": serie_label,
+        "class_label": class_label,
+        "period_label": period_label,
+        "generated_at": generated_at,
+        "payload": payload,
+        "chart": {
+            "circumference": circumference,
+            "finalized_stroke": finalized_stroke,
+            "not_finalized_stroke": not_finalized_stroke,
+            "finalized_pct": finalized_pct,
+            "not_finalized_pct": not_finalized_pct,
+            "not_finalized_count": not_finalized_count,
+            "absent_count": absent_count,
+        },
+        "accuracy_buckets": accuracy_buckets,
+    }
+
+
+def _render_report_pdf_response(
+    request,
+    *,
+    report_title,
+    offer_name,
+    booklet_name,
+    school_label,
+    serie_label,
+    class_label,
+    period_label,
+    payload,
+    disposition,
+    filename,
+):
+    generated_at = timezone.localtime().strftime("%d/%m/%Y %H:%M")
+    context = _build_report_pdf_context(
+        report_title=report_title,
+        offer_name=offer_name,
+        booklet_name=booklet_name,
+        school_label=school_label,
+        serie_label=serie_label,
+        class_label=class_label,
+        period_label=period_label,
+        generated_at=generated_at,
+        payload=payload,
+    )
+    html_string = render_to_string("pdf/report.html", context)
+    css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
+    font_config = FontConfiguration()
+    pdf_bytes = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri("/"),
+    ).write_pdf(
+        stylesheets=[CSS(filename=css_path, font_config=font_config)],
+        font_config=font_config,
+    )
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
+    return response
+
+
+def _build_offer_report_students_pdf_response(
+    request,
+    *,
+    offer,
+    class_ref=None,
+    school_ref=None,
+    serie=None,
+    disposition="attachment",
+    filename=None,
+):
+    payload = _resolve_report_data(
+        request,
+        offer,
+        class_ref=class_ref,
+        school_ref=school_ref,
+        serie=serie,
+    )
+
+    title = offer.description or f"Oferta #{offer.id}"
+    lines = [
+        f"Relatorio por aluno - {title}",
+        f"Caderno: {offer.booklet.name if offer.booklet else f'Caderno #{offer.booklet_id}'}",
+        f"Gerado em: {timezone.localtime().strftime('%d/%m/%Y %H:%M')}",
+    ]
+    if class_ref is not None:
+        lines.append(f"Turma filtrada: {class_ref}")
+    if school_ref is not None:
+        lines.append(f"Escola filtrada: {school_ref}")
+    if serie is not None:
+        lines.append(f"Serie filtrada: {serie}")
+    lines.extend(
+        [
+            f"Total de alunos: {payload['students_total']}",
+            f"Ausentes: {payload['absent_count']}",
+            f"Finalizados: {payload['finalized_count']}",
+            "",
+        ]
+    )
+
+    if payload["students"]:
+        for row in payload["students"]:
+            lines.append(
+                (
+                    f"Aluno {row['student_ref']} - {row['name']} | Turma {row['class_ref']} | "
+                    f"Acertos {row['correct']} | Erros {row['wrong']} | "
+                    f"Brancos {row['blank']} | Total {row['total']} | "
+                    f"% Acerto {row['correct_pct']} | Status {row['status']}"
+                )
+            )
+    else:
+        lines.append("Nenhum aluno encontrado para o filtro selecionado.")
+
+    resolved_filename = filename or f"oferta-{offer.id}-relatorio-alunos.pdf"
+    response = HttpResponse(_build_simple_pdf(lines), content_type="application/pdf")
+    response["Content-Disposition"] = f'{disposition}; filename="{resolved_filename}"'
+    return response
+
+
+def _build_offer_report_items_pdf_response(
+    request,
+    *,
+    offer,
+    class_ref=None,
+    school_ref=None,
+    serie=None,
+    disposition="attachment",
+    filename=None,
+):
+    payload = _resolve_report_data(
+        request,
+        offer,
+        class_ref=class_ref,
+        school_ref=school_ref,
+        serie=serie,
+    )
+
+    title = offer.description or f"Oferta #{offer.id}"
+    lines = [
+        f"Relatorio por questao - {title}",
+        f"Caderno: {offer.booklet.name if offer.booklet else f'Caderno #{offer.booklet_id}'}",
+        f"Gerado em: {timezone.localtime().strftime('%d/%m/%Y %H:%M')}",
+    ]
+    if class_ref is not None:
+        lines.append(f"Turma filtrada: {class_ref}")
+    if school_ref is not None:
+        lines.append(f"Escola filtrada: {school_ref}")
+    if serie is not None:
+        lines.append(f"Serie filtrada: {serie}")
+    lines.extend(
+        [
+            f"Total de questoes: {payload['items_total']}",
+            "",
+        ]
+    )
+
+    if payload["items"]:
+        for row in payload["items"]:
+            lines.append(
+                (
+                    f"Questao {row['order']} | % Acerto {row['correct_pct']} | "
+                    f"% Erro {row['wrong_pct']} | % Branco {row['blank_pct']} | "
+                    f"Mais marcada {row['most_marked_option'] or '-'} | "
+                    f"Respondidas {row['total_answered']}"
+                )
+            )
+    else:
+        lines.append("Nenhuma questao encontrada para o filtro selecionado.")
+
+    resolved_filename = filename or f"oferta-{offer.id}-relatorio-questoes.pdf"
+    response = HttpResponse(_build_simple_pdf(lines), content_type="application/pdf")
+    response["Content-Disposition"] = f'{disposition}; filename="{resolved_filename}"'
+    return response
+
+
+def _build_offer_report_export_payload(request, offer, *, class_ref=None, school_ref=None, serie=None):
+    return _resolve_report_data(
+        request,
+        offer,
+        class_ref=class_ref,
+        school_ref=school_ref,
+        serie=serie,
+    )
+
+
+def _build_offer_report_export_csv_response(offer, payload):
+    output = StringIO()
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow(["secao", "campo", "valor"])
+    writer.writerow(["resumo", "oferta", offer.description or f"Oferta #{offer.id}"])
+    writer.writerow(["resumo", "caderno", offer.booklet.name if offer.booklet else f"Caderno #{offer.booklet_id}"])
+    writer.writerow(["resumo", "gerado_em", timezone.localtime().strftime("%d/%m/%Y %H:%M")])
+    writer.writerow(["resumo", "total_alunos", payload["students_total"]])
+    writer.writerow(["resumo", "ausentes", payload["absent_count"]])
+    writer.writerow(["resumo", "finalizados", payload["finalized_count"]])
+    writer.writerow([])
+    writer.writerow(["alunos", "student_ref", "name", "class_ref", "correct", "wrong", "blank", "total", "correct_pct", "status"])
+    for row in payload["students"]:
+        writer.writerow(
+            [
+                "alunos",
+                row["student_ref"],
+                row["name"],
+                row["class_ref"],
+                row["correct"],
+                row["wrong"],
+                row["blank"],
+                row["total"],
+                row["correct_pct"],
+                row["status"],
+            ]
+        )
+    writer.writerow([])
+    writer.writerow(
+        [
+            "questoes",
+            "order",
+            "booklet_item_id",
+            "question_id",
+            "subject_name",
+            "correct_pct",
+            "wrong_pct",
+            "blank_pct",
+            "most_marked_option",
+            "total_answered",
+        ]
+    )
+    for row in payload["items"]:
+        writer.writerow(
+            [
+                "questoes",
+                row["order"],
+                row["booklet_item_id"],
+                row["question_id"],
+                row["subject_name"] or "",
+                row["correct_pct"],
+                row["wrong_pct"],
+                row["blank_pct"],
+                row["most_marked_option"] or "",
+                row["total_answered"],
+            ]
+        )
+
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio.csv"'
+    return response
+
+
+def _build_offer_report_export_excel_response(offer, payload):
+    generated_at = timezone.localtime().strftime("%d/%m/%Y %H:%M")
+    summary_rows = [
+        ("Oferta", offer.description or f"Oferta #{offer.id}"),
+        ("Caderno", offer.booklet.name if offer.booklet else f"Caderno #{offer.booklet_id}"),
+        ("Gerado em", generated_at),
+        ("Total de alunos", payload["students_total"]),
+        ("Ausentes", payload["absent_count"]),
+        ("Finalizados", payload["finalized_count"]),
+    ]
+    html_string = [
+        "<html><head><meta charset='utf-8'></head><body>",
+        "<table border='1'>",
+        "<tr><th colspan='2'>Resumo</th></tr>",
+    ]
+    for label, value in summary_rows:
+        html_string.append(f"<tr><td>{escape(str(label))}</td><td>{escape(str(value))}</td></tr>")
+    html_string.extend(
+        [
+            "</table><br/>",
+            "<table border='1'>",
+            "<tr><th colspan='9'>Alunos</th></tr>",
+            "<tr><th>student_ref</th><th>name</th><th>class_ref</th><th>correct</th><th>wrong</th><th>blank</th><th>total</th><th>correct_pct</th><th>status</th></tr>",
+        ]
+    )
+    for row in payload["students"]:
+        html_string.append(
+            "<tr>"
+            f"<td>{escape(str(row['student_ref']))}</td>"
+            f"<td>{escape(str(row['name']))}</td>"
+            f"<td>{escape(str(row['class_ref']))}</td>"
+            f"<td>{escape(str(row['correct']))}</td>"
+            f"<td>{escape(str(row['wrong']))}</td>"
+            f"<td>{escape(str(row['blank']))}</td>"
+            f"<td>{escape(str(row['total']))}</td>"
+            f"<td>{escape(str(row['correct_pct']))}</td>"
+            f"<td>{escape(str(row['status']))}</td>"
+            "</tr>"
+        )
+    html_string.extend(
+        [
+            "</table><br/>",
+            "<table border='1'>",
+            "<tr><th colspan='9'>Questoes</th></tr>",
+            "<tr><th>order</th><th>booklet_item_id</th><th>question_id</th><th>subject_name</th><th>correct_pct</th><th>wrong_pct</th><th>blank_pct</th><th>most_marked_option</th><th>total_answered</th></tr>",
+        ]
+    )
+    for row in payload["items"]:
+        html_string.append(
+            "<tr>"
+            f"<td>{escape(str(row['order']))}</td>"
+            f"<td>{escape(str(row['booklet_item_id']))}</td>"
+            f"<td>{escape(str(row['question_id']))}</td>"
+            f"<td>{escape(str(row['subject_name'] or ''))}</td>"
+            f"<td>{escape(str(row['correct_pct']))}</td>"
+            f"<td>{escape(str(row['wrong_pct']))}</td>"
+            f"<td>{escape(str(row['blank_pct']))}</td>"
+            f"<td>{escape(str(row['most_marked_option'] or ''))}</td>"
+            f"<td>{escape(str(row['total_answered']))}</td>"
+            "</tr>"
+        )
+    html_string.append("</table></body></html>")
+
+    response = HttpResponse(
+        "".join(html_string),
+        content_type="application/vnd.ms-excel; charset=utf-8",
+    )
+    response["Content-Disposition"] = f'attachment; filename="oferta-{offer.id}-relatorio.xls"'
+    return response
+
+
+def _build_offer_report_export_pdf_response(request, offer, *, class_ref=None, school_ref=None, serie=None):
+    payload = _build_offer_report_export_payload(
+        request,
+        offer,
+        class_ref=class_ref,
+        school_ref=school_ref,
+        serie=serie,
+    )
+    school_label = (request.query_params.get("school_label") or "").strip() or (str(school_ref) if school_ref is not None else "Todas")
+    serie_label = (request.query_params.get("serie_label") or "").strip() or (f"{serie}a serie" if serie is not None else "Todas")
+    class_label = (request.query_params.get("class_name") or "").strip() or (f"Turma {class_ref}" if class_ref is not None else "-")
+    period_label = f"{offer.start_date.strftime('%d/%m/%Y')} - {offer.end_date.strftime('%d/%m/%Y')}"
+    return _render_report_pdf_response(
+        request,
+        report_title="RELATORIO DA TURMA" if class_ref is not None else "RELATORIO DA OFERTA",
+        offer_name=class_label if class_ref is not None else (offer.description or f"Oferta #{offer.id}"),
+        booklet_name=offer.booklet.name if offer.booklet else f"Caderno #{offer.booklet_id}",
+        school_label=school_label,
+        serie_label=serie_label,
+        class_label=class_label,
+        period_label=period_label,
+        payload=payload,
+        disposition="attachment",
+        filename=f"oferta-{offer.id}-relatorio.pdf",
+    )
+
+
+class ReportPdfPreviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        kind = (request.query_params.get("kind") or "students").strip().lower()
+
+        if kind == "students":
+            return _build_offer_report_students_pdf_response(
+                request,
+                offer=offer,
+                class_ref=class_ref,
+                school_ref=school_ref,
+                serie=serie,
+                disposition="inline",
+                filename=f"oferta-{offer.id}-relatorio-alunos-preview.pdf",
+            )
+        if kind == "items":
+            return _build_offer_report_items_pdf_response(
+                request,
+                offer=offer,
+                class_ref=class_ref,
+                school_ref=school_ref,
+                serie=serie,
+                disposition="inline",
+                filename=f"oferta-{offer.id}-relatorio-questoes-preview.pdf",
+            )
+
+        raise ValidationError({"kind": "Use 'students' ou 'items'."})
 
 
 class OfferReportSummaryView(APIView):
@@ -423,6 +886,76 @@ class OfferReportStudentsCsvView(APIView):
         )
 
 
+class OfferReportExportCsvView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        payload = _build_offer_report_export_payload(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
+        return _build_offer_report_export_csv_response(offer, payload)
+
+
+class OfferReportExportExcelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        payload = _build_offer_report_export_payload(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
+        return _build_offer_report_export_excel_response(offer, payload)
+
+
+class OfferReportExportPdfView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        return _build_offer_report_export_pdf_response(
+            request,
+            offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
+
+
+class OfferReportStudentsPdfView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        return _build_offer_report_students_pdf_response(
+            request,
+            offer=offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
+        )
+
+
 class OfferReportItemsCsvView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -468,4 +1001,21 @@ class OfferReportItemsCsvView(APIView):
                 ]
                 for row in payload["items"]
             ],
+        )
+
+
+class OfferReportItemsPdfView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, offer_id):
+        offer = _get_offer_for_reports(request, offer_id)
+        class_ref = _parse_class_ref(request.query_params.get("class_ref"))
+        school_ref = _parse_school_ref(request.query_params.get("school_ref"))
+        serie = _parse_serie(request.query_params.get("serie"))
+        return _build_offer_report_items_pdf_response(
+            request,
+            offer=offer,
+            class_ref=class_ref,
+            school_ref=school_ref,
+            serie=serie,
         )

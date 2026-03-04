@@ -150,6 +150,79 @@ class OfferReportsTests(APITestCase):
         self.assertIn("student_ref;name;class_ref;correct;wrong;blank;total;correct_pct;status", content)
         self.assertIn("7101;Beatriz Martins;903001;1;1;0;2;50.0;FINALIZED", content)
 
+    def test_offer_report_students_pdf_download(self):
+        url = reverse("offer-report-students-pdf", args=[self.offer.id])
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("oferta-{}".format(self.offer.id), response["Content-Disposition"])
+
+    def test_offer_report_items_pdf_download(self):
+        url = reverse("offer-report-items-pdf", args=[self.offer.id])
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("oferta-{}".format(self.offer.id), response["Content-Disposition"])
+
+    def test_offer_report_export_csv_download(self):
+        url = reverse("offer-report-export-csv", args=[self.offer.id])
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        self.assertIn("oferta-{}".format(self.offer.id), response["Content-Disposition"])
+
+    def test_offer_report_export_pdf_download(self):
+        url = reverse("offer-report-export-pdf", args=[self.offer.id])
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("oferta-{}".format(self.offer.id), response["Content-Disposition"])
+
+    def test_offer_report_export_excel_download(self):
+        url = reverse("offer-report-export-excel", args=[self.offer.id])
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/vnd.ms-excel", response["Content-Type"])
+        self.assertIn("oferta-{}".format(self.offer.id), response["Content-Disposition"])
+
+    def test_offer_report_students_pdf_preview_inline(self):
+        url = reverse("pdf-preview-reports", args=[self.offer.id])
+
+        response = self.client.get(url, {"kind": "students"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("inline;", response["Content-Disposition"])
+
+    def test_offer_report_items_pdf_preview_inline(self):
+        url = reverse("pdf-preview-reports", args=[self.offer.id])
+
+        response = self.client.get(url, {"kind": "items"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("inline;", response["Content-Disposition"])
+
+    def test_public_report_pdf_preview_inline(self):
+        self.client.force_authenticate(user=None)
+        url = reverse("pdf-preview-reports-public")
+
+        response = self.client.get(url, {"kind": "students"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("inline;", response["Content-Disposition"])
+
     def test_offer_report_invalid_class_ref_returns_400(self):
         url = reverse("offer-report-summary", args=[self.offer.id])
 
