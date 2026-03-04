@@ -6,6 +6,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import type { ToastItem, ToastType } from "./useToast";
 
 type ToastViewportProps = {
@@ -18,27 +19,27 @@ function toastTone(type: ToastType) {
     return {
       icon: CheckCircle,
       className:
-        "bg-emerald-50 border-emerald-200 text-brand-600 dark:bg-brand-500/15 dark:border-brand-500/30 dark:text-brand-400",
+        "bg-green-50 border-green-500 text-brand-600 dark:bg-[#0B3B2E] dark:border-[#19e79c] dark:text-[#19e79c]",
     };
   }
   if (type === "error") {
     return {
       icon: XCircle,
       className:
-        "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-900/50 dark:text-red-300",
+        "bg-red-50 border-red-200 text-red-800 dark:bg-[#7F1D1D] dark:border-[#EF4444] dark:text-[#FCA5A5]",
     };
   }
   if (type === "warning") {
     return {
       icon: AlertTriangle,
       className:
-        "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700/40 dark:text-amber-300",
+        "bg-amber-50 border-amber-200 text-amber-800 dark:bg-[#3A2F0B] dark:border-[#FACC15] dark:text-[#FDE68A]",
     };
   }
   return {
     icon: Info,
     className:
-      "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/35 dark:border-blue-700/40 dark:text-blue-300",
+      "bg-cyan-50 border-cyan-500 text-cyan-800 dark:bg-cyan-950 dark:border-cyan-700 dark:text-cyan-300",
   };
 }
 
@@ -71,7 +72,13 @@ function ToastCard({
       role="status"
       aria-live="polite"
     >
-      <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+      {item.loading ? (
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+          <EqualizerLoader size={24} />
+        </div>
+      ) : (
+        <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold">{item.title}</div>
         {item.message && <div className="mt-1 text-sm opacity-90">{item.message}</div>}

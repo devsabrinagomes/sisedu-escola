@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Relatorio da Oferta</title>
+  <link rel="stylesheet" href="pdf.css" />
+</head>
+<body>
+  <div class="booklet-band booklet-band-top">
+    <div class="booklet-band-line"></div>
+    <div class="booklet-band-stripes">
+      <span class="stripe orange"></span>
+      <span class="stripe blue"></span>
+      <span class="stripe red"></span>
+      <span class="stripe yellow"></span>
+    </div>
+  </div>
+
+  <div class="booklet-footer">
+    <div class="footer-content">Relatorio: {{ offer.name }} | Gerado em: {{ generated_at }}</div>
+    <div class="booklet-band booklet-band-bottom">
+      <div class="booklet-band-stripes">
+        <span class="stripe orange"></span>
+        <span class="stripe blue"></span>
+        <span class="stripe red"></span>
+        <span class="stripe yellow"></span>
+      </div>
+      <div class="booklet-band-line"></div>
+    </div>
+  </div>
+
+  <div class="booklet-sheet report-sheet">
+    <div class="booklet-header">
+      <div class="booklet-header-content">
+        <div class="booklet-brand-left">
+          <img class="logo-sisedu-escola" src="{% static 'assets/images/logo/logo.png' %}" alt="Sisedu Escola" />
+        </div>
+        <div class="booklet-brand-right">
+          <img class="logo-sisedu" src="{% static 'assets/images/logo/sisedu.png' %}" alt="Sisedu" />
+          <img class="logo-coded" src="{% static 'assets/images/logo/coded.png' %}" alt="Coded" />
+          <img class="logo-cientista-chefe" src="{% static 'assets/images/logo/cientistachefe.png' %}" alt="Cientista Chefe" />
+          <img class="logo-ceara-educa" src="{% static 'assets/images/logo/cearaeduca.png' %}" alt="Ceara Educa" />
+          <img class="logo-ceara" src="{% static 'assets/images/logo/ceara.png' %}" alt="Ceara Governo do Estado" />
+        </div>
+      </div>
+    </div>
+
+    <h1 class="booklet-title">{{ report_title }}</h1>
+    <h2 class="booklet-name">{{ offer.name }}</h2>
+
+    <div class="info-box report-meta-box">
+      <div class="report-meta-grid">
+        <div class="report-meta-row">
+          <div class="report-meta-cell"><strong>Escola:</strong> {{ school_label }}</div>
+          <div class="report-meta-cell"><strong>Serie:</strong> {{ serie_label }}</div>
+        </div>
+        <div class="report-meta-row">
+          <div class="report-meta-cell"><strong>{% if class_label != "-" %}Turma{% else %}Caderno{% endif %}:</strong> {% if class_label != "-" %}{{ class_label }}{% else %}{{ booklet_name }}{% endif %}</div>
+          <div class="report-meta-cell"><strong>Gerado em:</strong> {{ generated_at }}</div>
+        </div>
+        {% if class_label != "-" %}
+          <div class="report-meta-row">
+            <div class="report-meta-cell report-meta-cell-full"><strong>Caderno:</strong> {{ booklet_name }}</div>
+          </div>
+        {% endif %}
+        {% if period_label %}
+          <div class="report-meta-row">
+            <div class="report-meta-cell report-meta-cell-full"><strong>Periodo:</strong> {{ period_label }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="report-summary-grid">
+      <div class="report-summary-card">
+        <div class="report-summary-label">Total de alunos</div>
+        <div class="report-summary-value">{{ payload.students_total }}</div>
+      </div>
+      <div class="report-summary-card">
+        <div class="report-summary-label">Ausentes</div>
+        <div class="report-summary-value">{{ payload.absent_count }}</div>
+      </div>
+      <div class="report-summary-card">
+        <div class="report-summary-label">Finalizados</div>
+        <div class="report-summary-value">{{ payload.finalized_count }}</div>
+      </div>
+      <div class="report-summary-card">
+        <div class="report-summary-label">Questoes</div>
+        <div class="report-summary-value">{{ payload.items_total }}</div>
+      </div>
+    </div>
+
+    <div class="report-chart-card">
+      <h3>Percentual de alunos que finalizaram o teste</h3>
+      <div class="report-pie-wrap">
+        <svg viewBox="0 0 220 220" class="report-pie-svg" aria-hidden="true">
+          <circle cx="110" cy="110" r="72" fill="none" stroke="#e5e7eb" stroke-width="42" />
+          <circle
+            cx="110"
+            cy="110"
+            r="72"
+            fill="none"
+            stroke="#4d9acc"
+            stroke-width="42"
+            stroke-dasharray="{{ chart.finalized_stroke }} {{ chart.circumference }}"
+            stroke-dashoffset="0"
+            transform="rotate(-90 110 110)"
+          />
+          <circle
+            cx="110"
+            cy="110"
+            r="72"
+            fill="none"
+            stroke="#ef8b84"
+            stroke-width="42"
+            stroke-dasharray="{{ chart.not_finalized_stroke }} {{ chart.circumference }}"
+            stroke-dashoffset="-{{ chart.finalized_stroke }}"
+            transform="rotate(-90 110 110)"
+          />
+          <circle cx="110" cy="110" r="26" fill="#eef2f7" />
+        </svg>
+        <div class="report-pie-legend">
+          <div><span class="legend-dot legend-blue"></span>Finalizaram: {{ chart.finalized_pct }}% ({{ payload.finalized_count }})</div>
+          <div><span class="legend-dot legend-red"></span>Nao finalizaram: {{ chart.not_finalized_pct }}% ({{ chart.not_finalized_count }})</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-chart-card">
+      <h3>Percentual de alunos por faixa de acerto</h3>
+      <div class="report-bucket-table-wrap">
+        <table class="report-bucket-table">
+          <thead>
+            <tr>
+              <th>Percentual de acerto</th>
+              <th>Percentual de alunos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for bucket in accuracy_buckets %}
+              <tr class="bucket-{{ bucket.tone }}">
+                <td>{{ bucket.range }}%</td>
+                <td>{{ bucket.pct_students }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="report-chart-note">Clique na tabela para ver a lista de alunos.</div>
+    </div>
+  </div>
+</body>
+</html>

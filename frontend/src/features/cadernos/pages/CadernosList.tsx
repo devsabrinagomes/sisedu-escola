@@ -36,7 +36,7 @@ function countItems(booklet: BookletDTO) {
 
 export default function CadernosList() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { userId } = useAuth();
   const [items, setItems] = useState<BookletDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,6 +129,13 @@ export default function CadernosList() {
   }, [sortedItems, currentPage]);
 
   async function onDownloadKit(bookletId: number) {
+    const loadingToastId = toast({
+      type: "info",
+      title: "Baixando kit de aplicação...",
+      message: "Aguarde enquanto os PDFs são gerados.",
+      loading: true,
+      duration: 20000,
+    });
     try {
       setDownloadingKitId(bookletId);
       await downloadBookletApplicationKit(bookletId);
@@ -141,6 +148,7 @@ export default function CadernosList() {
         message: getApiErrorMessage(error),
       });
     } finally {
+      dismiss(loadingToastId);
       setDownloadingKitId(null);
     }
   }
@@ -177,7 +185,16 @@ export default function CadernosList() {
           </Link>
         </div>
         <div className="mt-3 text-xs text-slate-500 dark:text-slate-300">
-          {loading ? (showLoading ? <EqualizerLoader size={16} /> : null) : `${sortedItems.length} caderno(s)`}
+          {loading ? (
+            showLoading ? (
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-surface-2"
+                />
+            ) : null
+          ) : (
+            `${sortedItems.length} caderno(s)`
+          )}
         </div>
       </div>
 

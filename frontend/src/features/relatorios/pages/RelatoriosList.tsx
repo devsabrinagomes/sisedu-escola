@@ -3,12 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import EqualizerLoader from "@/components/ui/EqualizerLoader";
+import LoadingButton from "@/components/ui/LoadingButton";
 import SigeCombobox from "@/features/gabaritos/components/SigeCombobox";
 import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import { listMockSigeSchoolClasses, listMockSigeSchools } from "@/features/gabaritos/services/gabaritos";
 import {
-  downloadReportItemsCsv,
-  downloadReportStudentsCsv,
+  downloadReportCsv,
+  downloadReportExcel,
+  downloadReportPdf,
   getOfferReportSummary,
   getReportsByClass,
   getReportsOverview,
@@ -94,7 +96,7 @@ export default function RelatoriosList() {
   const [summaryError, setSummaryError] = useState("");
   const [classReports, setClassReports] = useState<ReportByClassRowDTO[]>([]);
   const [studentSelection, setStudentSelection] = useState<StudentSelection>(null);
-  const [downloading, setDownloading] = useState<"students" | "items" | null>(null);
+  const [downloading, setDownloading] = useState<"csv" | "pdf" | "excel" | null>(null);
   const showSummaryLoading = useDelayedLoading(summaryLoading);
   const showOverviewLoading = useDelayedLoading(overviewLoading);
   const selectedStudentsCardRef = useRef<HTMLDivElement | null>(null);
@@ -364,19 +366,19 @@ export default function RelatoriosList() {
     setStudentSelection(null);
   }
 
-  async function onDownloadStudentsCsv() {
+  async function onDownloadCsv() {
     if (!loadedFilters) return;
     try {
-      setDownloading("students");
-      await downloadReportStudentsCsv(loadedFilters.offer.id, {
+      setDownloading("csv");
+      await downloadReportCsv(loadedFilters.offer.id, {
         schoolRef: loadedFilters.schoolRef,
         serie: loadedFilters.serie,
       });
-      toast({ type: "success", title: "CSV por aluno baixado com sucesso" });
+      toast({ type: "success", title: "CSV baixado com sucesso" });
     } catch (error: unknown) {
       toast({
         type: "error",
-        title: "Erro ao baixar CSV por aluno",
+        title: "Erro ao baixar CSV",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -384,19 +386,39 @@ export default function RelatoriosList() {
     }
   }
 
-  async function onDownloadItemsCsv() {
+  async function onDownloadPdf() {
     if (!loadedFilters) return;
     try {
-      setDownloading("items");
-      await downloadReportItemsCsv(loadedFilters.offer.id, {
+      setDownloading("pdf");
+      await downloadReportPdf(loadedFilters.offer.id, {
         schoolRef: loadedFilters.schoolRef,
         serie: loadedFilters.serie,
       });
-      toast({ type: "success", title: "CSV por questão baixado com sucesso" });
+      toast({ type: "success", title: "PDF baixado com sucesso" });
     } catch (error: unknown) {
       toast({
         type: "error",
-        title: "Erro ao baixar CSV por questão",
+        title: "Erro ao baixar PDF",
+        message: getApiErrorMessage(error),
+      });
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function onDownloadExcel() {
+    if (!loadedFilters) return;
+    try {
+      setDownloading("excel");
+      await downloadReportExcel(loadedFilters.offer.id, {
+        schoolRef: loadedFilters.schoolRef,
+        serie: loadedFilters.serie,
+      });
+      toast({ type: "success", title: "Excel baixado com sucesso" });
+    } catch (error: unknown) {
+      toast({
+        type: "error",
+        title: "Erro ao baixar Excel",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -537,15 +559,15 @@ export default function RelatoriosList() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button
+            <LoadingButton
               type="button"
               onClick={() => void onLoadReport()}
+              loading={summaryLoading}
+              loadingText="Carregando relatórios..."
               className="inline-flex items-center gap-2 rounded-lg btn-primary px-4 py-2 text-sm font-semibold"
-              disabled={summaryLoading}
             >
-              {summaryLoading && showSummaryLoading ? <EqualizerLoader size={16} /> : null}
               Carregar relatórios
-            </button>
+            </LoadingButton>
             <button
               type="button"
               onClick={onClearFilters}
@@ -579,22 +601,30 @@ export default function RelatoriosList() {
                     <Download className="h-4 w-4" />
                     Baixar
                   </summary>
-                  <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-1 shadow-lg">
+                  <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-1 shadow-lg">
                     <button
                       type="button"
-                      onClick={() => void onDownloadStudentsCsv()}
+                      onClick={() => void onDownloadPdf()}
                       disabled={downloading !== null}
                       className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
                     >
-                      {downloading === "students" ? "Baixando..." : "CSV por aluno"}
+                      {downloading === "pdf" ? "Baixando..." : "PDF"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => void onDownloadItemsCsv()}
+                      onClick={() => void onDownloadCsv()}
                       disabled={downloading !== null}
                       className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
                     >
-                      {downloading === "items" ? "Baixando..." : "CSV por questão"}
+                      {downloading === "csv" ? "Baixando..." : "CSV"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onDownloadExcel()}
+                      disabled={downloading !== null}
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-2 disabled:opacity-60"
+                    >
+                      {downloading === "excel" ? "Baixando..." : "Excel"}
                     </button>
                   </div>
                 </details>
@@ -624,7 +654,7 @@ export default function RelatoriosList() {
             </div>
             {summary ? (
               <div className="mt-4 border-t border-slate-100 dark:border-borderDark pt-4">
-                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 dark:border-borderDark bg-white dark:bg-surface-1 p-4">
                     <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
                       Percentual de alunos que finalizaram o teste

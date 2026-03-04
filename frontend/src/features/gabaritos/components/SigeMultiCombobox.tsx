@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 
 type Option = {
@@ -166,8 +165,14 @@ export default function SigeMultiCombobox({
         {open ? (
           <div className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-borderDark dark:bg-surface-1">
             {loading ? (
-              <div className="flex items-center justify-center px-3 py-3" aria-busy="true">
-                {showLoading ? <EqualizerLoader size={16} /> : null}
+              <div className="px-3 py-3" aria-busy="true">
+                {showLoading ? (
+                  <div className="space-y-2">
+                    <span className="block h-8 animate-pulse rounded-md bg-slate-100 dark:bg-surface-2" />
+                    <span className="block h-8 animate-pulse rounded-md bg-slate-100 dark:bg-surface-2" />
+                    <span className="block h-8 animate-pulse rounded-md bg-slate-100 dark:bg-surface-2" />
+                  </div>
+                ) : null}
               </div>
             ) : (
               <>

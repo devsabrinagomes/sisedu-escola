@@ -181,6 +181,7 @@ class OfferKitPdfView(OwnerAccessMixin, APIView):
     def get(self, request, offer_id, kind):
         offer = self._get_offer(request, offer_id)
         return _render_booklet_kit_pdf(
+            request=request,
             booklet=offer.booklet,
             kind=kind,
             kit_name=offer.description or f"Oferta #{offer.id}",
@@ -201,6 +202,7 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
     def get(self, request, booklet_id, kind):
         booklet = self._get_booklet(request, booklet_id)
         return _render_booklet_kit_pdf(
+            request=request,
             booklet=booklet,
             kind=kind,
             kit_name=booklet.name or f"Caderno #{booklet.id}",
@@ -208,9 +210,42 @@ class BookletKitPdfView(OwnerAccessMixin, APIView):
         )
 
 
-def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
+class BookletPdfPreviewView(OwnerAccessMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, booklet_id):
+        booklet = self.get_owned_booklet(
+            request,
+            booklet_id,
+            message="Você não tem permissão para visualizar este caderno.",
+        )
+        return _render_booklet_kit_pdf(
+            request=request,
+            booklet=booklet,
+            kind="prova",
+            kit_name=booklet.name or f"Caderno #{booklet.id}",
+            filename_prefix=f"caderno-{booklet.id}",
+            disposition="inline",
+        )
+
+
+def _split_two_cols(numbers):
+    midpoint = (len(numbers) + 1) // 2
+    return numbers[:midpoint], numbers[midpoint:]
+
+
+def _render_booklet_kit_pdf(
+    *,
+    request=None,
+    booklet,
+    kind,
+    kit_name,
+    filename_prefix,
+    disposition="attachment",
+):
     try:
         from weasyprint import CSS, HTML
+        from weasyprint.text.fonts import FontConfiguration
     except ModuleNotFoundError:
         raise ValidationError(
             {"detail": "WeasyPrint não está disponível neste ambiente do backend."}
@@ -229,14 +264,21 @@ def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
     for index, item in enumerate(booklet_items, start=1):
         version = item.question_version
         options = [
-            {"letter": opt.letter, "text": opt.option_text or "-"}
+            {
+                "letter": opt.letter,
+                "text": opt.option_text or "",
+                "image_url": opt.option_image.url if getattr(opt, "option_image", None) else "",
+            }
             for opt in version.options.all().order_by("letter")
         ]
         questions.append(
             {
                 "number": index,
                 "statement": version.command or version.title or "-",
-                "skill_code": getattr(getattr(version, "skill", None), "code", "-"),
+                "support_image_url": (
+                    version.support_image.url if getattr(version, "support_image", None) else ""
+                ),
+                "image_reference": (getattr(version, "image_reference", "") or "").strip(),
                 "options": options,
             }
         )
@@ -246,6 +288,7 @@ def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
             "id": booklet.id,
             "name": kit_name,
         },
+        "generated_at": timezone.localtime().strftime("%d/%m/%Y %H:%M"),
         "discipline": "-",
         "grade": "-",
         "class_name": "-",
@@ -256,20 +299,39 @@ def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
     }
 
     css_path = str(settings.BASE_DIR / "banco" / "templates" / "pdf" / "pdf.css")
-    base_url = str(settings.BASE_DIR / "banco" / "templates" / "pdf")
+    base_url = request.build_absolute_uri("/") if request else str(settings.BASE_DIR)
+
+    font_config = FontConfiguration()
 
     if kind == "prova":
         html_string = render_to_string("pdf/booklet.html", context)
         filename = f"{filename_prefix}-caderno-prova.pdf"
+        stylesheets = [CSS(filename=css_path, font_config=font_config)]
     elif kind == "cartao-resposta":
-        html_string = render_to_string("pdf/answer_sheet.html", context)
+        total_questions = len(questions)
+        question_numbers = list(range(1, total_questions + 1))
+        left_nums, right_nums = _split_two_cols(question_numbers)
+        landscape_mode = total_questions > 45
+
+        context.update(
+            {
+                "cards": range(3 if landscape_mode else 4),
+                "left_nums": left_nums,
+                "right_nums": right_nums,
+                "booklet_name": kit_name,
+                "landscape_mode": landscape_mode,
+            }
+        )
+        html_string = render_to_string("pdf/answer_sheet_multi.html", context)
         filename = f"{filename_prefix}-cartao-resposta.pdf"
+        stylesheets = []
     else:
         raise ValidationError({"detail": "Tipo de kit inválido."})
 
     try:
         pdf_bytes = HTML(string=html_string, base_url=base_url).write_pdf(
-            stylesheets=[CSS(filename=css_path)]
+            stylesheets=stylesheets,
+            font_config=font_config,
         )
     except Exception as exc:
         raise ValidationError(
@@ -281,5 +343,5 @@ def _render_booklet_kit_pdf(*, booklet, kind, kit_name, filename_prefix):
             }
         )
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
     return response

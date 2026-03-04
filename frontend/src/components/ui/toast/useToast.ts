@@ -7,6 +7,7 @@ export type ToastInput = {
   title: string;
   message?: string;
   duration?: number;
+  loading?: boolean;
 };
 
 export type ToastItem = ToastInput & {
@@ -26,4 +27,3 @@ export function useToast() {
   if (!ctx) throw new Error("useToast deve ser usado dentro de ToastProvider");
   return ctx;
 }
-

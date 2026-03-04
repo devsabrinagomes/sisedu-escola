@@ -1,0 +1,223 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Preview PDF</title>
+  <style>
+    @font-face {
+      font-family: "Inter";
+      src: url("{% static 'assets/fonts/Inter_24pt-Regular.ttf' %}") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Inter";
+      src: url("{% static 'assets/fonts/Inter_24pt-Medium.ttf' %}") format("truetype");
+      font-weight: 500;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Inter";
+      src: url("{% static 'assets/fonts/Inter_24pt-SemiBold.ttf' %}") format("truetype");
+      font-weight: 600;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Inter";
+      src: url("{% static 'assets/fonts/Inter_24pt-Bold.ttf' %}") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    body {
+      margin: 0;
+      color: #0f172a;
+      font-family: "Inter", sans-serif;
+      font-size: 11pt;
+      background: #ffffff;
+    }
+
+    .page {
+      width: 100%;
+    }
+
+    .card {
+      border: 1px solid #d6dde8;
+      border-radius: 10px;
+      padding: 10mm 9mm 8mm;
+      background: #ffffff;
+    }
+
+    .logos {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-bottom: 6mm;
+    }
+
+    .logo-cell {
+      display: table-cell;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .logo-cell img {
+      max-height: 18mm;
+      max-width: 40mm;
+    }
+
+    .title {
+      margin: 0 0 5mm;
+      text-align: center;
+      font-size: 18pt;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: #123b65;
+    }
+
+    .meta-box {
+      margin-bottom: 6mm;
+      padding: 3.5mm 4mm;
+      border: 1px solid #9db6cf;
+      border-radius: 7px;
+      background: #f5f9fc;
+      text-align: center;
+      font-size: 11pt;
+      font-weight: 700;
+    }
+
+    .questions {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      border-spacing: 4mm 0;
+    }
+
+    .questions-column {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding: 4mm 3.5mm;
+      border: 1px solid #d6dde8;
+      border-radius: 8px;
+      background: #fcfdff;
+    }
+
+    .question-row {
+      margin-bottom: 3.2mm;
+      white-space: nowrap;
+    }
+
+    .question-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .question-number {
+      display: inline-block;
+      width: 10mm;
+      font-weight: 700;
+      font-size: 10pt;
+      text-align: right;
+      margin-right: 2.2mm;
+      color: #123b65;
+    }
+
+    .bubble-group {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .bubble-option {
+      display: inline-block;
+      width: 8.2mm;
+      text-align: center;
+      margin-right: 1.2mm;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .bubble-option:last-child {
+      margin-right: 0;
+    }
+
+    .bubble {
+      display: inline-block;
+      width: 5.3mm;
+      height: 5.3mm;
+      line-height: 5.1mm;
+      border: 1.1px solid #111827;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 7.4pt;
+      background: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="logos">
+        <div class="logo-cell">
+          <img src="{% static 'banco/brands/sisedu.png' %}" alt="Sisedu" />
+        </div>
+        <div class="logo-cell">
+          <img src="{% static 'banco/brands/coded.png' %}" alt="Coded" />
+        </div>
+        <div class="logo-cell">
+          <img src="{% static 'banco/brands/ceara.png' %}" alt="Ceara" />
+        </div>
+      </div>
+
+      <h1 class="title">Preview de Cartão Resposta</h1>
+
+      <div class="meta-box">Caderno: {{ booklet_name }}</div>
+
+      <div class="questions">
+        <div class="questions-column">
+          {% for question in questions %}
+            {% if question <= 5 %}
+              <div class="question-row">
+                <span class="question-number">{{ question|stringformat:"02d" }}</span>
+                <span class="bubble-group">
+                  <span class="bubble-option"><span class="bubble">A</span></span>
+                  <span class="bubble-option"><span class="bubble">B</span></span>
+                  <span class="bubble-option"><span class="bubble">C</span></span>
+                  <span class="bubble-option"><span class="bubble">D</span></span>
+                  <span class="bubble-option"><span class="bubble">E</span></span>
+                </span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <div class="questions-column">
+          {% for question in questions %}
+            {% if question > 5 %}
+              <div class="question-row">
+                <span class="question-number">{{ question|stringformat:"02d" }}</span>
+                <span class="bubble-group">
+                  <span class="bubble-option"><span class="bubble">A</span></span>
+                  <span class="bubble-option"><span class="bubble">B</span></span>
+                  <span class="bubble-option"><span class="bubble">C</span></span>
+                  <span class="bubble-option"><span class="bubble">D</span></span>
+                  <span class="bubble-option"><span class="bubble">E</span></span>
+                </span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

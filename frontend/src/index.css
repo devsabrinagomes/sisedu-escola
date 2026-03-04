@@ -39,10 +39,10 @@
   --chart-border:#2a2f36;
 
   /* semantic colors adaptadas p/ dark */
-  --red-fill:#7F1D1D; --red-stroke:#EF4444;
-  --yellow-fill:#967405; --yellow-stroke:#FACC15;
-  --green-fill:#0c7c5e; --green-stroke:#3fce9a;
-  --blue-fill:#125f8f; --blue-stroke:#52c3f3;
+  --red-fill:#a82525; --red-stroke:#EF4444;
+  --yellow-fill:#a7861c; --yellow-stroke:#FACC15;
+  --green-fill:#11795d; --green-stroke:#19e79c;
+  --blue-fill:#104c72; --blue-stroke:#38BDF8;
 
   /* timeline refinada p/ dark premium */
   --timeline-neutral-fill:#1e2228;

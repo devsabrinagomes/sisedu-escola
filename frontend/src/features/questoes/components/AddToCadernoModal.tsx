@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import EqualizerLoader from "@/components/ui/EqualizerLoader";
 import useDelayedLoading from "@/shared/hooks/useDelayedLoading";
 import { api } from "@/lib/api";
 
@@ -115,8 +114,14 @@ export default function AddToCadernoModal({
 
         <div className="mt-4 max-h-72 space-y-2 overflow-auto pr-1">
           {loading ? (
-            <div className="flex items-center justify-center py-3" aria-busy="true">
-              {showLoading ? <EqualizerLoader size={16} /> : null}
+            <div className="space-y-2 py-1" aria-busy="true">
+              {showLoading ? (
+                <>
+                  <span className="block h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-surface-2" />
+                  <span className="block h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-surface-2" />
+                  <span className="block h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-surface-2" />
+                </>
+              ) : null}
             </div>
           ) : cadernos.length === 0 ? (
             <div className="text-sm text-slate-500 dark:text-slate-400">Nenhum caderno encontrado.</div>
